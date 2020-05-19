@@ -50,14 +50,21 @@ enum class NameType : char {
 };
 
 class Parser {
+public:
+    using TokenIterator = std::vector<Token>::const_iterator;
 private:
     std::vector<Function> m_functions;
-    std::vector<Token>::const_iterator m_input_begin;
-    std::vector<Token>::const_iterator m_input_end;
+    TokenIterator m_input_begin;
+    TokenIterator m_input_end;
+    TokenIterator token;
     std::unordered_map<std::string, NameType> m_names_table;
+
+    FunctionCall in_function_call();
+    Statement in_statement();
+    void in_function_definition();
 public:
-    Parser(std::vector<Token>::const_iterator input_begin,
-           std::vector<Token>::const_iterator input_end);
+    Parser(TokenIterator input_begin,
+           TokenIterator input_end);
     void run();
     void print_functions();
 };
