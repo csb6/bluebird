@@ -1,5 +1,6 @@
 #include "parser.h"
 #include <stack>
+#include <string_view>
 #include <iostream>
 
 void print_error(unsigned int line_num, std::string_view message)
@@ -9,18 +10,23 @@ void print_error(unsigned int line_num, std::string_view message)
 }
 
 enum class State : char {
-    Start, InFunctDef, InFunctParams, InFunctBody, InStatement
+    Start, InFunctDef, InFunctParams, InFunctBody, InStatement,
+    InFunctionCall, InFunctArgs
 };
 
 Parser::Parser(std::vector<Token>::const_iterator input_begin,
                std::vector<Token>::const_iterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
-{}
+{
+    // Built-in functions/names (eventually, the standard library)
+    m_names_table["print"] = NameType::Funct;
+}
 
 void Parser::run()
 {
     Function new_funct;
     Statement new_statement;
+    FunctionCall new_funct_call;
 
     std::stack<State> state_stack;
     State curr_state = State::Start;
@@ -43,11 +49,17 @@ void Parser::run()
             }
             break;
         case State::InFunctDef:
-            // First, set the function's name
-            if(token->type == TokenType::Name) {
+            // First, set the function's name, making sure it isn't being used for
+            // anything else
+            if(token->type == TokenType::Name && m_names_table.count(token->text) == 0) {
                 new_funct.name = token->text;
-            } else {
+                m_names_table[new_funct.name] = NameType::Funct;
+            } else if(token->type != TokenType::Name) {
                 print_error(token->line_num, "Expected name to follow `funct` keyword");
+                exit(1);
+            } else {
+                print_error(token->line_num, "Name `" + token->text + "` is"
+                            + " already in use");
                 exit(1);
             }
 
@@ -69,7 +81,7 @@ void Parser::run()
                 ++token;
                 if(token->type != TokenType::Keyword_Is) {
                     print_error(token->line_num,
-                                "Expected keyword `is` to follow parameters of the `funct`");
+                                "Expected keyword `is` to follow parameters of the function");
                     exit(1);
                 }
                 curr_state = State::InFunctBody;
@@ -104,13 +116,57 @@ void Parser::run()
             break;
         case State::InStatement:
             // TODO: handle statements not inside a funct
-            if(token->type != TokenType::End_Statement) {
-                new_statement.expressions.push_back(token->text);
+            if(token->type == TokenType::Name) {
+                // TODO: add support for variables, too
+                state_stack.push(curr_state);
+                curr_state = State::InFunctionCall;
+                --token;
+            } else if(token->type != TokenType::End_Statement) {
+                // Do nothing for now
             } else {
                 // End of this statement; go back to prior state
                 curr_state = state_stack.top();
                 state_stack.pop();
                 --token; // Put the End_Statement token back
+            }
+            break;
+        case State::InFunctionCall:
+            // First, assign the function call's name, if it's valid
+            if(token->type == TokenType::Name && m_names_table.count(token->text) > 0) {
+                if(m_names_table[token->text] == NameType::Funct) {
+                    new_funct_call.name = token->text;
+                } else {
+                    print_error(token->line_num, "Name `" + token->text + "` isn't a "
+                                + "function name, but is being used as a function call");
+                    exit(1);
+                }
+            } else if(token->type != TokenType::Name) {
+                print_error(token->line_num, "Function call doesn't begin with a valid name");
+                exit(1);
+            } else {
+                print_error(token->line_num, "Undefined function: `" + token->text + "`");
+                exit(1);
+            }
+
+            // Next, add the arguments
+            curr_state = State::InFunctArgs;
+            break;
+        case State::InFunctArgs:
+            if(token->type == TokenType::Closed_Parentheses) {
+                // End of this expression
+                curr_state = state_stack.top();
+                state_stack.pop();
+                if(curr_state == State::InStatement) {
+                    new_statement.expressions.push_back(new_funct_call);
+                    new_funct_call = {};
+                } else {
+                    print_error(token->line_num,
+                                std::string{"TODO: support funct calls within other"}
+                                + " expressions");
+                    exit(1);
+                }
+            } else {
+                new_funct_call.arguments.push_back(token->text);
             }
             break;
         default:
@@ -131,7 +187,10 @@ void Parser::print_functions()
         std::cout << "\n  Statements: ";
         for(const auto &statemt : statements) {
             for(const auto &expr : statemt.expressions) {
-                std::cout << expr << ' ';
+                std::cout << expr.name << ' ';
+                for(const auto arg : expr.arguments) {
+                    std::cout << arg << ", ";
+                }
             }
             std::cout << '|';
         }
