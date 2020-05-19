@@ -1,0 +1,12 @@
+funct main() is
+    print("\"Hello\"");
+    print('\\');
+    print(346'000'000);
+    print(100'000.08);
+end main
+
+funct foo() is
+    print("No");
+    print("Yes");
+    print(98);
+end foo

@@ -1,0 +1,44 @@
+- Imperative language
+- Generic programming
+- Compiles to C++
+- As much as possible is contained in compile-time functions, not in
+modifiers/keywords
+
+
+Syntax ideas:
+- Ada-inspired (use of end, is, etc.), but fewer uses of packages/nested packages.
+
+Simple program:
+
+funct main() is
+    print("Hello");
+end main;
+
+Tokenized:
+
+[funct_keyword, identifier="main", is_keyword, identifier="print", open_parenth,
+string="Hello", close_parenth, end_statement, end_keyword, identifier="main"]
+
+-For the lexing portion, need:
+  -enum class Keyword { funct, is, end, open_parenth, close_parenth};
+  -struct Identifier { std::string name; }
+  -Table of identifiers
+
+Parsed:
+
+"function": {
+  "name": "main"
+  "parameters": []
+  "body": {
+      "function_call": {
+        "name": "print"
+        "args": [
+          "value": {
+            "kind": literal
+            "type": String
+            "value": "Hello"
+          }
+        ]
+      }
+  }
+}
