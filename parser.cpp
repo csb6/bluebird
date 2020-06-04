@@ -1,6 +1,7 @@
 #include "parser.h"
 #include <string_view>
 #include <iostream>
+#include <ostream>
 
 void print_error(unsigned int line_num, std::string_view message)
 {
@@ -198,7 +199,34 @@ void Parser::run()
     }
 }
 
-void Parser::print_functions()
+
+std::ostream& operator<<(std::ostream& output,
+                         const CompositeExpression& expression)
 {
-    
+    output << '(';
+    for(const auto& subexpr : expression) {
+        output << subexpr << ", ";
+    }
+    output << ')';
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output,
+                         const FunctionCall& expression)
+{
+    output << expression.name << '(';
+    for(const auto& argument : expression) {
+        output << argument << ", ";
+    }
+    output << ')';
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const Statement& statement)
+{
+    output << "Statement:\n";
+    for(const auto& expression : statement) {
+        output << "  " << expression << '\n';
+    }
+    return output;
 }

@@ -5,22 +5,29 @@
 #include "token.h"
 #include <unordered_map>
 #include <memory>
+#include <iosfwd>
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
     using Iterator = std::vector<std::unique_ptr<Expression>>::iterator;
+    using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
     virtual ~Expression() {}
     virtual bool is_composite() const { return false; }
     virtual Iterator begin() { throw std::logic_error("begin() not implemented"); };
     virtual Iterator end() { throw std::logic_error("end() not implemented"); };
+    virtual ConstIterator begin() const { throw std::logic_error("begin() not implemented"); };
+    virtual ConstIterator end() const { throw std::logic_error("end() not implemented"); };
 };
 
-// A nameless piece of data
+// A nameless instance of data
 template<typename T>
 struct Literal : public Expression {
     T value;
     explicit Literal(T v) : value(v) {}
-    ~Literal() {}
+    friend std::ostream& operator<<(std::ostream& output, const Literal& expression)
+    {
+        return output << expression;
+    }
 };
 
 // An expression that contains two or more other expressions, but
@@ -31,6 +38,9 @@ struct CompositeExpression : public Expression {
     bool is_composite() const override { return true; }
     Iterator begin() override { return subexpressions.begin(); }
     Iterator end() override { return subexpressions.end(); }
+    ConstIterator begin() const override { return subexpressions.begin(); }
+    ConstIterator end() const override { return subexpressions.end(); }
+    friend std::ostream& operator<<(std::ostream&, const CompositeExpression&);
 };
 
 // A usage of a function
@@ -41,15 +51,22 @@ struct FunctionCall : public Expression {
     bool is_composite() const override { return true; }
     Iterator begin() override { return arguments.begin(); }
     Iterator end() override { return arguments.end(); }
+    ConstIterator begin() const override { return arguments.begin(); }
+    ConstIterator end() const override { return arguments.end(); }
+    friend std::ostream& operator<<(std::ostream&, const FunctionCall&);
 };
 
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
     using Iterator = std::vector<std::unique_ptr<Expression>>::iterator;
+    using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
     std::vector<std::unique_ptr<Expression>> expressions;
     Iterator begin() { return expressions.begin(); }
     Iterator end() { return expressions.end(); }
+    ConstIterator begin() const { return expressions.begin(); }
+    ConstIterator end() const { return expressions.end(); }
+    friend std::ostream& operator<<(std::ostream&, const Statement&);
 };
 
 // A procedure containing statements and optionally inputs/outputs
@@ -81,6 +98,5 @@ public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
     void run();
-    void print_functions();
 };
 #endif
