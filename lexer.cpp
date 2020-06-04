@@ -61,7 +61,7 @@ void Lexer::run()
                 // Closed parentheses
                 m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
                 break;
-            // Arithmetic operators 
+            // Arithmetic operators
             case '+':
                 m_tokens.emplace_back(line_num, TokenType::Op_Plus);
                 break;
@@ -74,10 +74,14 @@ void Lexer::run()
             case '*':
                 m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                 break;
+            // Comma operator (for separating arguments in functions, etc.)
+            case ',':
+                m_tokens.emplace_back(line_num, TokenType::Op_Comma);
+                break;
             }
             break;
         case State::InToken:
-            if(!std::isalpha(curr)) {
+            if(!std::isalpha(curr) || curr == '_') {
                 if(identifier_table.count(token_text) > 0) {
                     // Found a keyword
                     m_tokens.emplace_back(line_num, identifier_table[token_text]);
@@ -148,46 +152,8 @@ void Lexer::run()
 
 void Lexer::print_tokens()
 {
-    for(auto[line_num, type, text] : m_tokens) {
-        switch(type) {
-        case TokenType::Keyword_Funct:
-            std::cout << "Keyword_Funct";
-            break;
-        case TokenType::Keyword_Ct_Funct:
-            std::cout << "Keyword_Ct_Funct";
-            break;
-        case TokenType::Name:
-            std::cout << "Name";
-            break;
-        case TokenType::Keyword_Is:
-            std::cout << "Keyword_Is";
-            break;
-        case TokenType::Open_Parentheses:
-            std::cout << "Open_Paren";
-            break;
-        case TokenType::Closed_Parentheses:
-            std::cout << "Closed_Paren";
-            break;
-        case TokenType::Keyword_End:
-            std::cout << "Keyword_End";
-            break;
-        case TokenType::End_Statement:
-            std::cout << "End_Statement";
-            break;
-        case TokenType::String_Literal:
-            std::cout << "String_Literal";
-            break;
-        case TokenType::Char_Literal:
-            std::cout << "Char_Literal";
-            break;
-        case TokenType::Number_Literal:
-            std::cout << "Number_Literal";
-            break;
-        default:
-            std::cout << "Unknown token type";
-        }
-
-        std::cout << "\n  Line:  " << line_num;
-        std::cout << "\n  Value: " << text << '\n';
+    for(const auto& token : m_tokens) {
+        std::cout << token;
+        std::cout << "  Line: " << token.line_num << '\n';
     }
 }

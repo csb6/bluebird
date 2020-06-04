@@ -8,25 +8,49 @@ void print_error(unsigned int line_num, std::string_view message)
               << message << "\n";
 }
 
+void print_error(std::string_view message)
+{
+    std::cerr << message << "\n";
+}
+
 Parser::Parser(TokenIterator input_begin,
                TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
 {
     // Built-in functions/names (eventually, the standard library)
     m_names_table["print"] = NameType::Funct;
+    m_names_table["max"] = NameType::Funct;
 }
 
-FunctionCall Parser::in_function_call()
+std::unique_ptr<Expression> Parser::in_literal()
 {
-    FunctionCall new_function_call;
+    const TokenIterator current = token++;
+
+    switch(current->type) {
+    case TokenType::String_Literal:
+        return std::unique_ptr<Expression>(new Literal(current->text));
+    case TokenType::Char_Literal:
+        return std::unique_ptr<Expression>(new Literal(current->text[0]));
+    case TokenType::Number_Literal:
+        return std::unique_ptr<Expression>(new Literal(std::stoi(current->text)));
+    default:
+        print_error(current->line_num, "Expected a literal here, but instead found token:");
+        std::cerr << *current;
+        exit(1);
+    }
+}
+
+std::unique_ptr<FunctionCall> Parser::in_function_call()
+{
+    auto new_function_call = std::make_unique<FunctionCall>();
 
     // First, assign the function call's name, if it's valid
     if(token->type == TokenType::Name && m_names_table.count(token->text) > 0) {
         if(m_names_table[token->text] == NameType::Funct) {
-            new_function_call.name = token->text;
+            new_function_call->name = token->text;
         } else {
             print_error(token->line_num, "Name `" + token->text + "` isn't a "
-                        + "function name, but is being used as a function call");
+                        + "function name, but is being used as one");
             exit(1);
         }
     } else if(token->type != TokenType::Name) {
@@ -37,17 +61,26 @@ FunctionCall Parser::in_function_call()
         exit(1);
     }
 
-    // Next, parse the arguments
+    ++token;
+    if(token->type != TokenType::Open_Parentheses) {
+        print_error(token->line_num, "Expected '(' token before function call argument list");
+        exit(1);
+    }
+
+    // Next, parse the arguments, each of which should be some sort of expression
     ++token;
     while(token != m_input_end) {
-        if(token->type != TokenType::Closed_Parentheses) {
-            new_function_call.arguments.push_back(token->text);
-        } else {
-            // End of this expression
+        switch(token->type) {
+        case TokenType::Op_Comma:
+            // The comma after an argument expression; continue
+            ++token;
+            break;
+        case TokenType::Closed_Parentheses:
             return new_function_call;
+        default:
+            // TODO: add support for composite expressions
+            new_function_call->arguments.push_back(in_literal());
         }
-
-        ++token;
     }
     print_error(token->line_num, "Function call definition ended early");
     exit(1);
@@ -139,7 +172,8 @@ void Parser::in_function_definition()
                             + " `funct` " + new_funct.name);
                 exit(1);
             }
-            m_functions.push_back(new_funct);
+            m_names_table[new_funct.name] = NameType::Funct;
+            m_functions.push_back(std::move(new_funct));
             return;
         }
 
@@ -166,21 +200,5 @@ void Parser::run()
 
 void Parser::print_functions()
 {
-    for(const auto&[name, params, statements] : m_functions) {
-        std::cout << "Function: " << name << "\n  Params: ";
-        for(const auto &each : params) {
-            std::cout << each << ' ';
-        }
-        std::cout << "\n  Statements: ";
-        for(const auto &statemt : statements) {
-            for(const auto &expr : statemt.expressions) {
-                std::cout << expr.name << ' ';
-                for(const auto arg : expr.arguments) {
-                    std::cout << arg << ", ";
-                }
-            }
-            std::cout << '|';
-        }
-        std::cout << '\n';
-    }
+    
 }

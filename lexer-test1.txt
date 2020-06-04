@@ -9,4 +9,5 @@ funct foo() is
     print("No");
     print("Yes");
     print(98);
+    max(45, 67);
 end foo
