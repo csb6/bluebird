@@ -41,6 +41,34 @@ std::unique_ptr<Expression> Parser::in_literal()
     }
 }
 
+std::unique_ptr<CompositeExpression> Parser::in_composite_expression()
+{
+    // TODO: add support for parentheses grouping of expressions/operator precedence
+    // TODO: add support for composite expressions with more than one operator in them
+    const TokenIterator next = std::next(token);
+    auto new_expression = std::make_unique<CompositeExpression>();
+
+    // First, figure out what operator is being used (right now, only binary ops)
+    switch(next->type) {
+    case TokenType::Op_Plus:
+    case TokenType::Op_Minus:
+    case TokenType::Op_Mult:
+    case TokenType::Op_Div:
+        new_expression->op = next->type;
+        break;
+    default:
+        print_error(next->line_num, "Expected an operator, but instead got token:");
+        std::cerr << *next << '\n';
+        exit(1);
+    }
+
+    // Then, add the operands
+    new_expression->subexpressions.push_back(in_literal());
+    ++token;
+    new_expression->subexpressions.push_back(in_literal());
+    return new_expression;
+}
+
 std::unique_ptr<FunctionCall> Parser::in_function_call()
 {
     auto new_function_call = std::make_unique<FunctionCall>();
@@ -80,7 +108,12 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
             return new_function_call;
         default:
             // TODO: add support for composite expressions
-            new_function_call->arguments.push_back(in_literal());
+            if(std::next(token)->type == TokenType::Op_Comma
+               || std::next(token)->type == TokenType::Closed_Parentheses) {
+                new_function_call->arguments.push_back(in_literal());
+            } else {
+                new_function_call->arguments.push_back(in_composite_expression());
+            }
         }
     }
     print_error(token->line_num, "Function call definition ended early");
@@ -95,12 +128,21 @@ Statement Parser::in_statement()
         // TODO: handle statements not inside a funct
         if(token->type == TokenType::Name) {
             // TODO: add support for variables with statements, too
-            new_statement.expressions.push_back(in_function_call());
-        } else if(token->type != TokenType::End_Statement) {
-            // Do nothing for now
-        } else {
+            if(std::next(token)->type == TokenType::Open_Parentheses) {
+                new_statement.expressions.push_back(in_function_call());
+            } else {
+                new_statement.expressions.push_back(in_composite_expression());
+            }
+        } else if(token->type == TokenType::End_Statement) {
             // End of this statement; go back to prior state
             return new_statement;
+        } else if(std::next(token)->type != TokenType::End_Statement) {
+            new_statement.expressions.push_back(in_composite_expression());
+            --token;
+        } else {
+            print_error(token->line_num, "Unexpected token:");
+            std::cerr << *token << '\n';
+            exit(1);
         }
         ++token;
     }
@@ -192,7 +234,9 @@ void Parser::run()
             in_function_definition();
             break;
         default:
-            break;
+            print_error(token->line_num, "Unexpected token:");
+            std::cerr << *token << '\n';
+            exit(1);
         }
 
         ++token;
@@ -200,33 +244,57 @@ void Parser::run()
 }
 
 
-std::ostream& operator<<(std::ostream& output,
-                         const CompositeExpression& expression)
+void CompositeExpression::print(std::ostream& output) const
 {
     output << '(';
-    for(const auto& subexpr : expression) {
-        output << subexpr << ", ";
+    for(const auto& subexpr : subexpressions) {
+        subexpr->print(output);
+        output << ", ";
     }
     output << ')';
-    return output;
 }
 
-std::ostream& operator<<(std::ostream& output,
-                         const FunctionCall& expression)
+void FunctionCall::print(std::ostream& output) const
 {
-    output << expression.name << '(';
-    for(const auto& argument : expression) {
-        output << argument << ", ";
+    output << name << '(';
+    for(const auto& argument : arguments) {
+        argument->print(output);
+        output << ", ";
     }
     output << ')';
-    return output;
 }
 
 std::ostream& operator<<(std::ostream& output, const Statement& statement)
 {
     output << "Statement:\n";
     for(const auto& expression : statement) {
-        output << "  " << expression << '\n';
+        output << "  ";
+        expression->print(output);
+        output << '\n';
+    }
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const Function& function)
+{
+    output << "Function: " << function.name << '\n';
+    output << "Parameters:\n";
+    for(const auto& param : function.parameters) {
+        output << param << ' ';
+    }
+    output << "\nStatements:\n";
+
+    for(const auto& statement : function.statements) {
+        output << statement << '\n';
+    }
+    return output;
+}
+
+
+std::ostream& operator<<(std::ostream& output, const Parser& parser)
+{
+    for(const auto& function_definition : parser.m_functions) {
+        output << function_definition << '\n';
     }
     return output;
 }

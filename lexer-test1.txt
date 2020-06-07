@@ -2,12 +2,14 @@ funct main() is
     print("\"Hello\"");
     print('\\');
     print(346'000'000);
+    1 + 1'0000;
     print(100'000.08);
+    1 + 1;
 end main
 
 funct foo() is
     print("No");
     print("Yes");
-    print(98);
+    print(98 + 89);
     max(45, 67);
 end foo

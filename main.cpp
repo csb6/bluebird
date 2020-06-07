@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <string_view>
 
@@ -22,6 +23,8 @@ int main()
 
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
+
+    std::cout << parser << '\n';
 
     return 0;
 }

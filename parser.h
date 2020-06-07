@@ -17,6 +17,7 @@ struct Expression {
     virtual Iterator end() { throw std::logic_error("end() not implemented"); };
     virtual ConstIterator begin() const { throw std::logic_error("begin() not implemented"); };
     virtual ConstIterator end() const { throw std::logic_error("end() not implemented"); };
+    virtual void print(std::ostream&) const {};
 };
 
 // A nameless instance of data
@@ -24,15 +25,16 @@ template<typename T>
 struct Literal : public Expression {
     T value;
     explicit Literal(T v) : value(v) {}
-    friend std::ostream& operator<<(std::ostream& output, const Literal& expression)
+    void print(std::ostream& output) const override
     {
-        return output << expression;
+        output << value;
     }
 };
 
 // An expression that contains two or more other expressions, but
-// is not a standalone function call statement
+// is not itself function call
 struct CompositeExpression : public Expression {
+    TokenType op;
     std::vector<std::unique_ptr<Expression>> subexpressions;
 
     bool is_composite() const override { return true; }
@@ -40,7 +42,7 @@ struct CompositeExpression : public Expression {
     Iterator end() override { return subexpressions.end(); }
     ConstIterator begin() const override { return subexpressions.begin(); }
     ConstIterator end() const override { return subexpressions.end(); }
-    friend std::ostream& operator<<(std::ostream&, const CompositeExpression&);
+    void print(std::ostream&) const override;
 };
 
 // A usage of a function
@@ -53,7 +55,7 @@ struct FunctionCall : public Expression {
     Iterator end() override { return arguments.end(); }
     ConstIterator begin() const override { return arguments.begin(); }
     ConstIterator end() const override { return arguments.end(); }
-    friend std::ostream& operator<<(std::ostream&, const FunctionCall&);
+    void print(std::ostream&) const override;
 };
 
 // A standalone piece of code terminated with a semicolon and consisting
@@ -74,6 +76,7 @@ struct Function {
     std::string name;
     std::vector<std::string> parameters;
     std::vector<Statement> statements;
+    friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 
 enum class NameType : char {
@@ -91,6 +94,7 @@ private:
     std::unordered_map<std::string, NameType> m_names_table;
 
     std::unique_ptr<Expression> in_literal();
+    std::unique_ptr<CompositeExpression> in_composite_expression();
     std::unique_ptr<FunctionCall> in_function_call();
     Statement in_statement();
     void in_function_definition();
@@ -98,5 +102,6 @@ public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
     void run();
+    friend std::ostream& operator<<(std::ostream&, const Parser&);
 };
 #endif
