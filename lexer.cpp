@@ -131,7 +131,10 @@ void Lexer::run()
             } else if(curr != '\'') {
                 // '\'' is a divider; ignore, used only for readability
                 // End of the digit
-                m_tokens.emplace_back(line_num, TokenType::Number_Literal, token_text);
+                if(token_text.find('.') == std::string::npos)
+                    m_tokens.emplace_back(line_num, TokenType::Int_Literal, token_text);
+                else
+                    m_tokens.emplace_back(line_num, TokenType::Float_Literal, token_text);
                 token_text.clear();
                 curr_state = State::Start;
                 --input_iter; // put the current char back
@@ -153,7 +156,6 @@ void Lexer::run()
 void Lexer::print_tokens()
 {
     for(const auto& token : m_tokens) {
-        std::cout << token;
-        std::cout << "  Line: " << token.line_num << '\n';
+        std::cout << "Line " << token.line_num << ": " << token;
     }
 }

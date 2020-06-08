@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <memory>
 #include <iosfwd>
+#include <iomanip>
+#include <type_traits>
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
@@ -27,6 +29,9 @@ struct Literal : public Expression {
     explicit Literal(T v) : value(v) {}
     void print(std::ostream& output) const override
     {
+        if constexpr (std::is_floating_point_v<T>) {
+            output << std::setprecision(10);
+        }
         output << value;
     }
 };
@@ -96,6 +101,7 @@ private:
     std::unique_ptr<Expression> in_literal();
     std::unique_ptr<CompositeExpression> in_composite_expression();
     std::unique_ptr<FunctionCall> in_function_call();
+    std::unique_ptr<Expression> in_expression();
     Statement in_statement();
     void in_function_definition();
 public:

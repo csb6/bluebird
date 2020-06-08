@@ -32,8 +32,10 @@ std::unique_ptr<Expression> Parser::in_literal()
         return std::unique_ptr<Expression>(new Literal(current->text));
     case TokenType::Char_Literal:
         return std::unique_ptr<Expression>(new Literal(current->text[0]));
-    case TokenType::Number_Literal:
+    case TokenType::Int_Literal:
         return std::unique_ptr<Expression>(new Literal(std::stoi(current->text)));
+    case TokenType::Float_Literal:
+        return std::unique_ptr<Expression>(new Literal(std::stof(current->text)));
     default:
         print_error(current->line_num, "Expected a literal here, but instead found token:");
         std::cerr << *current;
@@ -65,7 +67,7 @@ std::unique_ptr<CompositeExpression> Parser::in_composite_expression()
     // Then, add the operands
     new_expression->subexpressions.push_back(in_literal());
     ++token;
-    new_expression->subexpressions.push_back(in_literal());
+    new_expression->subexpressions.push_back(in_expression());
     return new_expression;
 }
 
@@ -105,19 +107,28 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
             ++token;
             break;
         case TokenType::Closed_Parentheses:
+            ++token;
             return new_function_call;
         default:
-            // TODO: add support for composite expressions
-            if(std::next(token)->type == TokenType::Op_Comma
-               || std::next(token)->type == TokenType::Closed_Parentheses) {
-                new_function_call->arguments.push_back(in_literal());
-            } else {
-                new_function_call->arguments.push_back(in_composite_expression());
-            }
+            new_function_call->arguments.push_back(in_expression());
         }
     }
     print_error(token->line_num, "Function call definition ended early");
     exit(1);
+}
+
+std::unique_ptr<Expression> Parser::in_expression()
+{
+    const TokenType next_type = std::next(token)->type;;
+
+    if(token->type == TokenType::Name && next_type == TokenType::Open_Parentheses) {
+        return in_function_call();
+    } else if(next_type == TokenType::Op_Plus || next_type == TokenType::Op_Minus
+              || next_type == TokenType::Op_Div || next_type == TokenType::Op_Mult) {
+        return in_composite_expression();
+    } else {
+        return in_literal();
+    }
 }
 
 Statement Parser::in_statement()
@@ -126,25 +137,18 @@ Statement Parser::in_statement()
 
     while(token != m_input_end) {
         // TODO: handle statements not inside a funct
-        if(token->type == TokenType::Name) {
-            // TODO: add support for variables with statements, too
-            if(std::next(token)->type == TokenType::Open_Parentheses) {
-                new_statement.expressions.push_back(in_function_call());
-            } else {
-                new_statement.expressions.push_back(in_composite_expression());
-            }
-        } else if(token->type == TokenType::End_Statement) {
+        if(token->type == TokenType::End_Statement) {
             // End of this statement; go back to prior state
+            ++token;
             return new_statement;
         } else if(std::next(token)->type != TokenType::End_Statement) {
-            new_statement.expressions.push_back(in_composite_expression());
-            --token;
+            // TODO: add support for variables with statements, too
+            new_statement.expressions.push_back(in_expression());
         } else {
             print_error(token->line_num, "Unexpected token:");
             std::cerr << *token << '\n';
             exit(1);
         }
-        ++token;
     }
     print_error(token->line_num, "Statement ended early");
     exit(1);
@@ -217,10 +221,9 @@ void Parser::in_function_definition()
             }
             m_names_table[new_funct.name] = NameType::Funct;
             m_functions.push_back(std::move(new_funct));
+            ++token;
             return;
         }
-
-        ++token;
     }
 }
 
@@ -238,8 +241,6 @@ void Parser::run()
             std::cerr << *token << '\n';
             exit(1);
         }
-
-        ++token;
     }
 }
 

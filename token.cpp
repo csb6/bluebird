@@ -3,7 +3,6 @@
 
 std::ostream& operator<<(std::ostream& output, const Token& token)
 {
-    output << "Type: ";
     switch(token.type) {
     case TokenType::Keyword_Funct:
         output << "Keyword `funct`\n";
@@ -50,8 +49,11 @@ std::ostream& operator<<(std::ostream& output, const Token& token)
     case TokenType::Char_Literal:
         output << "Character Literal\n";
         break;
-    case TokenType::Number_Literal:
-        output << "Number Literal\n";
+    case TokenType::Int_Literal:
+        output << "Integer Literal\n";
+        break;
+    case TokenType::Float_Literal:
+        output << "Float Literal\n";
         break;
     }
 
