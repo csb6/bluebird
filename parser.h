@@ -63,29 +63,64 @@ struct FunctionCall : public Expression {
     void print(std::ostream&) const override;
 };
 
+// A named object that holds a value and can be assigned at least once 
+struct LValue {
+    std::string name;
+    virtual ~LValue() {}
+    virtual bool is_mutable() const { return true; }
+    virtual void print(std::ostream&) const = 0;
+};
+
+// An lvalue that can be assigned a value more than once
+struct Variable : public LValue {
+    // TODO: add some sort of function for returning the variable's type
+    void print(std::ostream&) const override;
+};
+
+// An lvalue that can be assigned a value at most once
+struct Constant : public LValue {
+    // TODO: add some sort of function for returning the constant's type
+    bool is_mutable() const override { return false; }
+    void print(std::ostream& output) const override
+    {
+        output << "Constant: " << name;
+    }
+};
+
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
     using Iterator = std::vector<std::unique_ptr<Expression>>::iterator;
     using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
+    virtual ~Statement() {}
     std::vector<std::unique_ptr<Expression>> expressions;
     Iterator begin() { return expressions.begin(); }
     Iterator end() { return expressions.end(); }
     ConstIterator begin() const { return expressions.begin(); }
     ConstIterator end() const { return expressions.end(); }
-    friend std::ostream& operator<<(std::ostream&, const Statement&);
+    virtual void print(std::ostream&) const;
+};
+
+// Statement where a variable is assigned to the value of some expression
+struct Assignment : public Statement {
+    LValue* target;
+    void print(std::ostream& output) const override
+    {
+        target->print(output);
+        Statement::print(output);
+    }
 };
 
 // A procedure containing statements and optionally inputs/outputs
 struct Function {
     std::string name;
     std::vector<std::string> parameters;
-    std::vector<Statement> statements;
+    std::vector<std::unique_ptr<Statement>> statements;
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 
 enum class NameType : char {
-    Variable, Funct
+    LValue, Funct
 };
 
 class Parser {
@@ -96,13 +131,18 @@ private:
     TokenIterator m_input_end;
     TokenIterator token;
     std::vector<Function> m_functions;
+    std::vector<std::unique_ptr<LValue>> m_lvalues;
     std::unordered_map<std::string, NameType> m_names_table;
 
+    // Handle each type of expression
     std::unique_ptr<Expression> in_literal();
     std::unique_ptr<CompositeExpression> in_composite_expression();
     std::unique_ptr<FunctionCall> in_function_call();
     std::unique_ptr<Expression> in_expression();
-    Statement in_statement();
+    // Handle each type of statement
+    std::unique_ptr<Assignment> in_assignment();
+    std::unique_ptr<Statement> in_statement();
+    // Handle each function definition
     void in_function_definition();
 public:
     Parser(TokenIterator input_begin,

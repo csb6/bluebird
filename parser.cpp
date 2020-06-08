@@ -131,9 +131,64 @@ std::unique_ptr<Expression> Parser::in_expression()
     }
 }
 
-Statement Parser::in_statement()
+
+std::unique_ptr<Assignment> Parser::in_assignment()
 {
-    Statement new_statement;
+    if(token->type != TokenType::Keyword_Var) {
+        print_error(token->line_num, "Expected keyword `var`, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    }
+
+    auto new_statement = std::make_unique<Assignment>();
+    ++token;
+    if(token->type != TokenType::Name) {
+        print_error(token->line_num,
+                    "Expected the name of an lvalue, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    }
+    {
+        const auto match = m_names_table.find(token->text);
+        if(match != m_names_table.end()){
+            print_error(token->line_num, "Name: " + token->text + " is already in use");
+            exit(1);
+        }
+    }
+
+    // Add this new lvalue to list of tracked names
+    m_names_table[token->text] = NameType::LValue;
+    auto new_lvalue = std::make_unique<Variable>();
+    new_lvalue->name = token->text;
+    m_lvalues.push_back(std::move(new_lvalue));
+    new_statement->target = m_lvalues.back().get();
+
+    ++token;
+    if(token->type != TokenType::Op_Assign) {
+        print_error(token->line_num, "Expected assignment operator, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    }
+
+    ++token;
+    // Set the expression after the assignment operator to be the subexpression
+    // in the statement
+    while(token != m_input_end) {
+        if(token->type == TokenType::End_Statement) {
+            // End of this statement; go back to prior state
+            ++token;
+            return new_statement;
+        } else {
+            new_statement->expressions.push_back(in_expression());
+        }
+    }
+    print_error(token->line_num, "Assignment statement ended early");
+    exit(1);
+}
+
+std::unique_ptr<Statement> Parser::in_statement()
+{
+    auto new_statement = std::make_unique<Statement>();
 
     while(token != m_input_end) {
         // TODO: handle statements not inside a funct
@@ -141,9 +196,14 @@ Statement Parser::in_statement()
             // End of this statement; go back to prior state
             ++token;
             return new_statement;
+        } else if(token->type == TokenType::Keyword_Var) {
+            // TODO: reorganize Statement class to have more utility, since it
+            // will only hold a single expression
+            // TODO: add support for constant lvalues
+            return in_assignment();
         } else if(std::next(token)->type != TokenType::End_Statement) {
             // TODO: add support for variables with statements, too
-            new_statement.expressions.push_back(in_expression());
+            new_statement->expressions.push_back(in_expression());
         } else {
             print_error(token->line_num, "Unexpected token:");
             std::cerr << *token << '\n';
@@ -265,15 +325,19 @@ void FunctionCall::print(std::ostream& output) const
     output << ')';
 }
 
-std::ostream& operator<<(std::ostream& output, const Statement& statement)
+void Statement::print(std::ostream& output) const
 {
     output << "Statement:\n";
-    for(const auto& expression : statement) {
+    for(const auto& expression : expressions) {
         output << "  ";
         expression->print(output);
         output << '\n';
     }
-    return output;
+}
+
+void Variable::print(std::ostream& output) const
+{
+    output << "Variable: " << name << '\n';
 }
 
 std::ostream& operator<<(std::ostream& output, const Function& function)
@@ -286,11 +350,10 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     output << "\nStatements:\n";
 
     for(const auto& statement : function.statements) {
-        output << statement << '\n';
+        statement->print(output);
     }
     return output;
 }
-
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {

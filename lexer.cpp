@@ -4,13 +4,14 @@
 
 std::unordered_map<std::string, TokenType> identifier_table = {
     {"is", TokenType::Keyword_Is},
+    {"var", TokenType::Keyword_Var},
     {"funct", TokenType::Keyword_Funct},
     {"ctfunct", TokenType::Keyword_Ct_Funct},
     {"end", TokenType::Keyword_End}
 };
 
 enum class State : char {
-    Start, InToken, InString, InChar, InNumber
+    Start, InIdentifier, InString, InChar, InNumber
 };
 
 Lexer::Lexer(std::string::const_iterator input_begin,
@@ -32,7 +33,7 @@ void Lexer::run()
         case State::Start:
             if(std::isalpha(curr)) {
                 // Found a keyword or a name
-                curr_state = State::InToken;
+                curr_state = State::InIdentifier;
                 token_text += curr;
             } else if(std::isdigit(curr)) {
                 // Found a number literal
@@ -78,9 +79,13 @@ void Lexer::run()
             case ',':
                 m_tokens.emplace_back(line_num, TokenType::Op_Comma);
                 break;
+            // Assignment operator
+            case '=':
+                m_tokens.emplace_back(line_num, TokenType::Op_Assign);
+                break;
             }
             break;
-        case State::InToken:
+        case State::InIdentifier:
             if(!std::isalpha(curr) || curr == '_') {
                 if(identifier_table.count(token_text) > 0) {
                     // Found a keyword

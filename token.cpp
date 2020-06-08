@@ -13,6 +13,9 @@ std::ostream& operator<<(std::ostream& output, const Token& token)
     case TokenType::Keyword_Is:
         output << "Keyword `is`\n";
         break;
+    case TokenType::Keyword_Var:
+        output << "Keyword `var`\n";
+        break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses\n";
         break;
@@ -45,6 +48,9 @@ std::ostream& operator<<(std::ostream& output, const Token& token)
         break;
     case TokenType::Op_Comma:
         output << "Comma marker\n";
+        break;
+    case TokenType::Op_Assign:
+        output << "Assignment operator\n";
         break;
     case TokenType::Char_Literal:
         output << "Character Literal\n";

@@ -1,5 +1,7 @@
 funct main() is
     print("\"Hello\"" + "There");
+    var a = 78;
+    var b = 6 + 89;
     print('\\');
     print(346'000'000);
     1 + 1'0000 + 67 + 56 + 0 - 6 / print(89);
