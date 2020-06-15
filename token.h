@@ -23,4 +23,6 @@ struct Token {
         {}
     friend std::ostream& operator<<(std::ostream&, const Token&);
 };
+
+std::ostream& operator<<(std::ostream&, const TokenType);
 #endif

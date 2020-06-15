@@ -15,7 +15,7 @@ const std::string load_source_file(const char *filename)
 
 int main()
 {
-    const std::string source_file{load_source_file("lexer-test1.txt")};
+    const std::string source_file{load_source_file("parser-test.txt")};
 
     Lexer lexer{source_file.begin(), source_file.end()};
     lexer.run();

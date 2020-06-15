@@ -1,0 +1,5 @@
+funct main() is
+    1 + 1;
+    2 * 10 + 4 - 5;
+    2 * 2 + 4 / 5;    
+end main

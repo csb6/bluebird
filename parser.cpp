@@ -43,32 +43,43 @@ std::unique_ptr<Expression> Parser::in_literal()
     }
 }
 
-std::unique_ptr<CompositeExpression> Parser::in_composite_expression()
-{
-    // TODO: add support for parentheses grouping of expressions/operator precedence
-    // TODO: add support for composite expressions with more than one operator in them
-    const TokenIterator next = std::next(token);
-    auto new_expression = std::make_unique<CompositeExpression>();
 
-    // First, figure out what operator is being used (right now, only binary ops)
-    switch(next->type) {
-    case TokenType::Op_Plus:
-    case TokenType::Op_Minus:
-    case TokenType::Op_Mult:
-    case TokenType::Op_Div:
-        new_expression->op = next->type;
-        break;
-    default:
-        print_error(next->line_num, "Expected an operator, but instead got token:");
-        std::cerr << *next << '\n';
-        exit(1);
+std::unique_ptr<Expression> Parser::in_multiply_divide()
+{
+    // TODO: add support for function calls in addition to literals
+    std::unique_ptr<Expression> left_side = in_literal();
+
+    while(token->type == TokenType::Op_Mult
+          || token->type == TokenType::Op_Div) {
+        TokenType op = token->type;
+        ++token;
+        std::unique_ptr<Expression> right_side = in_literal();
+        left_side = std::make_unique<CompositeExpression>(std::move(left_side), op,
+                                                          std::move(right_side));
     }
 
-    // Then, add the operands
-    new_expression->subexpressions.push_back(in_literal());
-    ++token;
-    new_expression->subexpressions.push_back(in_expression());
-    return new_expression;
+    return left_side;
+}
+
+std::unique_ptr<Expression> Parser::in_add_subtract()
+{
+    std::unique_ptr<Expression> left_side = in_multiply_divide();
+
+    while(token->type == TokenType::Op_Plus
+          || token->type == TokenType::Op_Minus) {
+        TokenType op = token->type;
+        ++token;
+        std::unique_ptr<Expression> right_side = in_multiply_divide();
+        left_side = std::make_unique<CompositeExpression>(std::move(left_side), op,
+                                                          std::move(right_side));
+    }
+
+    return left_side;
+}
+
+std::unique_ptr<Expression> Parser::in_composite_expression()
+{
+    return in_add_subtract();
 }
 
 std::unique_ptr<FunctionCall> Parser::in_function_call()
@@ -179,7 +190,7 @@ std::unique_ptr<Assignment> Parser::in_assignment()
             ++token;
             return new_statement;
         } else {
-            new_statement->expressions.push_back(in_expression());
+            new_statement->expression = in_expression();
         }
     }
     print_error(token->line_num, "Assignment statement ended early");
@@ -203,7 +214,7 @@ std::unique_ptr<Statement> Parser::in_statement()
             return in_assignment();
         } else if(std::next(token)->type != TokenType::End_Statement) {
             // TODO: add support for variables with statements, too
-            new_statement->expressions.push_back(in_expression());
+            new_statement->expression = in_expression();
         } else {
             print_error(token->line_num, "Unexpected token:");
             std::cerr << *token << '\n';
@@ -305,14 +316,18 @@ void Parser::run()
 }
 
 
+CompositeExpression::CompositeExpression(std::unique_ptr<Expression>&& l, TokenType oper,
+                                         std::unique_ptr<Expression>&& r)
+    : left(std::move(l)), op(oper), right(std::move(r))
+{}
+
 void CompositeExpression::print(std::ostream& output) const
 {
     output << '(';
-    for(const auto& subexpr : subexpressions) {
-        subexpr->print(output);
-        output << ", ";
-    }
-    output << ')';
+    left->print(output);
+    output << ' ' << op << ' ';
+    right->print(output);
+    output << ")\n";
 }
 
 void FunctionCall::print(std::ostream& output) const
@@ -328,11 +343,8 @@ void FunctionCall::print(std::ostream& output) const
 void Statement::print(std::ostream& output) const
 {
     output << "Statement:\n";
-    for(const auto& expression : expressions) {
-        output << "  ";
-        expression->print(output);
-        output << '\n';
-    }
+    expression->print(output);
+    output << '\n';
 }
 
 void Variable::print(std::ostream& output) const

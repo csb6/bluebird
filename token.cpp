@@ -1,9 +1,9 @@
 #include "token.h"
 #include <ostream>
 
-std::ostream& operator<<(std::ostream& output, const Token& token)
+std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
-    switch(token.type) {
+    switch(type) {
     case TokenType::Keyword_Funct:
         output << "Keyword `funct`\n";
         break;
@@ -62,6 +62,13 @@ std::ostream& operator<<(std::ostream& output, const Token& token)
         output << "Float Literal\n";
         break;
     }
+
+    return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const Token& token)
+{
+    output << token.type;
 
     if(!token.text.empty()) {
         output << "  Text: " << token.text << '\n';

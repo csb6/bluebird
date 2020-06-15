@@ -15,10 +15,6 @@ struct Expression {
     using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
     virtual ~Expression() {}
     virtual bool is_composite() const { return false; }
-    virtual Iterator begin() { throw std::logic_error("begin() not implemented"); };
-    virtual Iterator end() { throw std::logic_error("end() not implemented"); };
-    virtual ConstIterator begin() const { throw std::logic_error("begin() not implemented"); };
-    virtual ConstIterator end() const { throw std::logic_error("end() not implemented"); };
     virtual void print(std::ostream&) const {};
 };
 
@@ -39,14 +35,13 @@ struct Literal : public Expression {
 // An expression that contains two or more other expressions, but
 // is not itself function call
 struct CompositeExpression : public Expression {
+    std::unique_ptr<Expression> left;
     TokenType op;
-    std::vector<std::unique_ptr<Expression>> subexpressions;
+    std::unique_ptr<Expression> right;
 
+    CompositeExpression(std::unique_ptr<Expression>&& l, TokenType oper,
+                        std::unique_ptr<Expression>&& r);
     bool is_composite() const override { return true; }
-    Iterator begin() override { return subexpressions.begin(); }
-    Iterator end() override { return subexpressions.end(); }
-    ConstIterator begin() const override { return subexpressions.begin(); }
-    ConstIterator end() const override { return subexpressions.end(); }
     void print(std::ostream&) const override;
 };
 
@@ -56,10 +51,6 @@ struct FunctionCall : public Expression {
     std::vector<std::unique_ptr<Expression>> arguments;
 
     bool is_composite() const override { return true; }
-    Iterator begin() override { return arguments.begin(); }
-    Iterator end() override { return arguments.end(); }
-    ConstIterator begin() const override { return arguments.begin(); }
-    ConstIterator end() const override { return arguments.end(); }
     void print(std::ostream&) const override;
 };
 
@@ -90,14 +81,8 @@ struct Constant : public LValue {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
-    using Iterator = std::vector<std::unique_ptr<Expression>>::iterator;
-    using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
     virtual ~Statement() {}
-    std::vector<std::unique_ptr<Expression>> expressions;
-    Iterator begin() { return expressions.begin(); }
-    Iterator end() { return expressions.end(); }
-    ConstIterator begin() const { return expressions.begin(); }
-    ConstIterator end() const { return expressions.end(); }
+    std::unique_ptr<Expression> expression;
     virtual void print(std::ostream&) const;
 };
 
@@ -136,7 +121,9 @@ private:
 
     // Handle each type of expression
     std::unique_ptr<Expression> in_literal();
-    std::unique_ptr<CompositeExpression> in_composite_expression();
+    std::unique_ptr<Expression> in_multiply_divide();
+    std::unique_ptr<Expression> in_add_subtract();
+    std::unique_ptr<Expression> in_composite_expression();
     std::unique_ptr<FunctionCall> in_function_call();
     std::unique_ptr<Expression> in_expression();
     // Handle each type of statement
