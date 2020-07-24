@@ -11,8 +11,6 @@
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
-    using Iterator = std::vector<std::unique_ptr<Expression>>::iterator;
-    using ConstIterator = std::vector<std::unique_ptr<Expression>>::const_iterator;
     virtual ~Expression() {}
     virtual bool is_composite() const { return false; }
     virtual void print(std::ostream&) const {};
@@ -123,8 +121,10 @@ private:
     std::unique_ptr<Expression> in_literal();
     std::unique_ptr<Expression> in_multiply_divide();
     std::unique_ptr<Expression> in_add_subtract();
+    std::unique_ptr<Expression> in_basic_expression();
     std::unique_ptr<Expression> in_composite_expression();
     std::unique_ptr<FunctionCall> in_function_call();
+    std::unique_ptr<Expression> in_parentheses();
     std::unique_ptr<Expression> in_expression();
     // Handle each type of statement
     std::unique_ptr<Assignment> in_assignment();

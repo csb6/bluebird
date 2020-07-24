@@ -46,14 +46,13 @@ std::unique_ptr<Expression> Parser::in_literal()
 
 std::unique_ptr<Expression> Parser::in_multiply_divide()
 {
-    // TODO: add support for function calls in addition to literals
-    std::unique_ptr<Expression> left_side = in_literal();
+    std::unique_ptr<Expression> left_side = in_basic_expression();
 
     while(token->type == TokenType::Op_Mult
           || token->type == TokenType::Op_Div) {
         TokenType op = token->type;
         ++token;
-        std::unique_ptr<Expression> right_side = in_literal();
+        std::unique_ptr<Expression> right_side = in_basic_expression();
         left_side = std::make_unique<CompositeExpression>(std::move(left_side), op,
                                                           std::move(right_side));
     }
@@ -75,6 +74,19 @@ std::unique_ptr<Expression> Parser::in_add_subtract()
     }
 
     return left_side;
+}
+
+std::unique_ptr<Expression> Parser::in_basic_expression()
+{
+    // TODO: add support for LValues, too
+    switch(token->type) {
+    case TokenType::Name:
+        return in_function_call();
+    case TokenType::Open_Parentheses:
+        return in_parentheses();
+    default:
+        return in_literal();
+    }
 }
 
 std::unique_ptr<Expression> Parser::in_composite_expression()
@@ -128,6 +140,26 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
     exit(1);
 }
 
+std::unique_ptr<Expression> Parser::in_parentheses()
+{
+    if(token->type != TokenType::Open_Parentheses) {
+        print_error(token->line_num, "Expected open parentheses for an expression group, but instead found token:");
+        std::cerr << *token;
+        exit(1);
+    }
+
+    ++token;
+    std::unique_ptr<Expression> result = in_expression();
+    if(token->type != TokenType::Closed_Parentheses) {
+        print_error(token->line_num, "Expected closing parentheses for an expression group, but instead found token:");
+        std::cerr << *token;
+        exit(1);
+    }
+
+    ++token;
+    return result;
+}
+
 std::unique_ptr<Expression> Parser::in_expression()
 {
     const TokenType next_type = std::next(token)->type;;
@@ -138,7 +170,7 @@ std::unique_ptr<Expression> Parser::in_expression()
               || next_type == TokenType::Op_Div || next_type == TokenType::Op_Mult) {
         return in_composite_expression();
     } else {
-        return in_literal();
+        return in_basic_expression();
     }
 }
 
