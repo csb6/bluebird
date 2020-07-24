@@ -190,13 +190,10 @@ std::unique_ptr<Assignment> Parser::in_assignment()
                     "Expected the name of an lvalue, but instead got token:");
         std::cerr << *token << '\n';
         exit(1);
-    }
-    {
-        const auto match = m_names_table.find(token->text);
-        if(match != m_names_table.end()){
-            print_error(token->line_num, "Name: " + token->text + " is already in use");
-            exit(1);
-        }
+    } else if(const auto match = m_names_table.find(token->text);
+              match != m_names_table.end()) {
+        print_error(token->line_num, "Name `" + token->text + "` is already in use");
+        exit(1);
     }
 
     // Add this new lvalue to list of tracked names
@@ -205,6 +202,24 @@ std::unique_ptr<Assignment> Parser::in_assignment()
     new_lvalue->name = token->text;
     m_lvalues.push_back(std::move(new_lvalue));
     new_statement->target = m_lvalues.back().get();
+
+    ++token;
+    if(token->type != TokenType::Type_Indicator) {
+        print_error(token->line_num, "Expected `:` before typename, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    }
+
+    ++token;
+    if(token->type != TokenType::Name) {
+        print_error(token->line_num, "Expected typename, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    } else if(const auto match = m_names_table.find(token->text);
+              match == m_names_table.end()) {
+        print_error(token->line_num, "Unknown typename: `" + token->text + "`");
+        exit(1);
+    }
 
     ++token;
     if(token->type != TokenType::Op_Assign) {

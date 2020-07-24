@@ -7,7 +7,7 @@ enum class TokenType : char {
     Keyword_Funct, Name, Keyword_Is, Keyword_Var, Open_Parentheses,
     Closed_Parentheses, Keyword_End, End_Statement, String_Literal,
     Keyword_Ct_Funct, Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Comma,
-    Op_Assign, Char_Literal, Int_Literal, Float_Literal
+    Op_Assign, Type_Indicator, Char_Literal, Int_Literal, Float_Literal
 };
 
 struct Token {

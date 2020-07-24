@@ -13,9 +13,13 @@ const std::string load_source_file(const char *filename)
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
-    const std::string source_file{load_source_file("parser-test.txt")};
+    if(argc < 2) {
+        std::cout << "Usage: ./compiler source_file\n";
+        return 1;
+    }
+    const std::string source_file{load_source_file(argv[1])};
 
     Lexer lexer{source_file.begin(), source_file.end()};
     lexer.run();

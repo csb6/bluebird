@@ -1,4 +1,4 @@
-funct main() is
+function main() is
     1 + 1;
     2 * 10 + 4 - print("hello", 1);
     2 * 2 + 4 / 5;

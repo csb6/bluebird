@@ -62,13 +62,13 @@ struct LValue {
 
 // An lvalue that can be assigned a value more than once
 struct Variable : public LValue {
-    // TODO: add some sort of function for returning the variable's type
+    // TODO: add some sort of field for storing the variable's type
     void print(std::ostream&) const override;
 };
 
 // An lvalue that can be assigned a value at most once
 struct Constant : public LValue {
-    // TODO: add some sort of function for returning the constant's type
+    // TODO: add some sort of field for storing the constant's type
     bool is_mutable() const override { return false; }
     void print(std::ostream& output) const override
     {

@@ -2,11 +2,13 @@
 #include <iostream>
 #include <unordered_map>
 
+// TODO: Add support for single/multi-line comments
+
 std::unordered_map<std::string, TokenType> identifier_table = {
     {"is", TokenType::Keyword_Is},
     {"var", TokenType::Keyword_Var},
-    {"funct", TokenType::Keyword_Funct},
-    {"ctfunct", TokenType::Keyword_Ct_Funct},
+    {"function", TokenType::Keyword_Funct},
+    {"ct_function", TokenType::Keyword_Ct_Funct},
     {"end", TokenType::Keyword_End}
 };
 
@@ -83,6 +85,9 @@ void Lexer::run()
             case '=':
                 m_tokens.emplace_back(line_num, TokenType::Op_Assign);
                 break;
+            // Type indicator 
+            case ':':
+                m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
             }
             break;
         case State::InIdentifier:

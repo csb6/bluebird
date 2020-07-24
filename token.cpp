@@ -52,6 +52,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Assign:
         output << "Assignment operator\n";
         break;
+    case TokenType::Type_Indicator:
+        output << "Type Indicato\n";
+        break;
     case TokenType::Char_Literal:
         output << "Character Literal\n";
         break;

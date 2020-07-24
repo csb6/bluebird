@@ -1,7 +1,9 @@
-funct main() is
+function Natural() is end Natural
+
+function main() is
     print("\"Hello\"" + "There");
-    var a = 78;
-    var b = 6 + 89;
+    var a : Natural = 78;
+    var b : Natural = 6 + 89;
     print('\\');
     print(346'000'000);
     1 + 1'0000 + 67 + 56 + 0 - 6 / print(89);
@@ -9,7 +11,7 @@ funct main() is
     1 + 1;
 end main
 
-funct foo() is
+function foo() is
     print(print("No"));
     print("Yes");
     print(98 + 89);
