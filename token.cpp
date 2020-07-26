@@ -5,7 +5,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {
     case TokenType::Keyword_Funct:
-        output << "Keyword `funct`\n";
+        output << "Keyword `function`\n";
         break;
     case TokenType::Name:
         output << "Name\n";

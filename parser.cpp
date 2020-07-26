@@ -14,6 +14,13 @@ void print_error(std::string_view message)
     std::cerr << message << "\n";
 }
 
+void print_error_expected(std::string_view expected, Token actual)
+{
+    std::cerr << "Line " << actual.line_num << ": "
+              << "Expected " << expected << ", but instead found token:\n";
+    std::cerr << actual;
+}
+
 Parser::Parser(TokenIterator input_begin,
                TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
@@ -37,8 +44,7 @@ std::unique_ptr<Expression> Parser::in_literal()
     case TokenType::Float_Literal:
         return std::unique_ptr<Expression>(new Literal(std::stof(current->text)));
     default:
-        print_error(current->line_num, "Expected a literal here, but instead found token:");
-        std::cerr << *current;
+        print_error_expected("literal", *current);
         exit(1);
     }
 }
@@ -117,7 +123,7 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
 
     ++token;
     if(token->type != TokenType::Open_Parentheses) {
-        print_error(token->line_num, "Expected '(' token before function call argument list");
+        print_error_expected("'(' token before function call argument list", *token);
         exit(1);
     }
 
@@ -143,16 +149,14 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
 std::unique_ptr<Expression> Parser::in_parentheses()
 {
     if(token->type != TokenType::Open_Parentheses) {
-        print_error(token->line_num, "Expected open parentheses for an expression group, but instead found token:");
-        std::cerr << *token;
+        print_error_expected("opening parentheses for an expression group", *token);
         exit(1);
     }
 
     ++token;
     std::unique_ptr<Expression> result = in_expression();
     if(token->type != TokenType::Closed_Parentheses) {
-        print_error(token->line_num, "Expected closing parentheses for an expression group, but instead found token:");
-        std::cerr << *token;
+        print_error_expected("closing parentheses for an expression group", *token);
         exit(1);
     }
 
@@ -182,9 +186,7 @@ std::unique_ptr<LValue> Parser::in_lvalue_declaration()
     auto new_lvalue = std::make_unique<Variable>();
 
     if(token->type != TokenType::Name) {
-        print_error(token->line_num,
-                    "Expected the name of an lvalue, but instead got token:");
-        std::cerr << *token << '\n';
+        print_error_expected("the name of an lvalue", *token);
         exit(1);
     }
 
@@ -192,15 +194,13 @@ std::unique_ptr<LValue> Parser::in_lvalue_declaration()
 
     ++token;
     if(token->type != TokenType::Type_Indicator) {
-        print_error(token->line_num, "Expected `:` before typename, but instead got token:");
-        std::cerr << *token << '\n';
+        print_error_expected("`:` before typename", *token);
         exit(1);
     }
 
     ++token;
     if(token->type != TokenType::Name) {
-        print_error(token->line_num, "Expected typename, but instead got token:");
-        std::cerr << *token << '\n';
+        print_error_expected("typename", *token);
         exit(1);
     } else if(const auto match = m_names_table.find(token->text);
               match == m_names_table.end()) {
@@ -215,8 +215,7 @@ std::unique_ptr<LValue> Parser::in_lvalue_declaration()
 std::unique_ptr<Assignment> Parser::in_assignment()
 {
     if(token->type != TokenType::Keyword_Let) {
-        print_error(token->line_num, "Expected keyword `let`, but instead got token:");
-        std::cerr << *token << '\n';
+        print_error_expected("keyword `let`", *token);
         exit(1);
     }
 
@@ -238,8 +237,7 @@ std::unique_ptr<Assignment> Parser::in_assignment()
 
     ++token;
     if(token->type != TokenType::Op_Assign) {
-        print_error(token->line_num, "Expected assignment operator, but instead got token:");
-        std::cerr << *token << '\n';
+        print_error_expected("assignment operator", *token);
         exit(1);
     }
 
@@ -298,7 +296,7 @@ void Parser::in_function_definition()
         new_funct.name = token->text;
         m_names_table[new_funct.name] = NameType::Funct;
     } else if(token->type != TokenType::Name) {
-        print_error(token->line_num, "Expected name to follow `funct` keyword");
+        print_error_expected("name to follow `function keyword`", *token);
         exit(1);
     } else {
         print_error(token->line_num, "Name `" + token->text + "` is"
@@ -308,13 +306,10 @@ void Parser::in_function_definition()
 
     ++token;
     if(token->type != TokenType::Open_Parentheses) {
-        print_error(token->line_num,
-                    "Expected `(` to follow name of function in definition");
+        print_error_expected("`(` to follow name of function in definition", *token);
         exit(1);
     }
 
-    // TODO: add support for type annotations next to param names
-    //      and commas after each name/type
     // Next, parse the parameters
     ++token;
     while(token != m_input_end) {
@@ -328,22 +323,20 @@ void Parser::in_function_definition()
                 // Put back so next iteration can handle end of parameter list
                 --token;
             } else if(token->type != TokenType::Op_Comma) {
-                print_error(token->line_num,
-                            "Expected comma to follow the parameter, but instead got token:");
-                std::cerr << *token << '\n';
+                print_error_expected("comma to follow the parameter", *token);
                 exit(1);
             }
         } else if(token->type == TokenType::Closed_Parentheses) {
             // Next, look for `is` keyword (TODO: open a new scope here)
             ++token;
             if(token->type != TokenType::Keyword_Is) {
-                print_error(token->line_num,
-                            "Expected keyword `is` to follow parameters of the function");
+                print_error_expected("keyword `is` to follow parameters of the function",
+                                     *token);
                 exit(1);
             }
             break;
         } else {
-            print_error(token->line_num, "Expected parameter name");
+            print_error_expected("parameter name", *token);
             exit(1);
         }
 
@@ -362,7 +355,7 @@ void Parser::in_function_definition()
             if(token->type != TokenType::Name && token->text != new_funct.name) {
                 print_error(token->line_num,
                             "No matching `end " + new_funct.name + "` for"
-                            + " `funct` " + new_funct.name);
+                            + " `function` " + new_funct.name);
                 exit(1);
             }
             m_names_table[new_funct.name] = NameType::Funct;
