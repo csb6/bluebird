@@ -175,35 +175,20 @@ std::unique_ptr<Expression> Parser::in_expression()
 }
 
 
-std::unique_ptr<Assignment> Parser::in_assignment()
-{
-    if(token->type != TokenType::Keyword_Let) {
-        print_error(token->line_num, "Expected keyword `let`, but instead got token:");
-        std::cerr << *token << '\n';
-        exit(1);
-    }
 
-    auto new_statement = std::make_unique<Assignment>();
-    ++token;
+std::unique_ptr<LValue> Parser::in_lvalue_declaration()
+{
+    // TODO: add support for constant lvalues also
+    auto new_lvalue = std::make_unique<Variable>();
+
     if(token->type != TokenType::Name) {
         print_error(token->line_num,
                     "Expected the name of an lvalue, but instead got token:");
         std::cerr << *token << '\n';
         exit(1);
-    } else if(const auto match = m_names_table.find(token->text);
-              match != m_names_table.end()) {
-        print_error(token->line_num, "Name `" + token->text + "` is already in use");
-        exit(1);
     }
 
-    // Add this new lvalue to list of tracked names
-    {
-        m_names_table[token->text] = NameType::LValue;
-        auto new_lvalue = std::make_unique<Variable>();
-        new_lvalue->name = token->text;
-        m_lvalues.push_back(std::move(new_lvalue));
-        new_statement->target = m_lvalues.back().get();
-    }
+    new_lvalue->name = token->text;
 
     ++token;
     if(token->type != TokenType::Type_Indicator) {
@@ -223,8 +208,33 @@ std::unique_ptr<Assignment> Parser::in_assignment()
         exit(1);
     }
 
-    // Set the lvalue's type
-    new_statement->target->type = token->text;
+    new_lvalue->type = token->text;
+    return new_lvalue;
+}
+
+std::unique_ptr<Assignment> Parser::in_assignment()
+{
+    if(token->type != TokenType::Keyword_Let) {
+        print_error(token->line_num, "Expected keyword `let`, but instead got token:");
+        std::cerr << *token << '\n';
+        exit(1);
+    }
+
+    auto new_statement = std::make_unique<Assignment>();
+
+    // Add this new lvalue to list of tracked names
+    {
+        ++token;
+        std::unique_ptr<LValue> new_lvalue = in_lvalue_declaration();
+        if(const auto match = m_names_table.find(new_lvalue->name);
+           match != m_names_table.end()) {
+            print_error(token->line_num, "Name `" + token->text + "` is already in use");
+            exit(1);
+        }
+        m_names_table[new_lvalue->name] = NameType::LValue;
+        m_lvalues.push_back(std::move(new_lvalue));
+        new_statement->target = m_lvalues.back().get();
+    }
 
     ++token;
     if(token->type != TokenType::Op_Assign) {
@@ -309,7 +319,20 @@ void Parser::in_function_definition()
     ++token;
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
-            new_funct.parameters.push_back(token->text);
+            // Add a new parameter declaration
+            new_funct.parameters.push_back(in_lvalue_declaration());
+
+            ++token;
+            // Check for a comma separator after typename
+            if(token->type == TokenType::Closed_Parentheses) {
+                // Put back so next iteration can handle end of parameter list
+                --token;
+            } else if(token->type != TokenType::Op_Comma) {
+                print_error(token->line_num,
+                            "Expected comma to follow the parameter, but instead got token:");
+                std::cerr << *token << '\n';
+                exit(1);
+            }
         } else if(token->type == TokenType::Closed_Parentheses) {
             // Next, look for `is` keyword (TODO: open a new scope here)
             ++token;
@@ -409,7 +432,7 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     output << "Function: " << function.name << '\n';
     output << "Parameters:\n";
     for(const auto& param : function.parameters) {
-        output << param << ' ';
+        output << param->name << ' ';
     }
     output << "\nStatements:\n";
 

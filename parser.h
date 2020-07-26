@@ -96,7 +96,7 @@ struct Assignment : public Statement {
 // A procedure containing statements and optionally inputs/outputs
 struct Function {
     std::string name;
-    std::vector<std::string> parameters;
+    std::vector<std::unique_ptr<LValue>> parameters;
     std::vector<std::unique_ptr<Statement>> statements;
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
@@ -116,6 +116,8 @@ private:
     std::vector<std::unique_ptr<LValue>> m_lvalues;
     std::unordered_map<std::string, NameType> m_names_table;
 
+    // Helpers
+    std::unique_ptr<LValue> in_lvalue_declaration();
     // Handle each type of expression
     std::unique_ptr<Expression> in_literal();
     std::unique_ptr<Expression> in_multiply_divide();

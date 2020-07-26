@@ -1,3 +1,11 @@
+function Natural() is end Natural
+
+function Integer() is end Integer
+
+function foo(a : Natural, b : Integer) is
+   4 + 5 + (9 - 6);
+end foo
+
 function main() is
     1 + 1;
     2 * 10 + 4 - print("hello", 1);
