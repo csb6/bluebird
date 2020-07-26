@@ -2,8 +2,6 @@
 #include <iostream>
 #include <unordered_map>
 
-// TODO: Add support for single/multi-line comments
-
 std::unordered_map<std::string, TokenType> identifier_table = {
     {"is", TokenType::Keyword_Is},
     {"let", TokenType::Keyword_Let},
@@ -13,7 +11,7 @@ std::unordered_map<std::string, TokenType> identifier_table = {
 };
 
 enum class State : char {
-    Start, InIdentifier, InString, InChar, InNumber
+    Start, InIdentifier, InString, InChar, InNumber, InComment
 };
 
 Lexer::Lexer(std::string::const_iterator input_begin,
@@ -72,7 +70,22 @@ void Lexer::run()
                 m_tokens.emplace_back(line_num, TokenType::Op_Minus);
                 break;
             case '/':
-                m_tokens.emplace_back(line_num, TokenType::Op_Div);
+                switch(*std::next(input_iter)) {
+                case '/':
+                    ++input_iter;
+                    // Ignore single-line comments
+                    while(*input_iter != '\n')
+                        ++input_iter;
+                    break;
+                case '*':
+                    // Multi-line comment
+                    curr_state = State::InComment;
+                    break;
+                default:
+                    // Division operator
+                    m_tokens.emplace_back(line_num, TokenType::Op_Div);
+                    break;
+                }
                 break;
             case '*':
                 m_tokens.emplace_back(line_num, TokenType::Op_Mult);
@@ -148,6 +161,13 @@ void Lexer::run()
                 token_text.clear();
                 curr_state = State::Start;
                 --input_iter; // put the current char back
+            }
+            break;
+        case State::InComment:
+            // Ignore everything in multi-line comments
+            if(curr == '*' && *std::next(input_iter) == '/') {
+                ++input_iter;
+                curr_state = State::Start;
             }
             break;
         }
