@@ -2,8 +2,8 @@ function Natural() is end Natural
 
 function main() is
     print("\"Hello\"" + "There");
-    var a : Natural = 78;
-    var b : Natural = 6 + 89;
+    let a : Natural = 78;
+    let b : Natural = 6 + 89;
     print('\\');
     print(346'000'000);
     1 + 1'0000 + 67 + 56 + 0 - 6 / print(89);

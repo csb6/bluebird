@@ -55,6 +55,7 @@ struct FunctionCall : public Expression {
 // A named object that holds a value and can be assigned at least once 
 struct LValue {
     std::string name;
+    std::string type;
     virtual ~LValue() {}
     virtual bool is_mutable() const { return true; }
     virtual void print(std::ostream&) const = 0;
@@ -62,13 +63,11 @@ struct LValue {
 
 // An lvalue that can be assigned a value more than once
 struct Variable : public LValue {
-    // TODO: add some sort of field for storing the variable's type
     void print(std::ostream&) const override;
 };
 
 // An lvalue that can be assigned a value at most once
 struct Constant : public LValue {
-    // TODO: add some sort of field for storing the constant's type
     bool is_mutable() const override { return false; }
     void print(std::ostream& output) const override
     {

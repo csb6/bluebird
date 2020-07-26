@@ -177,8 +177,8 @@ std::unique_ptr<Expression> Parser::in_expression()
 
 std::unique_ptr<Assignment> Parser::in_assignment()
 {
-    if(token->type != TokenType::Keyword_Var) {
-        print_error(token->line_num, "Expected keyword `var`, but instead got token:");
+    if(token->type != TokenType::Keyword_Let) {
+        print_error(token->line_num, "Expected keyword `let`, but instead got token:");
         std::cerr << *token << '\n';
         exit(1);
     }
@@ -197,11 +197,13 @@ std::unique_ptr<Assignment> Parser::in_assignment()
     }
 
     // Add this new lvalue to list of tracked names
-    m_names_table[token->text] = NameType::LValue;
-    auto new_lvalue = std::make_unique<Variable>();
-    new_lvalue->name = token->text;
-    m_lvalues.push_back(std::move(new_lvalue));
-    new_statement->target = m_lvalues.back().get();
+    {
+        m_names_table[token->text] = NameType::LValue;
+        auto new_lvalue = std::make_unique<Variable>();
+        new_lvalue->name = token->text;
+        m_lvalues.push_back(std::move(new_lvalue));
+        new_statement->target = m_lvalues.back().get();
+    }
 
     ++token;
     if(token->type != TokenType::Type_Indicator) {
@@ -220,6 +222,9 @@ std::unique_ptr<Assignment> Parser::in_assignment()
         print_error(token->line_num, "Unknown typename: `" + token->text + "`");
         exit(1);
     }
+
+    // Set the lvalue's type
+    new_statement->target->type = token->text;
 
     ++token;
     if(token->type != TokenType::Op_Assign) {
@@ -254,13 +259,13 @@ std::unique_ptr<Statement> Parser::in_statement()
             // End of this statement; go back to prior state
             ++token;
             return new_statement;
-        } else if(token->type == TokenType::Keyword_Var) {
+        } else if(token->type == TokenType::Keyword_Let) {
             // TODO: reorganize Statement class to have more utility, since it
             // will only hold a single expression
             // TODO: add support for constant lvalues
             return in_assignment();
         } else if(std::next(token)->type != TokenType::End_Statement) {
-            // TODO: add support for variables with statements, too
+            // TODO: add support for lvalues in statements, too
             new_statement->expression = in_expression();
         } else {
             print_error(token->line_num, "Unexpected token:");
