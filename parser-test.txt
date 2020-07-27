@@ -1,6 +1,5 @@
-function Natural() is end Natural
-
-function Integer() is end Integer
+type Integer;
+type Natural;
 
 // This is a line comment
 function foo(a : Natural, b : Integer) is

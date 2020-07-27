@@ -4,8 +4,8 @@
 #include <iosfwd>
 
 enum class TokenType : char {
-    Keyword_Funct, Name, Keyword_Is, Keyword_Let, Keyword_Const, Open_Parentheses,
-    Closed_Parentheses, Keyword_End, End_Statement, String_Literal,
+    Keyword_Funct, Name, Keyword_Is, Keyword_Let, Keyword_Const, Keyword_Type,
+    Open_Parentheses, Closed_Parentheses, Keyword_End, End_Statement, String_Literal,
     Keyword_Ct_Funct, Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Comma,
     Op_Assign, Type_Indicator, Char_Literal, Int_Literal, Float_Literal
 };

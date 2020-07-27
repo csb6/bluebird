@@ -215,9 +215,14 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
         }
     }
 
-    if(const auto match = m_names_table.find(token->text);
-              match == m_names_table.end()) {
-        print_error(token->line_num, "Unknown typename: `" + token->text + "`");
+    const auto match = m_names_table.find(token->text);
+    if(match == m_names_table.end()) {
+        // If the type hasn't been declared yet, add it provisionally to name table
+        // to be filled in (hopefully) later
+        m_names_table[token->text] = NameType::DeclaredType;
+    } else if(match->second != NameType::Type && match->second != NameType::DeclaredType) {
+        print_error(token->line_num, "Expected `" + token->text
+                    + "` to be a typename, but it is defined as another kind of name");
         exit(1);
     }
 
@@ -379,6 +384,40 @@ void Parser::in_function_definition()
     }
 }
 
+void Parser::in_type_definition()
+{
+    if(token->type != TokenType::Keyword_Type) {
+        print_error_expected("keyword `type`", *token);
+        exit(1);
+    }
+
+    ++token;
+    if(token->type != TokenType::Name) {
+        print_error_expected("name", *token);
+        exit(1);
+    } else if(const auto match = m_names_table.find(token->text);
+              match != m_names_table.end()) {
+        if(match->second == NameType::DeclaredType) {
+            // Fill-in a type used earlier in the code
+            m_names_table[match->first] = NameType::Type;
+        } else {
+            print_error(token->line_num, "Name: " + token->text + " already in use");
+            exit(1);
+        }
+    }
+
+    m_names_table[token->text] = NameType::Type;
+
+    // TODO: handle ranges/arrays/record types here
+
+    ++token;
+    if(token->type != TokenType::End_Statement) {
+        print_error_expected("end of statement (a.k.a. `;`)", *token);
+        exit(1);
+    }
+    ++token;
+}
+
 void Parser::run()
 {
     token = m_input_begin;
@@ -387,6 +426,9 @@ void Parser::run()
         case TokenType::Keyword_Funct:
             // Found start of a function definition
             in_function_definition();
+            break;
+        case TokenType::Keyword_Type:
+            in_type_definition();
             break;
         default:
             print_error(token->line_num, "Unexpected token:");

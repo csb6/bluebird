@@ -103,7 +103,7 @@ struct Function {
 };
 
 enum class NameType : char {
-    LValue, Funct
+    LValue, Funct, Type, DeclaredType
 };
 
 class Parser {
@@ -133,6 +133,8 @@ private:
     Magnum::Pointer<Statement> in_statement();
     // Handle each function definition
     void in_function_definition();
+    // Types
+    void in_type_definition();
 public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
