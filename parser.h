@@ -85,8 +85,10 @@ struct Statement {
     virtual void print(std::ostream&) const;
 };
 
-// Statement where a variable is assigned to the value of some expression
-struct Assignment : public Statement {
+// TODO: add way to declare an lvalue without assigning initial value
+// Statement where a new variable is declared and assigned the
+// value of some expression
+struct Initialization : public Statement {
     LValue* target;
     void print(std::ostream& output) const override
     {
@@ -130,7 +132,7 @@ private:
     Magnum::Pointer<Expression> in_parentheses();
     Magnum::Pointer<Expression> in_expression();
     // Handle each type of statement
-    Magnum::Pointer<Assignment> in_assignment();
+    Magnum::Pointer<Initialization> in_initialization();
     Magnum::Pointer<Statement> in_statement();
     // Handle each function definition
     void in_function_definition();

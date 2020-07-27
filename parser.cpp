@@ -212,14 +212,14 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     return new_lvalue;
 }
 
-Magnum::Pointer<Assignment> Parser::in_assignment()
+Magnum::Pointer<Initialization> Parser::in_initialization()
 {
     if(token->type != TokenType::Keyword_Let) {
         print_error_expected("keyword `let`", *token);
         exit(1);
     }
 
-    auto new_statement = Magnum::pointer<Assignment>();
+    auto new_statement = Magnum::pointer<Initialization>();
 
     // Add this new lvalue to list of tracked names
     {
@@ -253,7 +253,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
             new_statement->expression = in_expression();
         }
     }
-    print_error(token->line_num, "Assignment statement ended early");
+    print_error(token->line_num, "Initialization statement ended early");
     exit(1);
 }
 
@@ -271,7 +271,7 @@ Magnum::Pointer<Statement> Parser::in_statement()
             // TODO: reorganize Statement class to have more utility, since it
             // will only hold a single expression
             // TODO: add support for constant lvalues
-            return in_assignment();
+            return in_initialization();
         } else if(std::next(token)->type != TokenType::End_Statement) {
             // TODO: add support for lvalues in statements, too
             new_statement->expression = in_expression();
