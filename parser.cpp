@@ -104,22 +104,24 @@ Magnum::Pointer<FunctionCall> Parser::in_function_call()
 {
     auto new_function_call = Magnum::pointer<FunctionCall>();
 
-    // First, assign the function call's name, if it's valid
-    if(token->type == TokenType::Name && m_names_table.count(token->text) > 0) {
-        if(m_names_table[token->text] == NameType::Funct) {
-            new_function_call->name = token->text;
-        } else {
-            print_error(token->line_num, "Name `" + token->text + "` isn't a "
-                        + "function name, but is being used as one");
-            exit(1);
-        }
-    } else if(token->type != TokenType::Name) {
-        print_error(token->line_num, "Function call doesn't begin with a valid name");
-        exit(1);
-    } else {
-        print_error(token->line_num, "Undefined function: `" + token->text + "`");
+    if(token->type != TokenType::Name) {
+        print_error_expected("function name", *token);
         exit(1);
     }
+
+    // First, assign the function call's name
+    const auto match = m_names_table.find(token->text);
+    if(match == m_names_table.end()) {
+        // If the function hasn't been declared yet, add it provisionally to name table
+        // to be filled in (hopefully) later
+        m_names_table[token->text] = NameType::DeclaredFunct;
+    } else if(match->second != NameType::Funct && match->second != NameType::DeclaredFunct) {
+        print_error(token->line_num, "Expected `" + token->text
+                    + "` to be a function name, but it is defined as another kind of name");
+        exit(1);
+    }
+
+    new_function_call->name = token->text;
 
     ++token;
     if(token->type != TokenType::Open_Parentheses) {
@@ -310,12 +312,15 @@ void Parser::in_function_definition()
     // First, set the function's name, making sure it isn't being used for
     // anything else
     ++token;
-    if(token->type == TokenType::Name && m_names_table.count(token->text) == 0) {
-        new_funct.name = token->text;
-        m_names_table[new_funct.name] = NameType::Funct;
-    } else if(token->type != TokenType::Name) {
+    if(token->type != TokenType::Name) {
         print_error_expected("name to follow `function keyword`", *token);
         exit(1);
+    }
+
+    const auto match = m_names_table.find(token->text);
+    if(match == m_names_table.end() || match->second == NameType::DeclaredFunct) {
+        new_funct.name = token->text;
+        m_names_table[new_funct.name] = NameType::Funct;
     } else {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     + " already in use");
@@ -400,7 +405,7 @@ void Parser::in_type_definition()
 
     ++token;
     if(token->type != TokenType::Name) {
-        print_error_expected("name", *token);
+        print_error_expected("typename", *token);
         exit(1);
     } else if(const auto match = m_names_table.find(token->text);
               match != m_names_table.end() && match->second != NameType::DeclaredType) {

@@ -117,7 +117,8 @@ struct Range {
 
 
 enum class NameType : char {
-    LValue, Funct, Type, DeclaredType
+    LValue, Funct, DeclaredFunct,
+    Type, DeclaredType
 };
 
 class Parser {
