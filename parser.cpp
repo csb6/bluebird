@@ -376,6 +376,13 @@ void Parser::in_function_definition()
                             + " `function` " + new_funct.name);
                 exit(1);
             }
+
+            ++token;
+            if(token->type != TokenType::End_Statement) {
+                print_error_expected("end of statement (a.k.a. `;`)", *token);
+                exit(1);
+            }
+
             m_names_table[new_funct.name] = NameType::Funct;
             m_functions.push_back(std::move(new_funct));
             ++token;

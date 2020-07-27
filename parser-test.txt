@@ -4,7 +4,7 @@ type Natural;
 // This is a line comment
 function foo(a : Natural, b : Integer) is
    4 + 5 + (9 - 6);
-end foo
+end foo;
 
 /*Some comment
 function not_really is end not_really
@@ -16,4 +16,4 @@ function main() is
     2 * 10 + 4 - print("hello", 1);
     2 * 2 + 4 / 5;
     1 * 1 * (4 + 6);
-end main
+end main;
