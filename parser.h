@@ -102,6 +102,20 @@ struct Function {
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 
+// A kind of object
+struct Type {
+    std::string name;
+    friend std::ostream& operator<<(std::ostream&, const Type&);
+};
+
+// A lazily-evaluated sequence of number-like objects
+// Upped/lower bounds are inclusive
+struct Range {
+    long lower_bound, upper_bound;
+    bool contains(long value) const;
+};
+
+
 enum class NameType : char {
     LValue, Funct, Type, DeclaredType
 };
@@ -114,6 +128,7 @@ private:
     TokenIterator m_input_end;
     TokenIterator token;
     std::vector<Function> m_functions;
+    std::vector<Type> m_types;
     std::vector<Magnum::Pointer<LValue>> m_lvalues;
     std::unordered_map<std::string, NameType> m_names_table;
 

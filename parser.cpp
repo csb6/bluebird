@@ -396,17 +396,13 @@ void Parser::in_type_definition()
         print_error_expected("name", *token);
         exit(1);
     } else if(const auto match = m_names_table.find(token->text);
-              match != m_names_table.end()) {
-        if(match->second == NameType::DeclaredType) {
-            // Fill-in a type used earlier in the code
-            m_names_table[match->first] = NameType::Type;
-        } else {
-            print_error(token->line_num, "Name: " + token->text + " already in use");
-            exit(1);
-        }
+              match != m_names_table.end() && match->second != NameType::DeclaredType) {
+        print_error(token->line_num, "Name: " + token->text + " already in use");
+        exit(1);
     }
 
     m_names_table[token->text] = NameType::Type;
+    m_types.push_back({token->text});
 
     // TODO: handle ranges/arrays/record types here
 
@@ -436,6 +432,12 @@ void Parser::run()
             exit(1);
         }
     }
+}
+
+
+bool Range::contains(long value) const
+{
+    return value >= lower_bound && value <= upper_bound;
 }
 
 
@@ -492,6 +494,13 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     for(const auto& statement : function.statements) {
         statement->print(output);
     }
+    return output;
+}
+
+
+std::ostream& operator<<(std::ostream& output, const Type& type)
+{
+    output << "Type: " << type.name << '\n';
     return output;
 }
 
