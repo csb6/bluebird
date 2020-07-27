@@ -182,12 +182,17 @@ Magnum::Pointer<Expression> Parser::in_expression()
 
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
-    // TODO: add support for constant lvalues also
-    auto new_lvalue = Magnum::pointer<Variable>();
-
     if(token->type != TokenType::Name) {
         print_error_expected("the name of an lvalue", *token);
         exit(1);
+    }
+
+    Magnum::Pointer<LValue> new_lvalue;
+    // `constant` keyword marks kind of lvalue
+    if(std::next(token, 2)->type != TokenType::Keyword_Const) {
+        new_lvalue = Magnum::pointer<Variable>();
+    } else {
+        new_lvalue = Magnum::pointer<Constant>();
     }
 
     new_lvalue->name = token->text;
@@ -200,9 +205,17 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 
     ++token;
     if(token->type != TokenType::Name) {
-        print_error_expected("typename", *token);
-        exit(1);
-    } else if(const auto match = m_names_table.find(token->text);
+        if(token->type == TokenType::Keyword_Const) {
+            // If it's a constant, it will already be noted, so
+            // just keep going
+            ++token;
+        } else {
+            print_error_expected("typename", *token);
+            exit(1);
+        }
+    }
+
+    if(const auto match = m_names_table.find(token->text);
               match == m_names_table.end()) {
         print_error(token->line_num, "Unknown typename: `" + token->text + "`");
         exit(1);
@@ -418,6 +431,11 @@ void Statement::print(std::ostream& output) const
 void Variable::print(std::ostream& output) const
 {
     output << "Variable: " << name << '\n';
+}
+
+void Constant::print(std::ostream& output) const
+{
+    output << "Constant: " << name << '\n';
 }
 
 std::ostream& operator<<(std::ostream& output, const Function& function)

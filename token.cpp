@@ -16,6 +16,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Let:
         output << "Keyword `let`\n";
         break;
+    case TokenType::Keyword_Const:
+        output << "Keyword `constant`\n";
+        break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses\n";
         break;

@@ -5,6 +5,7 @@
 std::unordered_map<std::string, TokenType> identifier_table = {
     {"is", TokenType::Keyword_Is},
     {"let", TokenType::Keyword_Let},
+    {"constant", TokenType::Keyword_Const},
     {"function", TokenType::Keyword_Funct},
     {"ct_function", TokenType::Keyword_Ct_Funct},
     {"end", TokenType::Keyword_End}

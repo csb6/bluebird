@@ -71,10 +71,7 @@ struct Variable : public LValue {
 // An lvalue that can be assigned a value at most once
 struct Constant : public LValue {
     bool is_mutable() const override { return false; }
-    void print(std::ostream& output) const override
-    {
-        output << "Constant: " << name;
-    }
+    void print(std::ostream&) const override;
 };
 
 // A standalone piece of code terminated with a semicolon and consisting
