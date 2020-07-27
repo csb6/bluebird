@@ -4,10 +4,12 @@
 #include <string>
 #include "token.h"
 #include <unordered_map>
-#include <memory>
+#include <CorradePointer.h>
 #include <iosfwd>
 #include <iomanip>
 #include <type_traits>
+
+namespace Magnum = Corrade::Containers;
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
@@ -33,12 +35,12 @@ struct Literal : public Expression {
 // An expression that contains two or more other expressions, but
 // is not itself function call
 struct CompositeExpression : public Expression {
-    std::unique_ptr<Expression> left;
+    Magnum::Pointer<Expression> left;
     TokenType op;
-    std::unique_ptr<Expression> right;
+    Magnum::Pointer<Expression> right;
 
-    CompositeExpression(std::unique_ptr<Expression>&& l, TokenType oper,
-                        std::unique_ptr<Expression>&& r);
+    CompositeExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
+                        Magnum::Pointer<Expression>&& r);
     bool is_composite() const override { return true; }
     void print(std::ostream&) const override;
 };
@@ -46,7 +48,7 @@ struct CompositeExpression : public Expression {
 // A usage of a function
 struct FunctionCall : public Expression {
     std::string name;
-    std::vector<std::unique_ptr<Expression>> arguments;
+    std::vector<Magnum::Pointer<Expression>> arguments;
 
     bool is_composite() const override { return true; }
     void print(std::ostream&) const override;
@@ -79,7 +81,7 @@ struct Constant : public LValue {
 // of one or more expressions
 struct Statement {
     virtual ~Statement() {}
-    std::unique_ptr<Expression> expression;
+    Magnum::Pointer<Expression> expression;
     virtual void print(std::ostream&) const;
 };
 
@@ -96,8 +98,8 @@ struct Assignment : public Statement {
 // A procedure containing statements and optionally inputs/outputs
 struct Function {
     std::string name;
-    std::vector<std::unique_ptr<LValue>> parameters;
-    std::vector<std::unique_ptr<Statement>> statements;
+    std::vector<Magnum::Pointer<LValue>> parameters;
+    std::vector<Magnum::Pointer<Statement>> statements;
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 
@@ -113,23 +115,23 @@ private:
     TokenIterator m_input_end;
     TokenIterator token;
     std::vector<Function> m_functions;
-    std::vector<std::unique_ptr<LValue>> m_lvalues;
+    std::vector<Magnum::Pointer<LValue>> m_lvalues;
     std::unordered_map<std::string, NameType> m_names_table;
 
     // Helpers
-    std::unique_ptr<LValue> in_lvalue_declaration();
+    Magnum::Pointer<LValue> in_lvalue_declaration();
     // Handle each type of expression
-    std::unique_ptr<Expression> in_literal();
-    std::unique_ptr<Expression> in_multiply_divide();
-    std::unique_ptr<Expression> in_add_subtract();
-    std::unique_ptr<Expression> in_basic_expression();
-    std::unique_ptr<Expression> in_composite_expression();
-    std::unique_ptr<FunctionCall> in_function_call();
-    std::unique_ptr<Expression> in_parentheses();
-    std::unique_ptr<Expression> in_expression();
+    Magnum::Pointer<Expression> in_literal();
+    Magnum::Pointer<Expression> in_multiply_divide();
+    Magnum::Pointer<Expression> in_add_subtract();
+    Magnum::Pointer<Expression> in_basic_expression();
+    Magnum::Pointer<Expression> in_composite_expression();
+    Magnum::Pointer<FunctionCall> in_function_call();
+    Magnum::Pointer<Expression> in_parentheses();
+    Magnum::Pointer<Expression> in_expression();
     // Handle each type of statement
-    std::unique_ptr<Assignment> in_assignment();
-    std::unique_ptr<Statement> in_statement();
+    Magnum::Pointer<Assignment> in_assignment();
+    Magnum::Pointer<Statement> in_statement();
     // Handle each function definition
     void in_function_definition();
 public:

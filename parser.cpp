@@ -30,19 +30,19 @@ Parser::Parser(TokenIterator input_begin,
     m_names_table["max"] = NameType::Funct;
 }
 
-std::unique_ptr<Expression> Parser::in_literal()
+Magnum::Pointer<Expression> Parser::in_literal()
 {
     const TokenIterator current = token++;
 
     switch(current->type) {
     case TokenType::String_Literal:
-        return std::unique_ptr<Expression>(new Literal(current->text));
+        return Magnum::Pointer<Expression>(new Literal(current->text));
     case TokenType::Char_Literal:
-        return std::unique_ptr<Expression>(new Literal(current->text[0]));
+        return Magnum::Pointer<Expression>(new Literal(current->text[0]));
     case TokenType::Int_Literal:
-        return std::unique_ptr<Expression>(new Literal(std::stoi(current->text)));
+        return Magnum::Pointer<Expression>(new Literal(std::stoi(current->text)));
     case TokenType::Float_Literal:
-        return std::unique_ptr<Expression>(new Literal(std::stof(current->text)));
+        return Magnum::Pointer<Expression>(new Literal(std::stof(current->text)));
     default:
         print_error_expected("literal", *current);
         exit(1);
@@ -50,39 +50,39 @@ std::unique_ptr<Expression> Parser::in_literal()
 }
 
 
-std::unique_ptr<Expression> Parser::in_multiply_divide()
+Magnum::Pointer<Expression> Parser::in_multiply_divide()
 {
-    std::unique_ptr<Expression> left_side = in_basic_expression();
+    Magnum::Pointer<Expression> left_side = in_basic_expression();
 
     while(token->type == TokenType::Op_Mult
           || token->type == TokenType::Op_Div) {
         TokenType op = token->type;
         ++token;
-        std::unique_ptr<Expression> right_side = in_basic_expression();
-        left_side = std::make_unique<CompositeExpression>(std::move(left_side), op,
+        Magnum::Pointer<Expression> right_side = in_basic_expression();
+        left_side = Magnum::pointer<CompositeExpression>(std::move(left_side), op,
                                                           std::move(right_side));
     }
 
     return left_side;
 }
 
-std::unique_ptr<Expression> Parser::in_add_subtract()
+Magnum::Pointer<Expression> Parser::in_add_subtract()
 {
-    std::unique_ptr<Expression> left_side = in_multiply_divide();
+    Magnum::Pointer<Expression> left_side = in_multiply_divide();
 
     while(token->type == TokenType::Op_Plus
           || token->type == TokenType::Op_Minus) {
         TokenType op = token->type;
         ++token;
-        std::unique_ptr<Expression> right_side = in_multiply_divide();
-        left_side = std::make_unique<CompositeExpression>(std::move(left_side), op,
+        Magnum::Pointer<Expression> right_side = in_multiply_divide();
+        left_side = Magnum::pointer<CompositeExpression>(std::move(left_side), op,
                                                           std::move(right_side));
     }
 
     return left_side;
 }
 
-std::unique_ptr<Expression> Parser::in_basic_expression()
+Magnum::Pointer<Expression> Parser::in_basic_expression()
 {
     // TODO: add support for LValues, too
     switch(token->type) {
@@ -95,14 +95,14 @@ std::unique_ptr<Expression> Parser::in_basic_expression()
     }
 }
 
-std::unique_ptr<Expression> Parser::in_composite_expression()
+Magnum::Pointer<Expression> Parser::in_composite_expression()
 {
     return in_add_subtract();
 }
 
-std::unique_ptr<FunctionCall> Parser::in_function_call()
+Magnum::Pointer<FunctionCall> Parser::in_function_call()
 {
-    auto new_function_call = std::make_unique<FunctionCall>();
+    auto new_function_call = Magnum::pointer<FunctionCall>();
 
     // First, assign the function call's name, if it's valid
     if(token->type == TokenType::Name && m_names_table.count(token->text) > 0) {
@@ -146,7 +146,7 @@ std::unique_ptr<FunctionCall> Parser::in_function_call()
     exit(1);
 }
 
-std::unique_ptr<Expression> Parser::in_parentheses()
+Magnum::Pointer<Expression> Parser::in_parentheses()
 {
     if(token->type != TokenType::Open_Parentheses) {
         print_error_expected("opening parentheses for an expression group", *token);
@@ -154,7 +154,7 @@ std::unique_ptr<Expression> Parser::in_parentheses()
     }
 
     ++token;
-    std::unique_ptr<Expression> result = in_expression();
+    Magnum::Pointer<Expression> result = in_expression();
     if(token->type != TokenType::Closed_Parentheses) {
         print_error_expected("closing parentheses for an expression group", *token);
         exit(1);
@@ -164,7 +164,7 @@ std::unique_ptr<Expression> Parser::in_parentheses()
     return result;
 }
 
-std::unique_ptr<Expression> Parser::in_expression()
+Magnum::Pointer<Expression> Parser::in_expression()
 {
     const TokenType next_type = std::next(token)->type;;
 
@@ -180,10 +180,10 @@ std::unique_ptr<Expression> Parser::in_expression()
 
 
 
-std::unique_ptr<LValue> Parser::in_lvalue_declaration()
+Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
     // TODO: add support for constant lvalues also
-    auto new_lvalue = std::make_unique<Variable>();
+    auto new_lvalue = Magnum::pointer<Variable>();
 
     if(token->type != TokenType::Name) {
         print_error_expected("the name of an lvalue", *token);
@@ -212,19 +212,19 @@ std::unique_ptr<LValue> Parser::in_lvalue_declaration()
     return new_lvalue;
 }
 
-std::unique_ptr<Assignment> Parser::in_assignment()
+Magnum::Pointer<Assignment> Parser::in_assignment()
 {
     if(token->type != TokenType::Keyword_Let) {
         print_error_expected("keyword `let`", *token);
         exit(1);
     }
 
-    auto new_statement = std::make_unique<Assignment>();
+    auto new_statement = Magnum::pointer<Assignment>();
 
     // Add this new lvalue to list of tracked names
     {
         ++token;
-        std::unique_ptr<LValue> new_lvalue = in_lvalue_declaration();
+        Magnum::Pointer<LValue> new_lvalue = in_lvalue_declaration();
         if(const auto match = m_names_table.find(new_lvalue->name);
            match != m_names_table.end()) {
             print_error(token->line_num, "Name `" + token->text + "` is already in use");
@@ -257,9 +257,9 @@ std::unique_ptr<Assignment> Parser::in_assignment()
     exit(1);
 }
 
-std::unique_ptr<Statement> Parser::in_statement()
+Magnum::Pointer<Statement> Parser::in_statement()
 {
-    auto new_statement = std::make_unique<Statement>();
+    auto new_statement = Magnum::pointer<Statement>();
 
     while(token != m_input_end) {
         // TODO: handle statements not inside a funct
@@ -384,8 +384,8 @@ void Parser::run()
 }
 
 
-CompositeExpression::CompositeExpression(std::unique_ptr<Expression>&& l, TokenType oper,
-                                         std::unique_ptr<Expression>&& r)
+CompositeExpression::CompositeExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
+                                         Magnum::Pointer<Expression>&& r)
     : left(std::move(l)), op(oper), right(std::move(r))
 {}
 
