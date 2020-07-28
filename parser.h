@@ -58,20 +58,8 @@ struct FunctionCall : public Expression {
 struct LValue {
     std::string name;
     std::string type;
-    virtual ~LValue() {}
-    virtual bool is_mutable() const { return true; }
-    virtual void print(std::ostream&) const = 0;
-};
-
-// An lvalue that can be assigned a value more than once
-struct Variable : public LValue {
-    void print(std::ostream&) const override;
-};
-
-// An lvalue that can be assigned a value at most once
-struct Constant : public LValue {
-    bool is_mutable() const override { return false; }
-    void print(std::ostream&) const override;
+    bool is_mutable = true;
+    void print(std::ostream&) const;
 };
 
 // A standalone piece of code terminated with a semicolon and consisting

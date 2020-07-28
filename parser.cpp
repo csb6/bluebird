@@ -188,14 +188,8 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
         print_error_expected("the name of an lvalue", *token);
         exit(1);
     }
-
     Magnum::Pointer<LValue> new_lvalue;
-    // `constant` keyword marks kind of lvalue
-    if(std::next(token, 2)->type != TokenType::Keyword_Const) {
-        new_lvalue = Magnum::pointer<Variable>();
-    } else {
-        new_lvalue = Magnum::pointer<Constant>();
-    }
+    new_lvalue = Magnum::pointer<LValue>();
 
     new_lvalue->name = token->text;
 
@@ -206,15 +200,14 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     }
 
     ++token;
+    if(token->type == TokenType::Keyword_Const) {
+        // `constant` keyword marks kind of lvalue
+        new_lvalue->is_mutable = false;
+        ++token;
+    }
     if(token->type != TokenType::Name) {
-        if(token->type == TokenType::Keyword_Const) {
-            // If it's a constant, it will already be noted, so
-            // just keep going
-            ++token;
-        } else {
-            print_error_expected("typename", *token);
-            exit(1);
-        }
+        print_error_expected("typename", *token);
+        exit(1);
     }
 
     const auto match = m_names_table.find(token->text);
@@ -484,14 +477,15 @@ void Statement::print(std::ostream& output) const
     output << '\n';
 }
 
-void Variable::print(std::ostream& output) const
+void LValue::print(std::ostream& output) const
 {
-    output << "Variable: " << name << '\n';
-}
+    if(is_mutable) {
+        output << "Variable: ";
+    } else {
+        output << "Constant: ";
+    }
 
-void Constant::print(std::ostream& output) const
-{
-    output << "Constant: " << name << '\n';
+    output << name << '\n';
 }
 
 std::ostream& operator<<(std::ostream& output, const Function& function)
