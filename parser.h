@@ -32,6 +32,14 @@ struct Literal : public Expression {
     }
 };
 
+// An expression consisting solely of an lvalue
+struct LValueExpression : public Expression {
+    std::string name;
+    // Other data should be looked up in the corresponding
+    // LValue object
+    void print(std::ostream& output) const override;
+};
+
 // An expression that contains two or more other expressions, but
 // is not itself function call
 struct CompositeExpression : public Expression {
@@ -125,6 +133,7 @@ private:
     Magnum::Pointer<LValue> in_lvalue_declaration();
     // Handle each type of expression
     Magnum::Pointer<Expression> in_literal();
+    Magnum::Pointer<Expression> in_lvalue_expression();
     Magnum::Pointer<Expression> in_multiply_divide();
     Magnum::Pointer<Expression> in_add_subtract();
     Magnum::Pointer<Expression> in_basic_expression();

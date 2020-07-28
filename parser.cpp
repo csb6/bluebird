@@ -49,6 +49,46 @@ Magnum::Pointer<Expression> Parser::in_literal()
     }
 }
 
+Magnum::Pointer<Expression> Parser::in_lvalue_expression()
+{
+    const TokenIterator current = token++;
+
+    if(current->type != TokenType::Name) {
+        print_error_expected("variable/constant name", *token);
+        exit(1);
+    }
+
+    const auto match = m_names_table.find(current->text);
+    if(match == m_names_table.end()) {
+        print_error("Unknown lvalue `" + current->text + "`");
+        exit(1);
+    } else if(match->second != NameType::LValue) {
+        print_error("Expected name of variable/constant, but `"
+                    + match->first + "` is already being used as a name");
+        exit(1);
+    }
+
+    auto new_lvalue_expr = Magnum::pointer<LValueExpression>();
+    new_lvalue_expr->name = current->text;
+    return new_lvalue_expr;
+}
+
+Magnum::Pointer<Expression> Parser::in_basic_expression()
+{
+    // TODO: add support for LValues, too
+    switch(token->type) {
+    case TokenType::Name:
+        if(std::next(token)->type == TokenType::Open_Parentheses) {
+            return in_function_call();
+        } else {
+            return in_lvalue_expression();
+        }
+    case TokenType::Open_Parentheses:
+        return in_parentheses();
+    default:
+        return in_literal();
+    }
+}
 
 Magnum::Pointer<Expression> Parser::in_multiply_divide()
 {
@@ -80,19 +120,6 @@ Magnum::Pointer<Expression> Parser::in_add_subtract()
     }
 
     return left_side;
-}
-
-Magnum::Pointer<Expression> Parser::in_basic_expression()
-{
-    // TODO: add support for LValues, too
-    switch(token->type) {
-    case TokenType::Name:
-        return in_function_call();
-    case TokenType::Open_Parentheses:
-        return in_parentheses();
-    default:
-        return in_literal();
-    }
 }
 
 Magnum::Pointer<Expression> Parser::in_composite_expression()
@@ -260,7 +287,6 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     while(token != m_input_end) {
         if(token->type == TokenType::End_Statement) {
             // End of this statement; go back to prior state
-            ++token;
             return new_statement;
         } else {
             new_statement->expression = in_expression();
@@ -274,28 +300,19 @@ Magnum::Pointer<Statement> Parser::in_statement()
 {
     auto new_statement = Magnum::pointer<Statement>();
 
-    while(token != m_input_end) {
-        // TODO: handle statements not inside a funct
-        if(token->type == TokenType::End_Statement) {
-            // End of this statement; go back to prior state
-            ++token;
-            return new_statement;
-        } else if(token->type == TokenType::Keyword_Let) {
-            // TODO: reorganize Statement class to have more utility, since it
-            // will only hold a single expression
-            // TODO: add support for constant lvalues
-            return in_initialization();
-        } else if(std::next(token)->type != TokenType::End_Statement) {
-            // TODO: add support for lvalues in statements, too
-            new_statement->expression = in_expression();
-        } else {
-            print_error(token->line_num, "Unexpected token:");
-            std::cerr << *token << '\n';
-            exit(1);
-        }
+    if(token->type == TokenType::Keyword_Let) {
+        new_statement = in_initialization();
+    } else {
+        new_statement->expression = in_expression();
     }
-    print_error(token->line_num, "Statement ended early");
-    exit(1);
+
+    if(token->type != TokenType::End_Statement) {
+        print_error_expected("end of statement (a.k.a. `;`)", *token);
+        exit(1);
+    }
+
+    ++token;
+    return new_statement;
 }
 
 void Parser::in_function_definition()
@@ -445,6 +462,11 @@ bool Range::contains(long value) const
     return value >= lower_bound && value <= upper_bound;
 }
 
+
+void LValueExpression::print(std::ostream& output) const
+{
+    output << "LValueExpr: " << name << '\n';
+}
 
 CompositeExpression::CompositeExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
                                          Magnum::Pointer<Expression>&& r)
