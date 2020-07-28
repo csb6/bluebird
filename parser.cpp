@@ -284,18 +284,13 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     ++token;
     // Set the expression after the assignment operator to be the subexpression
     // in the statement
-    while(token != m_input_end) {
-        if(token->type == TokenType::End_Statement) {
-            // End of this statement; go back to prior state
-            return new_statement;
-        } else {
-            new_statement->expression = in_expression();
-        }
-    }
-    print_error(token->line_num, "Initialization statement ended early");
-    exit(1);
+    new_statement->expression = in_expression();
+
+    // in_statement() will check for/eat the semicolon
+    return new_statement;
 }
 
+// TODO: fix bug (remove semicolon from parser-test:8, run to see no error)
 Magnum::Pointer<Statement> Parser::in_statement()
 {
     auto new_statement = Magnum::pointer<Statement>();
