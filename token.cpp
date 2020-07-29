@@ -1,6 +1,11 @@
 #include "token.h"
 #include <ostream>
 
+bool operator<(const TokenType left, const TokenType right)
+{
+    return static_cast<char>(left) < static_cast<char>(right);
+}
+
 std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {

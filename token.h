@@ -4,11 +4,20 @@
 #include <iosfwd>
 
 enum class TokenType : char {
-    Keyword_Funct, Name, Keyword_Is, Keyword_Let, Keyword_Const, Keyword_Type,
-    Open_Parentheses, Closed_Parentheses, Keyword_End, End_Statement, String_Literal,
-    Keyword_Ct_Funct, Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Comma,
-    Op_Assign, Type_Indicator, Char_Literal, Int_Literal, Float_Literal
+    // Keywords
+    Keyword_Funct, Keyword_Is, Keyword_Let, Keyword_Const, Keyword_Type,
+    Keyword_Ct_Funct, Keyword_End,
+    // Identifiers
+    Name,
+    // Non-operator symbols
+    Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
+    // Operators
+    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Comma, Op_Assign,
+    // Literals
+    String_Literal, Char_Literal, Int_Literal, Float_Literal
 };
+
+bool operator<(const TokenType left, const TokenType right);
 
 struct Token {
     unsigned int line_num;
