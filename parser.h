@@ -135,7 +135,7 @@ private:
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
-    //Expression* in_parentheses();
+    Expression* in_parentheses();
     Expression* in_expression();
     FunctionCall* in_function_call();
     // Handle each type of statement

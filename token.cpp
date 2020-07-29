@@ -28,70 +28,70 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {
     case TokenType::Keyword_Funct:
-        output << "Keyword `function`\n";
+        output << "Keyword `function`";
         break;
     case TokenType::Name:
-        output << "Name\n";
+        output << "Name";
         break;
     case TokenType::Keyword_Is:
-        output << "Keyword `is`\n";
+        output << "Keyword `is`";
         break;
     case TokenType::Keyword_Let:
-        output << "Keyword `let`\n";
+        output << "Keyword `let`";
         break;
     case TokenType::Keyword_Const:
-        output << "Keyword `constant`\n";
+        output << "Keyword `constant`";
         break;
     case TokenType::Keyword_Type:
-        output << "Keyword `type`\n";
+        output << "Keyword `type`";
         break;
     case TokenType::Open_Parentheses:
-        output << "Open Parentheses\n";
+        output << "Open Parentheses";
         break;
     case TokenType::Closed_Parentheses:
-        output << "Closed Parentheses\n";
+        output << "Closed Parentheses";
         break;
     case TokenType::Keyword_End:
-        output << "Keyword `end`\n";
+        output << "Keyword `end`";
         break;
     case TokenType::End_Statement:
-        output << "End Statement Marker (a.k.a `;`)\n";
+        output << "End Statement Marker (a.k.a `;`)";
         break;
     case TokenType::String_Literal:
-        output << "String Literal\n";
+        output << "String Literal";
         break;
     case TokenType::Keyword_Ct_Funct:
-        output << "Keyword `ct_funct`\n";
+        output << "Keyword `ct_funct`";
         break;
     case TokenType::Op_Plus:
-        output << "Addition operator\n";
+        output << "Addition operator";
         break;
     case TokenType::Op_Minus:
-        output << "Subtraction operator\n";
+        output << "Subtraction operator";
         break;
     case TokenType::Op_Div:
-        output << "Division operator\n";
+        output << "Division operator";
         break;
     case TokenType::Op_Mult:
-        output << "Multiplication operator\n";
+        output << "Multiplication operator";
         break;
     case TokenType::Op_Comma:
-        output << "Comma marker\n";
+        output << "Comma marker";
         break;
     case TokenType::Op_Assign:
-        output << "Assignment operator\n";
+        output << "Assignment operator";
         break;
     case TokenType::Type_Indicator:
-        output << "Type Indicator\n";
+        output << "Type Indicator";
         break;
     case TokenType::Char_Literal:
-        output << "Character Literal\n";
+        output << "Character Literal";
         break;
     case TokenType::Int_Literal:
-        output << "Integer Literal\n";
+        output << "Integer Literal";
         break;
     case TokenType::Float_Literal:
-        output << "Float Literal\n";
+        output << "Float Literal";
         break;
     }
 
@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 
 std::ostream& operator<<(std::ostream& output, const Token& token)
 {
-    output << token.type;
+    output << token.type << '\n';
 
     if(!token.text.empty()) {
         output << "  Text: " << token.text << '\n';

@@ -33,11 +33,9 @@ Parser::Parser(TokenIterator input_begin,
 Expression* Parser::parse_expression(TokenType right_bind_power)
 {
     Expression* left_side = in_expression();
-    while(right_bind_power < token->type) {
+    while(right_bind_power < token->type && token->type != TokenType::End_Statement) {
         TokenType op = token->type;
-        if(op == TokenType::End_Statement) {
-            break;
-        } else if(!is_operator(op)) {
+        if(!is_operator(op)) {
             print_error_expected("operator", *token);
             exit(1);
         }
@@ -101,6 +99,8 @@ Expression* Parser::in_expression()
         } else {
             return in_lvalue_expression();
         }
+    case TokenType::Open_Parentheses:
+        return in_parentheses();
     default:
         return in_literal();
     }
@@ -154,7 +154,7 @@ FunctionCall* Parser::in_function_call()
     exit(1);
 }
 
-/*Expression* Parser::in_parentheses()
+Expression* Parser::in_parentheses()
 {
     if(token->type != TokenType::Open_Parentheses) {
         print_error_expected("opening parentheses for an expression group", *token);
@@ -162,7 +162,7 @@ FunctionCall* Parser::in_function_call()
     }
 
     ++token;
-    Expression* result = in_expression();
+    Expression* result = parse_expression(TokenType::Closed_Parentheses);
     if(token->type != TokenType::Closed_Parentheses) {
         print_error_expected("closing parentheses for an expression group", *token);
         exit(1);
@@ -170,7 +170,7 @@ FunctionCall* Parser::in_function_call()
 
     ++token;
     return result;
-}*/
+}
 
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
