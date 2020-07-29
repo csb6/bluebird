@@ -30,9 +30,9 @@ Parser::Parser(TokenIterator input_begin,
     m_names_table["max"] = NameType::Funct;
 }
 
-Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_bind_power)
+Expression* Parser::parse_expression(TokenType right_bind_power)
 {
-    Expression* left_side = in_basic_expression();
+    Expression* left_side = in_expression();
     while(right_bind_power < token->type) {
         TokenType op = token->type;
         if(op == TokenType::End_Statement) {
@@ -42,11 +42,11 @@ Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_bind_power)
             exit(1);
         }
         ++token;
-        Magnum::Pointer<Expression> right_side = parse_expression(op);
+        Expression* right_side = parse_expression(op);
         left_side = new CompositeExpression(Magnum::pointer<Expression>(left_side),
-                                            op, std::move(right_side));
+                                            op, Magnum::pointer<Expression>(right_side));
     }
-    return Magnum::pointer<Expression>(left_side);
+    return left_side;
 }
 
 Expression* Parser::in_literal()
@@ -92,9 +92,8 @@ Expression* Parser::in_lvalue_expression()
     return new_lvalue_expr;
 }
 
-Expression* Parser::in_basic_expression()
+Expression* Parser::in_expression()
 {
-    // TODO: add support for LValues, too
     switch(token->type) {
     case TokenType::Name:
         if(std::next(token)->type == TokenType::Open_Parentheses) {
@@ -148,15 +147,14 @@ FunctionCall* Parser::in_function_call()
             ++token;
             return new_function_call;
         default:
-            new_function_call->arguments.push_back(parse_expression(token->type));
+            new_function_call->arguments.emplace_back(parse_expression(token->type));
         }
     }
     print_error(token->line_num, "Function call definition ended early");
     exit(1);
 }
 
-/*
-Magnum::Pointer<Expression> Parser::in_parentheses()
+/*Expression* Parser::in_parentheses()
 {
     if(token->type != TokenType::Open_Parentheses) {
         print_error_expected("opening parentheses for an expression group", *token);
@@ -164,7 +162,7 @@ Magnum::Pointer<Expression> Parser::in_parentheses()
     }
 
     ++token;
-    Magnum::Pointer<Expression> result = in_expression();
+    Expression* result = in_expression();
     if(token->type != TokenType::Closed_Parentheses) {
         print_error_expected("closing parentheses for an expression group", *token);
         exit(1);
@@ -172,8 +170,7 @@ Magnum::Pointer<Expression> Parser::in_parentheses()
 
     ++token;
     return result;
-}
-*/
+}*/
 
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
@@ -250,7 +247,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     ++token;
     // Set the expression after the assignment operator to be the subexpression
     // in the statement
-    new_statement->expression = parse_expression();
+    new_statement->expression = Magnum::pointer<Expression>(parse_expression());
 
     // in_statement() will check for/eat the semicolon
     return new_statement;
@@ -264,7 +261,7 @@ Magnum::Pointer<Statement> Parser::in_statement()
     if(token->type == TokenType::Keyword_Let) {
         new_statement = in_initialization();
     } else {
-        new_statement->expression = parse_expression();
+        new_statement->expression = Magnum::pointer<Expression>(parse_expression());
     }
 
     if(token->type != TokenType::End_Statement) {
@@ -440,7 +437,7 @@ void CompositeExpression::print(std::ostream& output) const
     left->print(output);
     output << ' ' << op << ' ';
     right->print(output);
-    output << ")\n";
+    output << ")";
 }
 
 void FunctionCall::print(std::ostream& output) const

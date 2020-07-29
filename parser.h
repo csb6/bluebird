@@ -129,13 +129,14 @@ private:
     std::vector<Magnum::Pointer<LValue>> m_lvalues;
     std::unordered_map<std::string, NameType> m_names_table;
 
-    Magnum::Pointer<Expression> parse_expression(TokenType right_bind_power = {});
+    Expression* parse_expression(TokenType right_bind_power = {});
     // Helpers
     Magnum::Pointer<LValue> in_lvalue_declaration();
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
-    Expression* in_basic_expression();
+    //Expression* in_parentheses();
+    Expression* in_expression();
     FunctionCall* in_function_call();
     // Handle each type of statement
     Magnum::Pointer<Initialization> in_initialization();
