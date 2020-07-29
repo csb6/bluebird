@@ -6,6 +6,24 @@ bool operator<(const TokenType left, const TokenType right)
     return static_cast<char>(left) < static_cast<char>(right);
 }
 
+bool operator>=(const TokenType left, const TokenType right)
+{
+    return !(left < right);
+}
+
+bool operator<=(const TokenType left, const TokenType right)
+{
+    return left == right || left < right;
+}
+
+bool is_operator(const TokenType token)
+{
+    static_assert(char(TokenType::Op_Assign) + 1 == char(TokenType::String_Literal));
+    static_assert(char(TokenType::Op_Plus) - 1 == char(TokenType::Type_Indicator));
+
+    return token >= TokenType::Op_Plus && token <= TokenType::Op_Assign;
+}
+
 std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {

@@ -30,26 +30,45 @@ Parser::Parser(TokenIterator input_begin,
     m_names_table["max"] = NameType::Funct;
 }
 
-Magnum::Pointer<Expression> Parser::in_literal()
+Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_bind_power)
+{
+    Expression* left_side = in_basic_expression();
+    while(right_bind_power < token->type) {
+        TokenType op = token->type;
+        if(op == TokenType::End_Statement) {
+            break;
+        } else if(!is_operator(op)) {
+            print_error_expected("operator", *token);
+            exit(1);
+        }
+        ++token;
+        Magnum::Pointer<Expression> right_side = parse_expression(op);
+        left_side = new CompositeExpression(Magnum::pointer<Expression>(left_side),
+                                            op, std::move(right_side));
+    }
+    return Magnum::pointer<Expression>(left_side);
+}
+
+Expression* Parser::in_literal()
 {
     const TokenIterator current = token++;
 
     switch(current->type) {
     case TokenType::String_Literal:
-        return Magnum::Pointer<Expression>(new Literal(current->text));
+        return new Literal(current->text);
     case TokenType::Char_Literal:
-        return Magnum::Pointer<Expression>(new Literal(current->text[0]));
+        return new Literal(current->text[0]);
     case TokenType::Int_Literal:
-        return Magnum::Pointer<Expression>(new Literal(std::stoi(current->text)));
+        return new Literal(std::stoi(current->text));
     case TokenType::Float_Literal:
-        return Magnum::Pointer<Expression>(new Literal(std::stof(current->text)));
+        return new Literal(std::stof(current->text));
     default:
         print_error_expected("literal", *current);
         exit(1);
     }
 }
 
-Magnum::Pointer<Expression> Parser::in_lvalue_expression()
+Expression* Parser::in_lvalue_expression()
 {
     const TokenIterator current = token++;
 
@@ -68,12 +87,12 @@ Magnum::Pointer<Expression> Parser::in_lvalue_expression()
         exit(1);
     }
 
-    auto new_lvalue_expr = Magnum::pointer<LValueExpression>();
+    auto new_lvalue_expr = new LValueExpression();
     new_lvalue_expr->name = current->text;
     return new_lvalue_expr;
 }
 
-Magnum::Pointer<Expression> Parser::in_basic_expression()
+Expression* Parser::in_basic_expression()
 {
     // TODO: add support for LValues, too
     switch(token->type) {
@@ -83,53 +102,14 @@ Magnum::Pointer<Expression> Parser::in_basic_expression()
         } else {
             return in_lvalue_expression();
         }
-    case TokenType::Open_Parentheses:
-        return in_parentheses();
     default:
         return in_literal();
     }
 }
 
-Magnum::Pointer<Expression> Parser::in_multiply_divide()
+FunctionCall* Parser::in_function_call()
 {
-    Magnum::Pointer<Expression> left_side = in_basic_expression();
-
-    while(token->type == TokenType::Op_Mult
-          || token->type == TokenType::Op_Div) {
-        TokenType op = token->type;
-        ++token;
-        Magnum::Pointer<Expression> right_side = in_basic_expression();
-        left_side = Magnum::pointer<CompositeExpression>(std::move(left_side), op,
-                                                          std::move(right_side));
-    }
-
-    return left_side;
-}
-
-Magnum::Pointer<Expression> Parser::in_add_subtract()
-{
-    Magnum::Pointer<Expression> left_side = in_multiply_divide();
-
-    while(token->type == TokenType::Op_Plus
-          || token->type == TokenType::Op_Minus) {
-        TokenType op = token->type;
-        ++token;
-        Magnum::Pointer<Expression> right_side = in_multiply_divide();
-        left_side = Magnum::pointer<CompositeExpression>(std::move(left_side), op,
-                                                          std::move(right_side));
-    }
-
-    return left_side;
-}
-
-Magnum::Pointer<Expression> Parser::in_composite_expression()
-{
-    return in_add_subtract();
-}
-
-Magnum::Pointer<FunctionCall> Parser::in_function_call()
-{
-    auto new_function_call = Magnum::pointer<FunctionCall>();
+    auto* new_function_call = new FunctionCall();
 
     if(token->type != TokenType::Name) {
         print_error_expected("function name", *token);
@@ -168,13 +148,14 @@ Magnum::Pointer<FunctionCall> Parser::in_function_call()
             ++token;
             return new_function_call;
         default:
-            new_function_call->arguments.push_back(in_expression());
+            new_function_call->arguments.push_back(parse_expression(token->type));
         }
     }
     print_error(token->line_num, "Function call definition ended early");
     exit(1);
 }
 
+/*
 Magnum::Pointer<Expression> Parser::in_parentheses()
 {
     if(token->type != TokenType::Open_Parentheses) {
@@ -192,22 +173,7 @@ Magnum::Pointer<Expression> Parser::in_parentheses()
     ++token;
     return result;
 }
-
-Magnum::Pointer<Expression> Parser::in_expression()
-{
-    const TokenType next_type = std::next(token)->type;;
-
-    if(token->type == TokenType::Name && next_type == TokenType::Open_Parentheses) {
-        return in_function_call();
-    } else if(next_type == TokenType::Op_Plus || next_type == TokenType::Op_Minus
-              || next_type == TokenType::Op_Div || next_type == TokenType::Op_Mult) {
-        return in_composite_expression();
-    } else {
-        return in_basic_expression();
-    }
-}
-
-
+*/
 
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
@@ -284,7 +250,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     ++token;
     // Set the expression after the assignment operator to be the subexpression
     // in the statement
-    new_statement->expression = in_expression();
+    new_statement->expression = parse_expression();
 
     // in_statement() will check for/eat the semicolon
     return new_statement;
@@ -298,7 +264,7 @@ Magnum::Pointer<Statement> Parser::in_statement()
     if(token->type == TokenType::Keyword_Let) {
         new_statement = in_initialization();
     } else {
-        new_statement->expression = in_expression();
+        new_statement->expression = parse_expression();
     }
 
     if(token->type != TokenType::End_Statement) {

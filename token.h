@@ -18,6 +18,9 @@ enum class TokenType : char {
 };
 
 bool operator<(const TokenType left, const TokenType right);
+bool operator>=(const TokenType left, const TokenType right);
+bool operator<=(const TokenType left, const TokenType right);
+bool is_operator(const TokenType);
 
 struct Token {
     unsigned int line_num;
