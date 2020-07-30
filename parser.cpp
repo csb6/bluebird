@@ -147,7 +147,7 @@ FunctionCall* Parser::in_function_call()
             ++token;
             return new_function_call;
         default:
-            new_function_call->arguments.emplace_back(parse_expression(token->type));
+            new_function_call->arguments.emplace_back(parse_expression(TokenType::Op_Comma));
         }
     }
     print_error(token->line_num, "Function call definition ended early");

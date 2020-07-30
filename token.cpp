@@ -18,9 +18,6 @@ bool operator<=(const TokenType left, const TokenType right)
 
 bool is_operator(const TokenType token)
 {
-    static_assert(char(TokenType::Op_Assign) + 1 == char(TokenType::String_Literal));
-    static_assert(char(TokenType::Op_Plus) - 1 == char(TokenType::Type_Indicator));
-
     return token >= TokenType::Op_Plus && token <= TokenType::Op_Assign;
 }
 

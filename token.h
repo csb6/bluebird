@@ -3,6 +3,8 @@
 #include <string>
 #include <iosfwd>
 
+// NOTE: Order matters here. Don't move these enum values around
+// since their ordering determines precedence
 enum class TokenType : char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Let, Keyword_Const, Keyword_Type,
@@ -11,8 +13,9 @@ enum class TokenType : char {
     Name,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
+    Op_Comma,
     // Operators
-    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Comma, Op_Assign,
+    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Assign,
     // Literals
     String_Literal, Char_Literal, Int_Literal, Float_Literal
 };
