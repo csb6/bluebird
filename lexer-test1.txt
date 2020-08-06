@@ -3,14 +3,15 @@ function main() is
     let a : Natural = 78;
     let b : constant Natural = 6 + 89;
     print('\\');
-    print(346'000'000);
-    1 + 1'0000 + 67 + 56 + 0 - 6 / print(89);
-    print(100'000.08);
+    print(346_000_000);
+    1 + 1_0000 + 67 + 56 + 0 - 6 / print(89);
+    print(100_000.08);
     1 + 1 + print("ayy");
     foo();
 end main;
 
 function foo() is
+    let hello_world : Natural = 89;
     print(print("No"));
     print("Yes");
     print(98 + 89);

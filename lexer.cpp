@@ -41,72 +41,74 @@ void Lexer::run()
                 // Found a number literal
                 curr_state = State::InNumber;
                 token_text += curr;
-            }
-
-            switch(curr) {
-            case ';':
-                // Found end of a statement
-                m_tokens.emplace_back(line_num, TokenType::End_Statement);
-                break;
-            case '"':
-                // Found start of a string literal
-                curr_state = State::InString;
-                break;
-            case '\'':
-                // Found start of a char literal
-                curr_state = State::InChar;
-                break;
-            case '(':
-                // Open parentheses
-                m_tokens.emplace_back(line_num, TokenType::Open_Parentheses);
-                break;
-            case ')':
-                // Closed parentheses
-                m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
-                break;
-            // Arithmetic operators
-            case '+':
-                m_tokens.emplace_back(line_num, TokenType::Op_Plus);
-                break;
-            case '-':
-                m_tokens.emplace_back(line_num, TokenType::Op_Minus);
-                break;
-            case '/':
-                switch(*std::next(input_iter)) {
+            } else {
+                switch(curr) {
+                case ';':
+                    // Found end of a statement
+                    m_tokens.emplace_back(line_num, TokenType::End_Statement);
+                    break;
+                case '"':
+                    // Found start of a string literal
+                    curr_state = State::InString;
+                    break;
+                case '\'':
+                    // Found start of a char literal
+                    curr_state = State::InChar;
+                    break;
+                case '(':
+                    // Open parentheses
+                    m_tokens.emplace_back(line_num, TokenType::Open_Parentheses);
+                    break;
+                case ')':
+                    // Closed parentheses
+                    m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
+                    break;
+                    // Arithmetic operators
+                case '+':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Plus);
+                    break;
+                case '-':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Minus);
+                    break;
                 case '/':
-                    ++input_iter;
-                    // Ignore single-line comments
-                    while(*input_iter != '\n')
+                    switch(*std::next(input_iter)) {
+                    case '/':
                         ++input_iter;
+                        // Ignore single-line comments
+                        while(*input_iter != '\n')
+                            ++input_iter;
+                        break;
+                    case '*':
+                        // Multi-line comment
+                        curr_state = State::InComment;
+                        break;
+                    default:
+                        // Division operator
+                        m_tokens.emplace_back(line_num, TokenType::Op_Div);
+                        break;
+                    }
                     break;
                 case '*':
-                    // Multi-line comment
-                    curr_state = State::InComment;
+                    m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                     break;
-                default:
-                    // Division operator
-                    m_tokens.emplace_back(line_num, TokenType::Op_Div);
+                    // Comma operator (for separating arguments in functions, etc.)
+                case ',':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Comma);
+                    break;
+                    // Assignment operator
+                case '=':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Assign);
+                    break;
+                    // Type indicator 
+                case ':':
+                    m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
                     break;
                 }
-                break;
-            case '*':
-                m_tokens.emplace_back(line_num, TokenType::Op_Mult);
-                break;
-            // Comma operator (for separating arguments in functions, etc.)
-            case ',':
-                m_tokens.emplace_back(line_num, TokenType::Op_Comma);
-                break;
-            // Assignment operator
-            case '=':
-                m_tokens.emplace_back(line_num, TokenType::Op_Assign);
-                break;
-            // Type indicator 
-            case ':':
-                m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
             }
             break;
         case State::InIdentifier:
-            if(!std::isalpha(curr) || curr == '_') {
+            // Identifiers can have letters/underscores in them, but not as 1st letter
+            if(!std::isalpha(curr) && curr != '_') {
                 if(identifier_table.count(token_text) > 0) {
                     // Found a keyword
                     m_tokens.emplace_back(line_num, identifier_table[token_text]);
@@ -153,8 +155,8 @@ void Lexer::run()
             if(std::isdigit(curr) || curr == '.') {
                 // Allow for numbers with decimal points, too
                 token_text += curr;
-            } else if(curr != '\'') {
-                // '\'' is a divider; ignore, used only for readability
+            } else if(curr != '_') {
+                // '_' is a divider; ignore, used only for readability
                 // End of the digit
                 if(token_text.find('.') == std::string::npos)
                     m_tokens.emplace_back(line_num, TokenType::Int_Literal, token_text);
