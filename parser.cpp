@@ -30,10 +30,12 @@ Parser::Parser(TokenIterator input_begin,
     m_names_table["max"] = NameType::Funct;
 }
 
-Expression* Parser::parse_expression(TokenType right_bind_power)
+Expression* Parser::parse_expression(TokenType right_token)
 {
     Expression* left_side = in_expression();
-    while(right_bind_power < token->type && token->type != TokenType::End_Statement) {
+    const Precedence right_precedence = precedence_of(right_token);
+    Precedence curr_precedence = precedence_of(token->type);
+    while(right_precedence < curr_precedence && token->type != TokenType::End_Statement) {
         TokenType op = token->type;
         if(!is_operator(op)) {
             print_error_expected("operator", *token);
@@ -43,6 +45,7 @@ Expression* Parser::parse_expression(TokenType right_bind_power)
         Expression* right_side = parse_expression(op);
         left_side = new CompositeExpression(Magnum::pointer<Expression>(left_side),
                                             op, Magnum::pointer<Expression>(right_side));
+        curr_precedence = precedence_of(token->type);
     }
     return left_side;
 }

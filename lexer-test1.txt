@@ -6,7 +6,7 @@ function main() is
     print(346'000'000);
     1 + 1'0000 + 67 + 56 + 0 - 6 / print(89);
     print(100'000.08);
-    1 + 1;
+    1 + 1 + print("ayy");
     foo();
 end main;
 

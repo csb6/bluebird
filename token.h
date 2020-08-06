@@ -3,8 +3,6 @@
 #include <string>
 #include <iosfwd>
 
-// NOTE: Order matters here. Don't move these enum values around
-// since their ordering determines precedence
 enum class TokenType : char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Let, Keyword_Const, Keyword_Type,
@@ -20,10 +18,74 @@ enum class TokenType : char {
     String_Literal, Char_Literal, Int_Literal, Float_Literal
 };
 
-bool operator<(const TokenType left, const TokenType right);
-bool operator>=(const TokenType left, const TokenType right);
-bool operator<=(const TokenType left, const TokenType right);
-bool is_operator(const TokenType);
+using Precedence = char;
+constexpr Precedence Invalid_Operator = -2;
+constexpr Precedence Literal_Token = 100;
+
+constexpr Precedence operator_precedence_table[] = {
+    // Keywords
+    //  Keyword_Funct:
+         Invalid_Operator,
+    //  Keyword_Is:
+         Invalid_Operator,
+    //  Keyword_Let:
+         Invalid_Operator,
+    //  Keyword_Const:
+         Invalid_Operator,
+    //  Keyword_Type:
+         Invalid_Operator,
+    //  Keyword_Ct_Funct:
+         Invalid_Operator,
+    //  Keyword_End:
+         Invalid_Operator,
+    // Identifiers
+    //  Name:
+         Invalid_Operator,
+    // Non-operator symbols
+    //  Open_Parentheses:
+         Invalid_Operator,
+    //  Closed_Parentheses:
+         Invalid_Operator,
+    //  End_Statement:
+         Invalid_Operator,
+    //  Type_Indicator:
+         Invalid_Operator,
+    //  Op_Comma:
+         Invalid_Operator,
+    // Operators
+    //  Op_Plus:
+         0,
+    //  Op_Minus:
+         0,
+    //  Op_Div:
+         1,
+    //  Op_Mult:
+         1,
+    //  Op_Assign:
+         2,
+    // Literals
+    //  String_Literal:
+         Literal_Token,
+    //  Char_Literal:
+         Literal_Token,
+    //  Int_Literal:
+         Literal_Token,
+    //  Float_Literal:
+         Literal_Token
+};
+
+static_assert(sizeof(operator_precedence_table) / sizeof(operator_precedence_table[0]) == 22, "Table out-of-sync with TokenType enum");
+
+constexpr Precedence precedence_of(const TokenType index)
+{
+    return operator_precedence_table[int(index)];
+}
+
+constexpr bool is_operator(const TokenType token)
+{
+    const Precedence p = precedence_of(token);
+    return p != Invalid_Operator && p != Literal_Token;
+}
 
 struct Token {
     unsigned int line_num;
