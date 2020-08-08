@@ -13,6 +13,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Is:
         output << "Keyword `is`";
         break;
+    case TokenType::Keyword_Do:
+        output << "Keyword `do`";
+        break;
     case TokenType::Keyword_Let:
         output << "Keyword `let`";
         break;
@@ -30,6 +33,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         break;
     case TokenType::Keyword_End:
         output << "Keyword `end`";
+        break;
+    case TokenType::Keyword_If:
+        output << "Keyword `if`";
+        break;
+    case TokenType::Keyword_Else:
+        output << "Keyword `else`";
         break;
     case TokenType::End_Statement:
         output << "End Statement Marker (a.k.a `;`)";

@@ -73,19 +73,30 @@ struct LValue {
 // of one or more expressions
 struct Statement {
     virtual ~Statement() {}
+    virtual void print(std::ostream&) const = 0;
+};
+
+// A brief, usually one-line statement that holds a single expression
+struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
-    virtual void print(std::ostream&) const;
+    void print(std::ostream& output) const override;
 };
 
 // Statement where a new variable is declared and assigned the
 // value of some expression
-struct Initialization : public Statement {
+struct Initialization : public BasicStatement {
     LValue* target;
     void print(std::ostream& output) const override
     {
         target->print(output);
-        Statement::print(output);
+        BasicStatement::print(output);
     }
+};
+
+struct IfBlock : public Statement {
+    Magnum::Pointer<Expression> condition;
+    std::vector<Magnum::Pointer<Statement>> statements;
+    void print(std::ostream& output) const override;
 };
 
 // A procedure containing statements and optionally inputs/outputs
@@ -103,7 +114,7 @@ struct Type {
 };
 
 // A lazily-evaluated sequence of number-like objects
-// Upped/lower bounds are inclusive
+// Upper/lower bounds are inclusive
 struct Range {
     long lower_bound, upper_bound;
     bool contains(long value) const;
@@ -137,8 +148,10 @@ private:
     Expression* in_expression();
     FunctionCall* in_function_call();
     // Handle each type of statement
-    Magnum::Pointer<Initialization> in_initialization();
     Magnum::Pointer<Statement> in_statement();
+    Magnum::Pointer<BasicStatement> in_basic_statement();
+    Magnum::Pointer<Initialization> in_initialization();
+    Magnum::Pointer<IfBlock> in_if_block();
     // Handle each function definition
     void in_function_definition();
     // Types

@@ -243,6 +243,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     ++token;
     if(token->type == TokenType::End_Statement) {
         // Declaration is valid, just no initial value was set
+        ++token;
         return new_statement;
     } else if(token->type != TokenType::Op_Assign) {
         print_error_expected("assignment operator or ';'", *token);
@@ -254,20 +255,27 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     // in the statement
     new_statement->expression = Magnum::pointer<Expression>(parse_expression());
 
-    // in_statement() will check for/eat the semicolon
+    ++token;
     return new_statement;
 }
 
-// TODO: fix bug (remove semicolon from parser-test:8, run to see no error)
 Magnum::Pointer<Statement> Parser::in_statement()
 {
-    auto new_statement = Magnum::pointer<Statement>();
+    switch(token->type) {
+    case TokenType::Keyword_If:
+        return in_if_block();
+    case TokenType::Keyword_Let:
+        return in_initialization();
+    default:
+        return in_basic_statement();
+    };
+}
 
-    if(token->type == TokenType::Keyword_Let) {
-        new_statement = in_initialization();
-    } else {
-        new_statement->expression = Magnum::pointer<Expression>(parse_expression());
-    }
+// TODO: fix bug (remove semicolon from parser-test:8, run to see no error)
+Magnum::Pointer<BasicStatement> Parser::in_basic_statement()
+{
+    auto new_statement = Magnum::pointer<BasicStatement>();
+    new_statement->expression = Magnum::pointer<Expression>(parse_expression());
 
     if(token->type != TokenType::End_Statement) {
         print_error_expected("end of statement (a.k.a. `;`)", *token);
@@ -276,6 +284,66 @@ Magnum::Pointer<Statement> Parser::in_statement()
 
     ++token;
     return new_statement;
+}
+
+Magnum::Pointer<IfBlock> Parser::in_if_block()
+{
+    if(token->type != TokenType::Keyword_If) {
+        print_error_expected("keyword if", *token);
+        exit(1);
+    }
+
+    ++token;
+    if(token->type != TokenType::Open_Parentheses) {
+        print_error_expected("`(`", *token);
+        exit(1);
+    }
+
+    ++token;
+    auto new_block = Magnum::pointer<IfBlock>();
+    
+    // First, parse the if-condition
+    new_block->condition = Magnum::pointer<Expression>(
+        parse_expression(TokenType::Closed_Parentheses));
+
+    if(token->type != TokenType::Closed_Parentheses) {
+        print_error_expected("`)` to close `if` condition", *token);
+        exit(1);
+    }
+
+    ++token;
+    if(token->type != TokenType::Keyword_Do) {
+        print_error_expected("keyword `do`", *token);
+        exit(1);
+    }
+
+    // Next, parse the statements inside the if-block
+    ++token;
+    while(token != m_input_end) {
+        if(token->type != TokenType::Keyword_End) {
+            // Found a statement, parse it
+            new_block->statements.push_back(in_statement());
+        } else {
+            // End of block (TODO: close scope here)
+            ++token; // Take the `if` associated with `end`
+            if(token->type != TokenType::Keyword_If) {
+                print_error(token->line_num,
+                            "No closing `end if` for if-block");
+                exit(1);
+            }
+
+            ++token;
+            if(token->type != TokenType::End_Statement) {
+                print_error_expected("end of statement (a.k.a. `;`)", *token);
+                exit(1);
+            }
+
+            ++token;
+            break;
+        }
+    }
+
+    return new_block;
 }
 
 void Parser::in_function_definition()
@@ -455,7 +523,7 @@ void FunctionCall::print(std::ostream& output) const
     output << ')';
 }
 
-void Statement::print(std::ostream& output) const
+void BasicStatement::print(std::ostream& output) const
 {
     if(expression) {
         output << "Statement:\n";
@@ -463,6 +531,18 @@ void Statement::print(std::ostream& output) const
         output << '\n';
     } else {
         output << "Empty Statement\n";
+    }
+}
+
+void IfBlock::print(std::ostream& output) const
+{
+    output << "If Block:\n";
+    output << "Condition: ";
+    condition->print(output);
+    output << '\n';
+    output << "Block Statements:\n";
+    for(const auto& each : statements) {
+        each->print(output);
     }
 }
 
