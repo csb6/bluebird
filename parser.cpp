@@ -242,8 +242,11 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     }
 
     ++token;
-    if(token->type != TokenType::Op_Assign) {
-        print_error_expected("assignment operator", *token);
+    if(token->type == TokenType::End_Statement) {
+        // Declaration is valid, just no initial value was set
+        return new_statement;
+    } else if(token->type != TokenType::Op_Assign) {
+        print_error_expected("assignment operator or ';'", *token);
         exit(1);
     }
 
@@ -455,9 +458,13 @@ void FunctionCall::print(std::ostream& output) const
 
 void Statement::print(std::ostream& output) const
 {
-    output << "Statement:\n";
-    expression->print(output);
-    output << '\n';
+    if(expression) {
+        output << "Statement:\n";
+        expression->print(output);
+        output << '\n';
+    } else {
+        output << "Empty Statement\n";
+    }
 }
 
 void LValue::print(std::ostream& output) const

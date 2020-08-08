@@ -78,7 +78,6 @@ struct Statement {
     virtual void print(std::ostream&) const;
 };
 
-// TODO: add way to declare an lvalue without assigning initial value
 // Statement where a new variable is declared and assigned the
 // value of some expression
 struct Initialization : public Statement {

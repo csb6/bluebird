@@ -5,8 +5,10 @@ type Natural;
 function foo(a : Natural, b : Integer) is
    let n : constant Number = 45;
    let x : Number = 23;
+   let p : Integer;
    n - x + (n / 4);
    4 + 5 + (9 - 6);
+   let j : Number;
 end foo;
 
 /*Some comment
