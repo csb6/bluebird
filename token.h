@@ -11,7 +11,7 @@ enum class TokenType : char {
     Name,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
-    Op_Comma,
+    Comma,
     // Operators
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Assign,
     // Literals
@@ -50,7 +50,7 @@ constexpr Precedence operator_precedence_table[] = {
          Invalid_Operator,
     //  Type_Indicator:
          Invalid_Operator,
-    //  Op_Comma:
+    //  Comma:
          Invalid_Operator,
     // Operators
     //  Op_Plus:

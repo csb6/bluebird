@@ -63,7 +63,7 @@ void Lexer::run()
                     // Closed parentheses
                     m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
                     break;
-                    // Arithmetic operators
+                // Arithmetic operators
                 case '+':
                     m_tokens.emplace_back(line_num, TokenType::Op_Plus);
                     break;
@@ -91,16 +91,16 @@ void Lexer::run()
                 case '*':
                     m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                     break;
-                    // Comma operator (for separating arguments in functions, etc.)
                 case ',':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Comma);
+                    // Comma marker (for separating arguments in functions, etc.)
+                    m_tokens.emplace_back(line_num, TokenType::Comma);
                     break;
-                    // Assignment operator
                 case '=':
+                    // Assignment operator
                     m_tokens.emplace_back(line_num, TokenType::Op_Assign);
                     break;
-                    // Type indicator 
                 case ':':
+                    // Type indicator
                     m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
                     break;
                 }

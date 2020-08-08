@@ -43,8 +43,7 @@ Expression* Parser::parse_expression(TokenType right_token)
         }
         ++token;
         Expression* right_side = parse_expression(op);
-        left_side = new CompositeExpression(Magnum::pointer<Expression>(left_side),
-                                            op, Magnum::pointer<Expression>(right_side));
+        left_side = new CompositeExpression(left_side, op, right_side);
         curr_precedence = precedence_of(token->type);
     }
     return left_side;
@@ -142,7 +141,7 @@ FunctionCall* Parser::in_function_call()
     ++token;
     while(token != m_input_end) {
         switch(token->type) {
-        case TokenType::Op_Comma:
+        case TokenType::Comma:
             // The comma after an argument expression; continue
             ++token;
             break;
@@ -150,7 +149,7 @@ FunctionCall* Parser::in_function_call()
             ++token;
             return new_function_call;
         default:
-            new_function_call->arguments.emplace_back(parse_expression(TokenType::Op_Comma));
+            new_function_call->arguments.emplace_back(parse_expression(TokenType::Comma));
         }
     }
     print_error(token->line_num, "Function call definition ended early");
@@ -319,7 +318,7 @@ void Parser::in_function_definition()
             if(token->type == TokenType::Closed_Parentheses) {
                 // Put back so next iteration can handle end of parameter list
                 --token;
-            } else if(token->type != TokenType::Op_Comma) {
+            } else if(token->type != TokenType::Comma) {
                 print_error_expected("comma to follow the parameter", *token);
                 exit(1);
             }
@@ -432,9 +431,9 @@ void LValueExpression::print(std::ostream& output) const
     output << "LValueExpr: " << name << '\n';
 }
 
-CompositeExpression::CompositeExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
-                                         Magnum::Pointer<Expression>&& r)
-    : left(std::move(l)), op(oper), right(std::move(r))
+CompositeExpression::CompositeExpression(Expression* l, TokenType oper,
+                                         Expression* r)
+    : left(l), op(oper), right(r)
 {}
 
 void CompositeExpression::print(std::ostream& output) const

@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Mult:
         output << "Multiplication operator";
         break;
-    case TokenType::Op_Comma:
+    case TokenType::Comma:
         output << "Comma marker";
         break;
     case TokenType::Op_Assign:

@@ -47,8 +47,7 @@ struct CompositeExpression : public Expression {
     TokenType op;
     Magnum::Pointer<Expression> right;
 
-    CompositeExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
-                        Magnum::Pointer<Expression>&& r);
+    CompositeExpression(Expression* l, TokenType oper, Expression* r);
     bool is_composite() const override { return true; }
     void print(std::ostream&) const override;
 };
