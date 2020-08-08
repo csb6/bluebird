@@ -7,20 +7,18 @@ enum class TokenType : char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
     Keyword_Ct_Funct, Keyword_End, Keyword_If, Keyword_Else,
-    // Identifiers
-    Name,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma,
     // Operators
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Assign,
     // Literals
-    String_Literal, Char_Literal, Int_Literal, Float_Literal
+    String_Literal, Char_Literal, Int_Literal, Float_Literal, Name
 };
 
 using Precedence = char;
 constexpr Precedence Invalid_Operator = -2;
-constexpr Precedence Literal_Token = 100;
+constexpr Precedence Operand = 100;
 
 constexpr Precedence operator_precedence_table[] = {
     // Keywords
@@ -43,9 +41,6 @@ constexpr Precedence operator_precedence_table[] = {
     //   Keyword_If
          Invalid_Operator,
     //   Keyword_Else
-         Invalid_Operator,
-    // Identifiers
-    //  Name:
          Invalid_Operator,
     // Non-operator symbols
     //  Open_Parentheses:
@@ -71,13 +66,15 @@ constexpr Precedence operator_precedence_table[] = {
          2,
     // Literals
     //  String_Literal:
-         Literal_Token,
+         Operand,
     //  Char_Literal:
-         Literal_Token,
+         Operand,
     //  Int_Literal:
-         Literal_Token,
+         Operand,
     //  Float_Literal:
-         Literal_Token
+         Operand,
+    //  Name:
+         Operand
 };
 
 static_assert(sizeof(operator_precedence_table) / sizeof(operator_precedence_table[0]) == 25, "Table out-of-sync with TokenType enum");
@@ -90,7 +87,7 @@ constexpr Precedence precedence_of(const TokenType index)
 constexpr bool is_operator(const TokenType token)
 {
     const Precedence p = precedence_of(token);
-    return p != Invalid_Operator && p != Literal_Token;
+    return p >= 0 && p != Operand;
 }
 
 struct Token {

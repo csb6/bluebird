@@ -544,6 +544,7 @@ void IfBlock::print(std::ostream& output) const
     for(const auto& each : statements) {
         each->print(output);
     }
+    output << '\n';
 }
 
 void LValue::print(std::ostream& output) const
