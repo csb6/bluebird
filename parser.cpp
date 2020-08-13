@@ -60,7 +60,7 @@ Expression* Parser::in_literal()
     case TokenType::Int_Literal:
         return new Literal(std::stoi(current->text));
     case TokenType::Float_Literal:
-        return new Literal(std::stof(current->text));
+        return new Literal(std::stod(current->text));
     default:
         print_error_expected("literal", *current);
         exit(1);

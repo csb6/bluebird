@@ -23,6 +23,16 @@ private:
 
     const std::vector<Function>& m_functions;
     std::unordered_map<std::string, llvm::Type*> m_types;
+
+    // Generate code for expressions
+    llvm::Value* in_expression(const Expression*);
+    llvm::Value* in_string_literal(const Expression*);
+    llvm::Value* in_char_literal(const Expression*);
+    llvm::Value* in_int_literal(const Expression*);
+    llvm::Value* in_float_literal(const Expression*);
+    llvm::Value* in_lvalue_expression(const Expression*);
+    llvm::Value* in_composite_expression(const Expression*);
+    llvm::Value* in_function_call(const Expression*);
 public:
     CodeGenerator(const std::vector<Function>&, const std::vector<Type>&);
     void run();
