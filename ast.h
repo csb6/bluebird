@@ -10,6 +10,11 @@
 
 namespace Magnum = Corrade::Containers;
 
+enum class NameType : char {
+    LValue, Funct, DeclaredFunct,
+    Type, DeclaredType
+};
+
 // An abstract object or non-standalone group of expressions
 struct Expression {
     virtual ~Expression() {}
@@ -81,7 +86,7 @@ struct BasicStatement : public Statement {
     void print(std::ostream& output) const override;
 };
 
-// Statement where a new variable is declared and assigned the
+// Statement where a new variable is declared and optionally assigned the
 // value of some expression
 struct Initialization : public BasicStatement {
     LValue* target;

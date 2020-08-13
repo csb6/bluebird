@@ -8,11 +8,6 @@
 #include <CorradePointer.h>
 #include <iosfwd>
 
-enum class NameType : char {
-    LValue, Funct, DeclaredFunct,
-    Type, DeclaredType
-};
-
 class Parser {
 public:
     using TokenIterator = std::vector<Token>::const_iterator;
@@ -47,6 +42,10 @@ public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
     void run();
+    const auto& functions() const { return m_functions; }
+    const auto& types() const { return m_types; }
+    const auto& names_table() const { return m_names_table; }
+    
     friend std::ostream& operator<<(std::ostream&, const Parser&);
 };
 #endif

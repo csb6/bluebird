@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "parser.h"
+#include "codegenerator.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -27,6 +28,9 @@ int main(int argc, char **argv)
 
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
+
+    CodeGenerator codegen{parser.functions(), parser.types()};
+    codegen.run();
 
     std::cout << parser << '\n';
 
