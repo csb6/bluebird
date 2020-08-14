@@ -50,58 +50,58 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "Keyword `ct_funct`";
         break;
     case TokenType::Op_Plus:
-        output << "Addition operator";
+        output << '+';
         break;
     case TokenType::Op_Minus:
-        output << "Subtraction operator";
+        output << '-';
         break;
     case TokenType::Op_Div:
-        output << "Division operator";
+        output << '/';
         break;
     case TokenType::Op_Mult:
-        output << "Multiplication operator";
+        output << '*';
         break;
     case TokenType::Op_Mod:
-        output << "Mod operator";
+        output << '%';
         break;
     case TokenType::Op_And:
-        output << "logical AND operator";
+        output << "and";
         break;
     case TokenType::Op_Or:
-        output << "logical OR operator";
+        output << "or";
         break;
     case TokenType::Op_Eq:
-        output << "Equals operator";
+        output << "==";
         break;
     case TokenType::Op_Ne:
-        output << "Not-equals operator";
+        output << "!=";
         break;
     case TokenType::Op_Lt:
-        output << "Less-than operator";
+        output << '<';
         break;
     case TokenType::Op_Gt:
-        output << "Greater-than operator";
+        output << '>';
         break;
     case TokenType::Op_Le:
-        output << "Less-than-or-equal operator";
+        output << "<=";
         break;
     case TokenType::Op_Ge:
-        output << "Greater-than-or-equal operator";
+        output << ">=";
         break;
     case TokenType::Op_Left_Shift:
-        output << "Left-shift operator";
+        output << "<<";
         break;
     case TokenType::Op_Right_Shift:
-        output << "Right-shift operator";
+        output << ">>";
         break;
     case TokenType::Op_Bit_And:
-        output << "Bitwise-AND operator";
+        output << '&';
         break;
     case TokenType::Op_Bit_Or:
-        output << "Bitwise-OR operator";
+        output << '|';
         break;
     case TokenType::Op_Bit_Xor:
-        output << "Bitwise-XOR operator";
+        output << '^';
         break;
     case TokenType::Comma:
         output << "Comma marker";
