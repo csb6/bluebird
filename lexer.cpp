@@ -11,7 +11,9 @@ std::unordered_map<std::string, TokenType> identifier_table = {
     {"type", TokenType::Keyword_Type},
     {"function", TokenType::Keyword_Funct},
     {"ct_function", TokenType::Keyword_Ct_Funct},
-    {"end", TokenType::Keyword_End}
+    {"end", TokenType::Keyword_End},
+    {"and", TokenType::Op_And},
+    {"or", TokenType::Op_Or}
 };
 
 enum class State : char {
@@ -93,13 +95,82 @@ void Lexer::run()
                 case '*':
                     m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                     break;
+                case '%':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Mod);
+                    break;
+                // Bitwise operators 
+                case '&':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_And);
+                    break;
+                case '|':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Or);
+                    break;
+                case '^':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Xor);
+                    break;
+                // More operators 
+                case '<':
+                    switch(*std::next(input_iter)) {
+                    case '<':
+                        // "<<"
+                        m_tokens.emplace_back(line_num, TokenType::Op_Left_Shift);
+                        ++input_iter;
+                        break;
+                    case '=':
+                        // "<="
+                        m_tokens.emplace_back(line_num, TokenType::Op_Le);
+                        ++input_iter;
+                        break;
+                    default:
+                        // "<"
+                        m_tokens.emplace_back(line_num, TokenType::Op_Lt);
+                        break;
+                    }
+                    break;
+                case '>':
+                    switch(*std::next(input_iter)) {
+                    case '>':
+                        // ">>"
+                        m_tokens.emplace_back(line_num, TokenType::Op_Right_Shift);
+                        ++input_iter;
+                        break;
+                    case '=':
+                        // ">="
+                        m_tokens.emplace_back(line_num, TokenType::Op_Ge);
+                        ++input_iter;
+                        break;
+                    default:
+                        // ">"
+                        m_tokens.emplace_back(line_num, TokenType::Op_Gt);
+                        break;
+                    }
+                    break;
+                case '!':
+                    if(*std::next(input_iter) == '=') {
+                        m_tokens.emplace_back(line_num, TokenType::Op_Ne);
+                        ++input_iter;
+                    } else {
+                        std::cerr << "Line " << line_num << ": Invalid operator: '!"
+                                  << *std::next(input_iter)  << "'\n";
+                        exit(1);
+                    }
+                    break;
                 case ',':
                     // Comma marker (for separating arguments in functions, etc.)
                     m_tokens.emplace_back(line_num, TokenType::Comma);
                     break;
                 case '=':
-                    // Assignment operator
-                    m_tokens.emplace_back(line_num, TokenType::Op_Assign);
+                    switch(*std::next(input_iter)) {
+                    case '=':
+                        // "=="
+                        m_tokens.emplace_back(line_num, TokenType::Op_Eq);
+                        ++input_iter;
+                        break;
+                    default:
+                        // Assignment operator
+                        m_tokens.emplace_back(line_num, TokenType::Op_Assign);
+                        break;
+                    }
                     break;
                 case ':':
                     // Type indicator
@@ -186,6 +257,7 @@ void Lexer::run()
 
     if(!token_text.empty()) {
         std::cerr << "Incomplete token: " << token_text << '\n';
+        exit(1);
     }
 }
 

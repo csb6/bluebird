@@ -11,8 +11,18 @@ enum class TokenType : char {
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma,
     // Operators
-    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Assign,
-    // Literals
+    //  Arithmetic
+    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod,
+    //  Logical
+    Op_And, Op_Or,
+    //  Comparison
+    Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge,
+    //  Bitwise
+    Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor,
+    // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt
+    //  parser code and not subject to precedence rules/table)
+    Op_Assign,
+    // Operands
     String_Literal, Char_Literal, Int_Literal, Float_Literal, Name
 };
 
@@ -54,17 +64,50 @@ constexpr Precedence operator_precedence_table[] = {
     //  Comma:
          Invalid_Operator,
     // Operators
-    //  Op_Plus:
-         0,
-    //  Op_Minus:
-         0,
-    //  Op_Div:
-         1,
-    //  Op_Mult:
-         1,
+    //  Arithmetic
+    //   Op_Plus:
+          14,
+    //   Op_Minus:
+          14,
+    //   Op_Div:
+          15,
+    //   Op_Mult:
+          15,
+    //   Op_Mod:
+          15,
+    //  Logical
+    //   Op_And:
+          7,
+    //   Op_Or:
+          6,
+    //  Comparison
+    //   Op_Eq:
+          11,
+    //   Op_Ne:
+          11,
+    //   Op_Lt:
+          12,
+    //   Op_Gt:
+          12,
+    //   Op_Le:
+          12,
+    //   Op_Ge:
+          12,
+    //  Bitwise
+    //   Op_Left_Shift:
+          13,
+    //   Op_Right_Shift:
+          13,
+    //   Op_Bit_And:
+          10,
+    //   Op_Bit_Or:
+          8,
+    //   Op_Bit_Xor:
+          9,
+    // Pseudo-Operators
     //  Op_Assign:
-         2,
-    // Literals
+         Invalid_Operator,
+    // Operands
     //  String_Literal:
          Operand,
     //  Char_Literal:
@@ -77,7 +120,7 @@ constexpr Precedence operator_precedence_table[] = {
          Operand
 };
 
-static_assert(sizeof(operator_precedence_table) / sizeof(operator_precedence_table[0]) == 25, "Table out-of-sync with TokenType enum");
+static_assert(sizeof(operator_precedence_table) / sizeof(operator_precedence_table[0]) == 39, "Table out-of-sync with TokenType enum");
 
 constexpr Precedence precedence_of(const TokenType index)
 {

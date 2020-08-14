@@ -61,6 +61,48 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Mult:
         output << "Multiplication operator";
         break;
+    case TokenType::Op_Mod:
+        output << "Mod operator";
+        break;
+    case TokenType::Op_And:
+        output << "logical AND operator";
+        break;
+    case TokenType::Op_Or:
+        output << "logical OR operator";
+        break;
+    case TokenType::Op_Eq:
+        output << "Equals operator";
+        break;
+    case TokenType::Op_Ne:
+        output << "Not-equals operator";
+        break;
+    case TokenType::Op_Lt:
+        output << "Less-than operator";
+        break;
+    case TokenType::Op_Gt:
+        output << "Greater-than operator";
+        break;
+    case TokenType::Op_Le:
+        output << "Less-than-or-equal operator";
+        break;
+    case TokenType::Op_Ge:
+        output << "Greater-than-or-equal operator";
+        break;
+    case TokenType::Op_Left_Shift:
+        output << "Left-shift operator";
+        break;
+    case TokenType::Op_Right_Shift:
+        output << "Right-shift operator";
+        break;
+    case TokenType::Op_Bit_And:
+        output << "Bitwise-AND operator";
+        break;
+    case TokenType::Op_Bit_Or:
+        output << "Bitwise-OR operator";
+        break;
+    case TokenType::Op_Bit_Xor:
+        output << "Bitwise-XOR operator";
+        break;
     case TokenType::Comma:
         output << "Comma marker";
         break;

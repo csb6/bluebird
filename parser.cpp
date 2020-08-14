@@ -332,12 +332,6 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
             }
 
             ++token;
-            if(token->type != TokenType::End_Statement) {
-                print_error_expected("end of statement (a.k.a. `;`)", *token);
-                exit(1);
-            }
-
-            ++token;
             break;
         }
     }
