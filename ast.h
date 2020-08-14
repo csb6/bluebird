@@ -32,6 +32,8 @@ struct Expression {
     virtual void print(std::ostream&) const = 0;
 };
 
+// These typedefs used in codegenerator.cpp to keep the T type in Literal<T>
+// in sync with the casting/representation in the codegen stage
 using StringLiteral_t = std::string;
 using CharLiteral_t = char;
 using IntLiteral_t = int;

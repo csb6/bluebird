@@ -1,12 +1,65 @@
 - Imperative language
 - Generic programming
-- Compiles to C++
-- As much as possible is contained in compile-time functions, not in
-modifiers/keywords
+  - C++-like instantiation of generics so that code is generated for each new type
+    instantiation.
+      - To reduce code bloat, consider reusing prior instantiations of different types
+        if they have the same size as the current type (e.g. reuse same instructions for
+        foo<char>() and foo<bool>() if both are 1-byte in size)
+      - Syntax: first-class types, where (at least initially) all type parameters must
+        be constant expressions
+        Example:
+          function add(t : Type, a : Int, b : Int) {...}
+          add(int, 3, 4));
+      - Have named 'concepts' that can constrain the kinds of types allowed. Provide
+        some basic concepts (e.g. for numeric types) and some way of enforcing a set
+        of operations/an interface for the passed-in type
+        Example:
+          concept NumberStack is
+          requires
+            // List various predicates that must hold true. Each statement will
+            // be AND-ed together
+            NumberStack = GeneralStack or GeneralStack'Is_Ancestor(NumberStack);
+          implements
+            // List various operations that must exist
+            function push(s : NumberStack, a : Number);
+            function pop(s : NumberStack) return Number; // Number is a concept, too
+            function peek(s : NumberStack) return Number;
+          end concept;
+          
+- LLVM backend
+- As much as possible is evaluated/available at compile-time
+  - Not so much like C++ constexpr or Jai's full-on interpreter, but more along
+    the lines of Ada's attributes (e.g. Integer'Range, Integer'First) or some
+    partial evaluation (e.g. function a(x, y) {...} let a2 = specialize(a(2, _)).
+  - Also want some basic compile-time constant expression evaluation and some sort
+    of "function" or macro thing that can do some limited form of constexpr stuff
+    (e.g. ct_function ctrl(x) { return x & 0x1f } .... switch { case ctrl('x'):...}
 
 
 Syntax ideas:
 - Ada-inspired (use of end, is, etc.), but fewer uses of packages/nested packages.
+
+Operators
+- Binary
+  Arithmetic: +, -, *, /, %
+  Logical (all are short-circuited): and, or
+  Comparison: =, <=, >=, >, <, !=
+  Bitwise (same as in C, not short-circuited): <<, >>, |, &, ^
+  Assignment: :=, +=, -=, *=, /=, %=, |=, &=, ^=
+
+- Unary
+  Arithmetic: -
+  Logical: not
+  Bitwise (same as in C): ~
+
+- Other
+  Call/subscript operator: ()
+  Dot operator (for denoting package access, eventually "methods", with UFCS): .
+  Membership (for types/ranges): in, not in
+  Ranges (like `..` and `...` in Ruby): thru, upto
+  Example:
+    a(1 thru 7) // Inclusive 1 to 7; in math: [1, 7]
+    a(1 upto 7) // Exclusive 1 to 7; in math: [1, 7)
 
 Simple program:
 
