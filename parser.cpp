@@ -3,45 +3,42 @@
 #include <iostream>
 
 using Precedence = char;
-constexpr Precedence Invalid_Operator = -2;
-// Not errors, but unary's aren't directly handled by Pratt parser/normal precedence rules
-// Instead, they are parsed along with the operator they precede
-constexpr Precedence Unary_Operator = -3; 
+constexpr Precedence Invalid_Binary_Operator = -2;
 constexpr Precedence Operand = 100;
 
 constexpr Precedence operator_precedence_table[] = {
     // Keywords
     //  Keyword_Funct:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_Is:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     // Keyword_Do:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_Let:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_Const:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_Type:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_Ct_Funct:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Keyword_End:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //   Keyword_If
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //   Keyword_Else
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     // Non-operator symbols
     //  Open_Parentheses:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Closed_Parentheses:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  End_Statement:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Type_Indicator:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     //  Comma:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     // Operators
     //  Arithmetic
     //   Op_Plus:
@@ -60,7 +57,7 @@ constexpr Precedence operator_precedence_table[] = {
     //   Op_Or:
           6,
     //   Op_Not:
-          Unary_Operator,
+          Invalid_Binary_Operator,
     //  Comparison
     //   Op_Eq:
           11,
@@ -86,10 +83,10 @@ constexpr Precedence operator_precedence_table[] = {
     //   Op_Bit_Xor:
           9,
     //   Op_Bit_Not:
-          Unary_Operator,
+          Invalid_Binary_Operator,
     // Pseudo-Operators
     //  Op_Assign:
-         Invalid_Operator,
+         Invalid_Binary_Operator,
     // Operands
     //  String_Literal:
          Operand,

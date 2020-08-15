@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "parser.h"
+#include "checker.h"
 #include "codegenerator.h"
 #include <fstream>
 #include <iostream>
@@ -28,6 +29,9 @@ int main(int argc, char **argv)
 
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
+    
+    Checker checker{parser.functions(), parser.types(), parser.names_table()};
+    checker.run();
 
     CodeGenerator codegen{parser.functions(), parser.types()};
     codegen.run();

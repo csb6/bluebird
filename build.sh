@@ -9,4 +9,4 @@ flags="-std=c++17 -Wall -Wextra -pedantic-errors"
 include_paths="third_party"
 exe_name=compiler
 
-$compiler $llvm_flags $flags $@ -I$include_paths -o $exe_name main.cpp lexer.cpp parser.cpp token.cpp ast.cpp codegenerator.cpp
+$compiler $llvm_flags $flags $@ -I$include_paths -o $exe_name main.cpp lexer.cpp parser.cpp token.cpp ast.cpp checker.cpp codegenerator.cpp
