@@ -11,12 +11,12 @@ void LValueExpression::print(std::ostream& output) const
     output << "LValueExpr: " << name << '\n';
 }
 
-CompositeExpression::CompositeExpression(Expression* l, TokenType oper,
-                                         Expression* r)
+BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
+                                   Expression* r)
     : left(l), op(oper), right(r)
 {}
 
-void CompositeExpression::print(std::ostream& output) const
+void BinaryExpression::print(std::ostream& output) const
 {
     output << '(';
     left->print(output);

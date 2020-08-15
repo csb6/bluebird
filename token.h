@@ -14,7 +14,7 @@ enum class TokenType : char {
     //  Arithmetic
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod,
     //  Logical
-    Op_And, Op_Or,
+    Op_And, Op_Or, Op_Not,
     //  Comparison
     Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge,
     //  Bitwise

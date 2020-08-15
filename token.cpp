@@ -70,6 +70,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Or:
         output << "or";
         break;
+    case TokenType::Op_Not:
+        output << "not";
+        break;
     case TokenType::Op_Eq:
         output << "==";
         break;

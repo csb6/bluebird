@@ -13,7 +13,8 @@ std::unordered_map<std::string, TokenType> identifier_table = {
     {"ct_function", TokenType::Keyword_Ct_Funct},
     {"end", TokenType::Keyword_End},
     {"and", TokenType::Op_And},
-    {"or", TokenType::Op_Or}
+    {"or", TokenType::Op_Or},
+    {"not", TokenType::Op_Not}
 };
 
 enum class State : char {

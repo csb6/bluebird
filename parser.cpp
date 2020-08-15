@@ -56,6 +56,8 @@ constexpr Precedence operator_precedence_table[] = {
           7,
     //   Op_Or:
           6,
+    //   Op_Not:
+          Invalid_Operator,
     //  Comparison
     //   Op_Eq:
           11,
@@ -138,6 +140,7 @@ Parser::Parser(TokenIterator input_begin,
     m_names_table["max"] = NameType::Funct;
 }
 
+// Pratt parser
 Expression* Parser::parse_expression(TokenType right_token)
 {
     Expression* left_side = in_expression();
@@ -151,7 +154,7 @@ Expression* Parser::parse_expression(TokenType right_token)
         }
         ++token;
         Expression* right_side = parse_expression(op);
-        left_side = new CompositeExpression(left_side, op, right_side);
+        left_side = new BinaryExpression(left_side, op, right_side);
         curr_precedence = precedence_of(token->type);
     }
     return left_side;
