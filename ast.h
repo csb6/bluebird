@@ -25,10 +25,23 @@ enum class StatementType : char {
     Basic, Initialization, IfBlock
 };
 
+// Represents a unique type (e.g. Number, Positive, String)
+using TypeId = unsigned int;
+// Basic, "unconstrained" types (used for typeless constants, literals, etc.)
+constexpr TypeId NoType = 0;
+constexpr TypeId StringType = 1;
+constexpr TypeId CharType = 2;
+constexpr TypeId IntType = 3;
+constexpr TypeId FloatType = 4;
+
 // An abstract object or non-standalone group of expressions
 struct Expression {
     virtual ~Expression() {}
-    virtual ExpressionType type() const = 0;
+    // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
+    virtual ExpressionType expr_type() const = 0;
+    // What the type (in the language) this expression is. May be calculated when
+    // called by visiting child nodes
+    virtual TypeId type() const = 0;
     virtual void print(std::ostream&) const = 0;
 };
 
@@ -43,7 +56,20 @@ template<typename T>
 struct Literal : public Expression {
     T value;
     explicit Literal(T v) : value(v) {}
-    ExpressionType type() const override
+    TypeId type() const override
+    {
+        if constexpr (std::is_same_v<T, StringLiteral_t>) {
+            return StringType;
+        } else if (std::is_same_v<T, CharLiteral_t>) {
+            return CharType;
+        } else if (std::is_same_v<T, IntLiteral_t>) {
+            return IntType;
+        } else if (std::is_same_v<T, FloatLiteral_t>) {
+            return FloatType;
+        }
+    }
+
+    ExpressionType expr_type() const override
     {
         if constexpr (std::is_same_v<T, StringLiteral_t>) {
             return ExpressionType::StringLiteral;
@@ -68,7 +94,8 @@ struct Literal : public Expression {
 // An expression consisting solely of an lvalue
 struct LValueExpression : public Expression {
     std::string name;
-    ExpressionType type() const override { return ExpressionType::LValue; }
+    TypeId type() const override { return NoType; } //TODO: implement
+    ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding
     // LValue object
     void print(std::ostream& output) const override;
@@ -80,7 +107,8 @@ struct UnaryExpression : public Expression {
     Magnum::Pointer<Expression> right;
 
     UnaryExpression(TokenType, Expression*);
-    ExpressionType type() const override { return ExpressionType::Unary; }
+    ExpressionType expr_type() const override { return ExpressionType::Unary; }
+    TypeId type() const override { return right->type(); }
     void print(std::ostream&) const override;
 };
 
@@ -91,7 +119,8 @@ struct BinaryExpression : public Expression {
     Magnum::Pointer<Expression> right;
 
     BinaryExpression(Expression* l, TokenType oper, Expression* r);
-    ExpressionType type() const override { return ExpressionType::Binary; }
+    TypeId type() const override { return left->type(); }
+    ExpressionType expr_type() const override { return ExpressionType::Binary; }
     void print(std::ostream&) const override;
 };
 
@@ -99,8 +128,10 @@ struct BinaryExpression : public Expression {
 struct FunctionCall : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
+    TypeId return_type = NoType;
 
-    ExpressionType type() const override { return ExpressionType::FunctionCall; }
+    TypeId type() const override { return return_type; }
+    ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
 };
 

@@ -17,7 +17,7 @@ void Checker::validate_names()
             std::cerr << "Error: Function `" << name << "` is declared but has no body\n";
             exit(1);
         case NameType::DeclaredType:
-            std::cerr << "Error: Type `" << name << "` is declared but has no body\n";
+            std::cerr << "Error: Type `" << name << "` is declared but has no definition\n";
             exit(1);
         default:
             // All other kinds of names are acceptable

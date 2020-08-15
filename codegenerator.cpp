@@ -30,7 +30,7 @@ CodeGenerator::CodeGenerator(const std::vector<Function>& functions,
 
 llvm::Value* CodeGenerator::in_expression(const Expression* expression)
 {
-    switch(expression->type()) {
+    switch(expression->expr_type()) {
     case ExpressionType::StringLiteral:
         return in_string_literal(expression);
     case ExpressionType::CharLiteral:

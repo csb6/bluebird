@@ -10,6 +10,10 @@
 const std::string load_source_file(const char *filename)
 {
     std::ifstream input_file(filename);
+    if(!input_file) {
+        std::cerr << "Error: File '" << filename << "' doesn't exist\n";
+        exit(1);
+    }
     return std::string{(std::istreambuf_iterator<char>(input_file)),
             (std::istreambuf_iterator<char>())};
 }
