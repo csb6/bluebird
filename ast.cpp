@@ -11,6 +11,17 @@ void LValueExpression::print(std::ostream& output) const
     output << "LValueExpr: " << name << '\n';
 }
 
+UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
+    : op(oper), right(r)
+{}
+
+void UnaryExpression::print(std::ostream& output) const
+{
+    output << '(' << op << ' ';
+    right->print(output);
+    output << ')';
+}
+
 BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
                                    Expression* r)
     : left(l), op(oper), right(r)
@@ -22,7 +33,7 @@ void BinaryExpression::print(std::ostream& output) const
     left->print(output);
     output << ' ' << op << ' ';
     right->print(output);
-    output << ")";
+    output << ')';
 }
 
 void FunctionCall::print(std::ostream& output) const

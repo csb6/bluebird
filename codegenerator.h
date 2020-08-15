@@ -31,6 +31,7 @@ private:
     llvm::Value* in_int_literal(const Expression*);
     llvm::Value* in_float_literal(const Expression*);
     llvm::Value* in_lvalue_expression(const Expression*);
+    llvm::Value* in_unary_expression(const Expression*);
     llvm::Value* in_binary_expression(const Expression*);
     llvm::Value* in_function_call(const Expression*);
 public:

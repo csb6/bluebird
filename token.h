@@ -18,7 +18,7 @@ enum class TokenType : char {
     //  Comparison
     Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge,
     //  Bitwise
-    Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor,
+    Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor, Op_Bit_Not,
     // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt
     //  parser code and not subject to precedence rules/table)
     Op_Assign,

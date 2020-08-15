@@ -4,6 +4,9 @@
 
 using Precedence = char;
 constexpr Precedence Invalid_Operator = -2;
+// Not errors, but unary's aren't directly handled by Pratt parser/normal precedence rules
+// Instead, they are parsed along with the operator they precede
+constexpr Precedence Unary_Operator = -3; 
 constexpr Precedence Operand = 100;
 
 constexpr Precedence operator_precedence_table[] = {
@@ -57,7 +60,7 @@ constexpr Precedence operator_precedence_table[] = {
     //   Op_Or:
           6,
     //   Op_Not:
-          Invalid_Operator,
+          Unary_Operator,
     //  Comparison
     //   Op_Eq:
           11,
@@ -82,6 +85,8 @@ constexpr Precedence operator_precedence_table[] = {
           8,
     //   Op_Bit_Xor:
           9,
+    //   Op_Bit_Not:
+          Unary_Operator,
     // Pseudo-Operators
     //  Op_Assign:
          Invalid_Operator,
@@ -106,7 +111,7 @@ constexpr Precedence precedence_of(const TokenType index)
     return operator_precedence_table[short(index)];
 }
 
-constexpr bool is_operator(const TokenType token)
+constexpr bool is_binary_operator(const TokenType token)
 {
     const Precedence p = precedence_of(token);
     return p >= 0 && p != Operand;
@@ -148,8 +153,8 @@ Expression* Parser::parse_expression(TokenType right_token)
     Precedence curr_precedence = precedence_of(token->type);
     while(right_precedence < curr_precedence && token->type != TokenType::End_Statement) {
         TokenType op = token->type;
-        if(!is_operator(op)) {
-            print_error_expected("operator", *token);
+        if(!is_binary_operator(op)) {
+            print_error_expected("binary operator", *token);
             exit(1);
         }
         ++token;
@@ -215,7 +220,15 @@ Expression* Parser::in_expression()
     case TokenType::Open_Parentheses:
         return in_parentheses();
     default:
-        return in_literal();
+        if(precedence_of(token->type) == Unary_Operator) {
+            // Handle unary operators
+            TokenType op = token->type;
+            ++token;
+            Expression* right = in_expression();
+            return new UnaryExpression(op, right);
+        } else {
+            return in_literal();
+        }
     }
 }
 

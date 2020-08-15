@@ -18,7 +18,7 @@ enum class NameType : char {
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExpressionType : char {
     StringLiteral, CharLiteral, IntLiteral, FloatLiteral,
-    LValue, Binary, FunctionCall
+    LValue, Binary, Unary, FunctionCall
 };
 
 enum class StatementType : char {
@@ -72,6 +72,16 @@ struct LValueExpression : public Expression {
     // Other data should be looked up in the corresponding
     // LValue object
     void print(std::ostream& output) const override;
+};
+
+// An expression that consists of an operator and an expression
+struct UnaryExpression : public Expression {
+    TokenType op;
+    Magnum::Pointer<Expression> right;
+
+    UnaryExpression(TokenType, Expression*);
+    ExpressionType type() const override { return ExpressionType::Unary; }
+    void print(std::ostream&) const override;
 };
 
 // An expression that consists of an operator and two expressions

@@ -106,6 +106,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Bit_Xor:
         output << '^';
         break;
+    case TokenType::Op_Bit_Not:
+        output << '~';
+        break;
     case TokenType::Comma:
         output << "Comma marker";
         break;

@@ -49,7 +49,6 @@ void Lexer::run()
             } else {
                 switch(curr) {
                 case ';':
-                    // Found end of a statement
                     m_tokens.emplace_back(line_num, TokenType::End_Statement);
                     break;
                 case '"':
@@ -61,11 +60,9 @@ void Lexer::run()
                     curr_state = State::InChar;
                     break;
                 case '(':
-                    // Open parentheses
                     m_tokens.emplace_back(line_num, TokenType::Open_Parentheses);
                     break;
                 case ')':
-                    // Closed parentheses
                     m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
                     break;
                 // Arithmetic operators
@@ -88,7 +85,6 @@ void Lexer::run()
                         curr_state = State::InComment;
                         break;
                     default:
-                        // Division operator
                         m_tokens.emplace_back(line_num, TokenType::Op_Div);
                         break;
                     }
@@ -108,6 +104,9 @@ void Lexer::run()
                     break;
                 case '^':
                     m_tokens.emplace_back(line_num, TokenType::Op_Bit_Xor);
+                    break;
+                case '~':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Not);
                     break;
                 // More operators 
                 case '<':

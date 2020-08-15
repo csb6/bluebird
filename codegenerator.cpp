@@ -41,6 +41,8 @@ llvm::Value* CodeGenerator::in_expression(const Expression* expression)
         return in_float_literal(expression);
     case ExpressionType::LValue:
         return in_lvalue_expression(expression);
+    case ExpressionType::Unary:
+        return in_unary_expression(expression);
     case ExpressionType::Binary:
         return in_binary_expression(expression);
     case ExpressionType::FunctionCall:
@@ -80,6 +82,11 @@ llvm::Value* CodeGenerator::in_float_literal(const Expression* expression)
 }
 
 llvm::Value* CodeGenerator::in_lvalue_expression(const Expression*)
+{
+    return nullptr;
+}
+
+llvm::Value* CodeGenerator::in_unary_expression(const Expression*)
 {
     return nullptr;
 }

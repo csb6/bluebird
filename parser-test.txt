@@ -9,6 +9,12 @@ function foo(a : Natural, b : Integer) is
    n - x + (n / 4);
    4 + 5 + (9 - 6);
    let j : Number;
+   not 23 and 54;
+   34 or 67 and not 5 and 67;
+   34 or 67 and not (5 and 67);
+   ~23 and 54;
+   34 or 67 and ~5 and 67;
+   34 or 67 and ~(5 and 67);
 end foo;
 
 /*Some comment
