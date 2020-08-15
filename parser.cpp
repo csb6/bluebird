@@ -111,9 +111,8 @@ constexpr Precedence precedence_of(const TokenType index)
     return operator_precedence_table[short(index)];
 }
 
-constexpr bool is_binary_operator(const TokenType token)
+constexpr bool is_binary_operator(const Precedence p)
 {
-    const Precedence p = precedence_of(token);
     return p >= 0 && p != Operand;
 }
 
@@ -153,7 +152,7 @@ Expression* Parser::parse_expression(TokenType right_token)
     Precedence curr_precedence = precedence_of(token->type);
     while(right_precedence < curr_precedence && token->type != TokenType::End_Statement) {
         TokenType op = token->type;
-        if(!is_binary_operator(op)) {
+        if(!is_binary_operator(curr_precedence)) {
             print_error_expected("binary operator", *token);
             exit(1);
         }
@@ -219,16 +218,17 @@ Expression* Parser::in_expression()
         }
     case TokenType::Open_Parentheses:
         return in_parentheses();
+    // Handle unary operators (not, ~, -)
+    case TokenType::Op_Not:
+    case TokenType::Op_Bit_Not:
+    case TokenType::Op_Minus: {
+        TokenType op = token->type;
+        ++token;
+        Expression* right = in_expression();
+        return new UnaryExpression(op, right);
+    }
     default:
-        if(precedence_of(token->type) == Unary_Operator) {
-            // Handle unary operators
-            TokenType op = token->type;
-            ++token;
-            Expression* right = in_expression();
-            return new UnaryExpression(op, right);
-        } else {
-            return in_literal();
-        }
+        return in_literal();
     }
 }
 
