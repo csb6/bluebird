@@ -137,8 +137,8 @@ Parser::Parser(TokenIterator input_begin,
     : m_input_begin(input_begin), m_input_end(input_end)
 {
     // Built-in functions/names (eventually, the standard library)
-    m_names_table["print"] = NameType::Funct;
-    m_names_table["max"] = NameType::Funct;
+    m_names_table.add("print", NameType::Funct);
+    m_names_table.add("max", NameType::Funct);
 }
 
 // Pratt parser
@@ -190,12 +190,12 @@ Expression* Parser::in_lvalue_expression()
     }
 
     const auto match = m_names_table.find(current->text);
-    if(match == m_names_table.end()) {
+    if(!match) {
         print_error("Unknown lvalue `" + current->text + "`");
         exit(1);
-    } else if(match->second != NameType::LValue) {
+    } else if(match.value() != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
-                    + match->first + "` is already being used as a name");
+                    + current->text + "` is already being used as a name");
         exit(1);
     }
 
@@ -240,11 +240,11 @@ FunctionCall* Parser::in_function_call()
 
     // First, assign the function call's name
     const auto match = m_names_table.find(token->text);
-    if(match == m_names_table.end()) {
+    if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        m_names_table[token->text] = NameType::DeclaredFunct;
-    } else if(match->second != NameType::Funct && match->second != NameType::DeclaredFunct) {
+        m_names_table.add(token->text, NameType::DeclaredFunct);
+    } else if(match.value() != NameType::Funct && match.value() != NameType::DeclaredFunct) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a function name, but it is defined as another kind of name");
         exit(1);
@@ -324,11 +324,11 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     }
 
     const auto match = m_names_table.find(token->text);
-    if(match == m_names_table.end()) {
+    if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        m_names_table[token->text] = NameType::DeclaredType;
-    } else if(match->second != NameType::Type && match->second != NameType::DeclaredType) {
+        m_names_table.add(token->text, NameType::DeclaredType);
+    } else if(match.value() != NameType::Type && match.value() != NameType::DeclaredType) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a typename, but it is defined as another kind of name");
         exit(1);
@@ -351,12 +351,11 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     {
         ++token;
         Magnum::Pointer<LValue> new_lvalue = in_lvalue_declaration();
-        if(const auto match = m_names_table.find(new_lvalue->name);
-           match != m_names_table.end()) {
-            print_error(token->line_num, "Name `" + token->text + "` is already in use");
+        if(const auto match = m_names_table.find(new_lvalue->name); match) {
+            print_error(token->line_num, "Name `" + new_lvalue->name + "` is already in use");
             exit(1);
         }
-        m_names_table[new_lvalue->name] = NameType::LValue;
+        m_names_table.add(new_lvalue->name, NameType::LValue);
         m_lvalues.push_back(std::move(new_lvalue));
         new_statement->target = m_lvalues.back().get();
     }
@@ -422,6 +421,8 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
 
     ++token;
     auto new_block = Magnum::pointer<IfBlock>();
+
+    m_names_table.open_scope();
     
     // First, parse the if-condition
     new_block->condition = Magnum::pointer<Expression>(
@@ -453,6 +454,7 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
                 exit(1);
             }
 
+            m_names_table.close_scope();
             ++token;
             break;
         }
@@ -474,9 +476,12 @@ void Parser::in_function_definition()
     }
 
     const auto match = m_names_table.find(token->text);
-    if(match == m_names_table.end() || match->second == NameType::DeclaredFunct) {
+    if(!match) {
         new_funct.name = token->text;
-        m_names_table[new_funct.name] = NameType::Funct;
+        m_names_table.add(new_funct.name, NameType::Funct);
+    } else if(match.value() == NameType::DeclaredFunct) {
+        new_funct.name = token->text;
+        m_names_table.update(new_funct.name, NameType::Funct);
     } else {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     + " already in use");
@@ -522,6 +527,8 @@ void Parser::in_function_definition()
         ++token;
     }
 
+    m_names_table.open_scope();
+    
     // Finally, parse the body of the function
     ++token;
     while(token != m_input_end) {
@@ -544,7 +551,7 @@ void Parser::in_function_definition()
                 exit(1);
             }
 
-            m_names_table[new_funct.name] = NameType::Funct;
+            m_names_table.close_scope();
             m_functions.push_back(std::move(new_funct));
             ++token;
             return;
@@ -564,12 +571,12 @@ void Parser::in_type_definition()
         print_error_expected("typename", *token);
         exit(1);
     } else if(const auto match = m_names_table.find(token->text);
-              match != m_names_table.end() && match->second != NameType::DeclaredType) {
+              match && match.value() != NameType::DeclaredType) {
         print_error(token->line_num, "Name: " + token->text + " already in use");
         exit(1);
     }
 
-    m_names_table[token->text] = NameType::Type;
+    m_names_table.add(token->text, NameType::Type);
     m_types.push_back({token->text});
 
     // TODO: handle ranges/arrays/record types here
@@ -580,6 +587,25 @@ void Parser::in_type_definition()
         exit(1);
     }
     ++token;
+}
+
+void Parser::validate_names() const
+{
+    // Check that all functions and types in this module have a definition
+    // TODO: Have mechanism where types/functions in other modules are resolved
+    /*for(const auto&[name, name_type] : m_names_table) {
+        switch(name_type) {
+        case NameType::DeclaredFunct:
+            std::cerr << "Error: Function `" << name << "` is declared but has no body\n";
+            exit(1);
+        case NameType::DeclaredType:
+            std::cerr << "Error: Type `" << name << "` is declared but has no definition\n";
+            exit(1);
+        default:
+            // All other kinds of names are acceptable
+            break;
+        }
+        }*/
 }
 
 void Parser::run()
@@ -600,6 +626,9 @@ void Parser::run()
             exit(1);
         }
     }
+
+    // Check that there are no unresolved types/functions
+    validate_names();
 }
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
@@ -608,4 +637,85 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
         output << function_definition << '\n';
     }
     return output;
+}
+
+
+SymbolTable::SymbolTable()
+{
+    m_scopes.reserve(25);
+    // Add root scope
+    m_scopes.emplace_back(new ScopeTable);
+    m_curr_scope = m_scopes.back().get();
+}
+
+void SymbolTable::open_scope()
+{
+    m_scopes.emplace_back(new ScopeTable);
+    ScopeTable* new_scope = m_scopes.back().get();
+    new_scope->parent = m_curr_scope;
+    m_curr_scope = new_scope;
+}
+
+void SymbolTable::close_scope()
+{
+    assert(m_curr_scope != nullptr);
+    m_curr_scope = m_curr_scope->parent;
+}
+
+
+std::optional<NameType> SymbolTable::find_id(short name_id) const
+{
+    ScopeTable* scope = m_curr_scope;
+    while(scope != nullptr) {
+        auto match = scope->symbols.find(name_id);
+        if(match != scope->symbols.end()) {
+            // Found match in this scope
+            return {match->second};
+        } else {
+            // No match, try searching the containing scope
+            scope = scope->parent;
+        }
+    }
+    return {};
+}
+
+std::optional<NameType> SymbolTable::find(const std::string& name) const
+{
+    auto it = m_ids.find(name);
+    if(it == m_ids.end()) {
+        // Identifier not used anywhere
+        return {};
+    }
+
+    return find_id(it->second);
+}
+
+bool SymbolTable::add(const std::string& name, NameType type)
+{
+    auto it = m_ids.find(name);
+    short name_id;
+    if(it == m_ids.end()) {
+        name_id = m_curr_symbol_id++;
+        m_ids[name] = name_id;
+    } else {
+        name_id = it->second;
+    }
+
+    auto match = find_id(name_id);
+    if(!match) {
+        // No conflicts here; add the symbol
+        m_curr_scope->symbols[name_id] = type;
+        return true;
+    } else {
+        // Symbol already used as a name somewhere else in the
+        // visible scopes
+        return false;
+    }
+}
+
+
+void SymbolTable::update(const std::string& name, NameType type)
+{
+    short name_id = m_ids[name];
+    m_curr_scope->symbols[name_id] = type;
 }

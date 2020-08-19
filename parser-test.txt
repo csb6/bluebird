@@ -27,6 +27,7 @@ function not_really is end not_really
 
 */
 function main() is
+    let n : constant Number = 89;
     1 + 1;
     // More comments
     2 * 10 + 4 - print("hello", 1);

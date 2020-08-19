@@ -4,9 +4,33 @@
 #include "ast.h"
 #include <vector>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include <CorradePointer.h>
 #include <iosfwd>
+
+struct ScopeTable {
+    ScopeTable* parent = nullptr;
+    std::unordered_map<short, NameType> symbols;
+};
+
+class SymbolTable {
+private:
+    // Name of symbol -> id
+    std::unordered_map<std::string, short> m_ids;
+    std::vector<Magnum::Pointer<ScopeTable>> m_scopes;
+
+    ScopeTable* m_curr_scope;
+    short m_curr_symbol_id = 0;
+    std::optional<NameType> find_id(short name_id) const;
+public:
+    SymbolTable();
+    void open_scope();
+    void close_scope();
+    std::optional<NameType> find(const std::string& name) const;
+    bool add(const std::string& name, NameType);
+    void update(const std::string& name, NameType);
+};
 
 class Parser {
 public:
@@ -18,11 +42,12 @@ private:
     std::vector<Function> m_functions;
     std::vector<Type> m_types;
     std::vector<Magnum::Pointer<LValue>> m_lvalues;
-    std::unordered_map<std::string, NameType> m_names_table;
+    SymbolTable m_names_table;
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
     Magnum::Pointer<LValue> in_lvalue_declaration();
+    void validate_names() const;
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
