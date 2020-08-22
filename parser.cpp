@@ -303,7 +303,7 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     }
     Magnum::Pointer<LValue> new_lvalue;
     new_lvalue = Magnum::pointer<LValue>();
-
+    //TODO: add check to see if this name is already declared/used
     new_lvalue->name = token->text;
 
     ++token;
@@ -589,25 +589,6 @@ void Parser::in_type_definition()
     ++token;
 }
 
-void Parser::validate_names() const
-{
-    // Check that all functions and types in this module have a definition
-    // TODO: Have mechanism where types/functions in other modules are resolved
-    /*for(const auto&[name, name_type] : m_names_table) {
-        switch(name_type) {
-        case NameType::DeclaredFunct:
-            std::cerr << "Error: Function `" << name << "` is declared but has no body\n";
-            exit(1);
-        case NameType::DeclaredType:
-            std::cerr << "Error: Type `" << name << "` is declared but has no definition\n";
-            exit(1);
-        default:
-            // All other kinds of names are acceptable
-            break;
-        }
-        }*/
-}
-
 void Parser::run()
 {
     token = m_input_begin;
@@ -628,7 +609,7 @@ void Parser::run()
     }
 
     // Check that there are no unresolved types/functions
-    validate_names();
+    m_names_table.validate_names();
 }
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
@@ -644,39 +625,47 @@ SymbolTable::SymbolTable()
 {
     m_scopes.reserve(25);
     // Add root scope
-    m_scopes.emplace_back(new ScopeTable);
-    m_curr_scope = m_scopes.back().get();
+    m_scopes.push_back({-1});
+    m_curr_scope = 0;
 }
 
 void SymbolTable::open_scope()
 {
-    m_scopes.emplace_back(new ScopeTable);
-    ScopeTable* new_scope = m_scopes.back().get();
-    new_scope->parent = m_curr_scope;
-    m_curr_scope = new_scope;
+    ScopeTable new_scope = {m_curr_scope};
+    m_scopes.push_back(new_scope);
+    m_curr_scope = m_scopes.size() - 1;
 }
 
 void SymbolTable::close_scope()
 {
-    assert(m_curr_scope != nullptr);
-    m_curr_scope = m_curr_scope->parent;
+    m_curr_scope = m_scopes[m_curr_scope].parent;
 }
 
 
 std::optional<NameType> SymbolTable::find_id(short name_id) const
 {
-    ScopeTable* scope = m_curr_scope;
-    while(scope != nullptr) {
-        auto match = scope->symbols.find(name_id);
-        if(match != scope->symbols.end()) {
+    short scope_index = m_curr_scope;
+    while(scope_index != -1) {
+        const ScopeTable& scope = m_scopes[scope_index];
+        auto match = scope.symbols.find(name_id);
+        if(match != scope.symbols.end()) {
             // Found match in this scope
             return {match->second};
         } else {
             // No match, try searching the containing scope
-            scope = scope->parent;
+            scope_index = scope.parent;
         }
     }
     return {};
+}
+
+std::pair<std::string, short> SymbolTable::find_name(short name_id) const
+{
+    // Map name id back to its string name 
+    return *std::find_if(m_ids.begin(), m_ids.end(),
+                         [name_id](const auto& each) {
+                             return each.second == name_id;
+                         });
 }
 
 std::optional<NameType> SymbolTable::find(const std::string& name) const
@@ -704,7 +693,7 @@ bool SymbolTable::add(const std::string& name, NameType type)
     auto match = find_id(name_id);
     if(!match) {
         // No conflicts here; add the symbol
-        m_curr_scope->symbols[name_id] = type;
+        m_scopes[m_curr_scope].symbols[name_id] = type;
         return true;
     } else {
         // Symbol already used as a name somewhere else in the
@@ -713,9 +702,60 @@ bool SymbolTable::add(const std::string& name, NameType type)
     }
 }
 
-
 void SymbolTable::update(const std::string& name, NameType type)
 {
     short name_id = m_ids[name];
-    m_curr_scope->symbols[name_id] = type;
+    m_scopes[m_curr_scope].symbols[name_id] = type;
+}
+
+void delete_id(ScopeTable& scope, short name_id)
+{
+    scope.symbols.erase(name_id);
+}
+
+void SymbolTable::validate_names()
+{
+    // Check that all functions and types in this module have a definition.
+    // If they don't, try to find one/fix-up the symbol table
+
+    // TODO: Have mechanism where types/functions in other modules are resolved
+    for(auto& scope : m_scopes) {
+        for(const auto[name_id, name_type] : scope.symbols) {
+            switch(name_type) {
+            case NameType::DeclaredFunct: {
+                // First, try to resolve the declared function to a definition
+                auto body = find_id(name_id);
+                if(!body) {
+                    const auto name = find_name(name_id);
+                    std::cerr << "Error: Function `" << name.first
+                              << "` is declared but has no body\n";
+                    exit(1);
+                } else {
+                    // If a definition was found, then don't need this temporary
+                    // 'DeclaredFunct' declaration anymore
+                    delete_id(scope, name_id);
+                }
+                break;
+            }
+            case NameType::DeclaredType: {
+                // First, try to resolve the declared type to a definition
+                auto definition = find_id(name_id);
+                if(!definition) {
+                    const auto name = find_name(name_id);
+                    std::cerr << "Error: Type `" << name.first
+                              << "` is declared but has no definition\n";
+                    exit(1);
+                } else {
+                    // If a definition was found, then don't need this temporary
+                    // 'DeclaredType' declaration anymore
+                    delete_id(scope, name_id);
+                }
+                break;
+            }
+            default:
+                // All other kinds of names are acceptable
+                break;
+            }
+        }
+    }
 }

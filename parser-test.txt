@@ -22,6 +22,8 @@ function foo(a : Natural, b : Integer) is
    34 or 67 and -(5 and 67);
 end foo;
 
+type Number;
+
 /*Some comment
 function not_really is end not_really
 

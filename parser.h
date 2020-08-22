@@ -10,7 +10,7 @@
 #include <iosfwd>
 
 struct ScopeTable {
-    ScopeTable* parent = nullptr;
+    short parent; // Index in SymbolTable::m_scopes
     std::unordered_map<short, NameType> symbols;
 };
 
@@ -18,11 +18,12 @@ class SymbolTable {
 private:
     // Name of symbol -> id
     std::unordered_map<std::string, short> m_ids;
-    std::vector<Magnum::Pointer<ScopeTable>> m_scopes;
+    std::vector<ScopeTable> m_scopes;
 
-    ScopeTable* m_curr_scope;
+    short m_curr_scope;
     short m_curr_symbol_id = 0;
     std::optional<NameType> find_id(short name_id) const;
+    std::pair<std::string, short> find_name(short name_id) const;
 public:
     SymbolTable();
     void open_scope();
@@ -30,6 +31,7 @@ public:
     std::optional<NameType> find(const std::string& name) const;
     bool add(const std::string& name, NameType);
     void update(const std::string& name, NameType);
+    void validate_names();
 };
 
 class Parser {
@@ -47,7 +49,6 @@ private:
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
     Magnum::Pointer<LValue> in_lvalue_declaration();
-    void validate_names() const;
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
