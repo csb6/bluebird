@@ -167,13 +167,13 @@ Expression* Parser::in_literal()
 
     switch(current->type) {
     case TokenType::String_Literal:
-        return new Literal(current->text);
+        return new StringLiteral(current->text);
     case TokenType::Char_Literal:
-        return new Literal(current->text[0]);
+        return new CharLiteral(current->text[0]);
     case TokenType::Int_Literal:
-        return new Literal(std::stoi(current->text));
+        return new IntLiteral(std::stoi(current->text));
     case TokenType::Float_Literal:
-        return new Literal(std::stod(current->text));
+        return new FloatLiteral(std::stod(current->text));
     default:
         print_error_expected("literal", *current);
         exit(1);
@@ -423,7 +423,7 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
     auto new_block = Magnum::pointer<IfBlock>();
 
     m_names_table.open_scope();
-    
+
     // First, parse the if-condition
     new_block->condition = Magnum::pointer<Expression>(
         parse_expression(TokenType::Closed_Parentheses));
@@ -528,7 +528,7 @@ void Parser::in_function_definition()
     }
 
     m_names_table.open_scope();
-    
+
     // Finally, parse the body of the function
     ++token;
     while(token != m_input_end) {

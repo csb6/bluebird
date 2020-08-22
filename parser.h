@@ -70,7 +70,7 @@ public:
     const auto& functions() const { return m_functions; }
     const auto& types() const { return m_types; }
     const auto& names_table() const { return m_names_table; }
-    
+
     friend std::ostream& operator<<(std::ostream&, const Parser&);
 };
 #endif

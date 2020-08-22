@@ -1,4 +1,5 @@
 #include "ast.h"
+#include <iomanip> // for setprecision()
 
 bool Range::contains(long value) const
 {
@@ -14,6 +15,27 @@ void LValueExpression::print(std::ostream& output) const
 UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
     : op(oper), right(r)
 {}
+
+void StringLiteral::print(std::ostream& output) const
+{
+    output << value;
+}
+
+void CharLiteral::print(std::ostream& output) const
+{
+    output << value;
+}
+
+void IntLiteral::print(std::ostream& output) const
+{
+    output << value;
+}
+
+void FloatLiteral::print(std::ostream& output) const
+{
+    output << std::setprecision(10);
+    output << value;
+}
 
 void UnaryExpression::print(std::ostream& output) const
 {

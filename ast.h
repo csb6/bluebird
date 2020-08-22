@@ -2,8 +2,6 @@
 #define AST_CLASS_H
 #include "token.h"
 #include <CorradePointer.h>
-#include <type_traits>
-#include <iomanip>
 #include <iosfwd>
 #include <string>
 #include <vector>
@@ -45,50 +43,37 @@ struct Expression {
     virtual void print(std::ostream&) const = 0;
 };
 
-// These typedefs used in codegenerator.cpp to keep the T type in Literal<T>
-// in sync with the casting/representation in the codegen stage
-using StringLiteral_t = std::string;
-using CharLiteral_t = char;
-using IntLiteral_t = int;
-using FloatLiteral_t = double;
-// A nameless instance of data
-template<typename T>
-struct Literal : public Expression {
-    T value;
-    explicit Literal(T v) : value(v) {}
-    TypeId type() const override
-    {
-        if constexpr (std::is_same_v<T, StringLiteral_t>) {
-            return StringType;
-        } else if (std::is_same_v<T, CharLiteral_t>) {
-            return CharType;
-        } else if (std::is_same_v<T, IntLiteral_t>) {
-            return IntType;
-        } else if (std::is_same_v<T, FloatLiteral_t>) {
-            return FloatType;
-        }
-    }
+// Each type of literal is a nameless instance of data
+struct StringLiteral : public Expression {
+    std::string value;
+    explicit StringLiteral(const std::string& v) : value(v) {}
+    TypeId type() const override { return StringType; }
+    ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
+    void print(std::ostream& output) const override;
+};
 
-    ExpressionType expr_type() const override
-    {
-        if constexpr (std::is_same_v<T, StringLiteral_t>) {
-            return ExpressionType::StringLiteral;
-        } else if (std::is_same_v<T, CharLiteral_t>) {
-            return ExpressionType::CharLiteral;
-        } else if (std::is_same_v<T, IntLiteral_t>) {
-            return ExpressionType::IntLiteral;
-        } else if (std::is_same_v<T, FloatLiteral_t>) {
-            return ExpressionType::FloatLiteral;
-        }
-    }
+struct CharLiteral : public Expression {
+    char value;
+    explicit CharLiteral(char v) : value(v) {}
+    TypeId type() const override { return CharType; }
+    ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
+    void print(std::ostream& output) const override;
+};
 
-    void print(std::ostream& output) const override
-    {
-        if constexpr (std::is_floating_point_v<T>) {
-            output << std::setprecision(10);
-        }
-        output << value;
-    }
+struct IntLiteral : public Expression {
+    int value;
+    explicit IntLiteral(int v) : value(v) {}
+    TypeId type() const override { return IntType; }
+    ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
+    void print(std::ostream& output) const override;
+};
+
+struct FloatLiteral : public Expression {
+    double value;
+    explicit FloatLiteral(int v) : value(v) {}
+    TypeId type() const override { return FloatType; }
+    ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
+    void print(std::ostream& output) const override;
 };
 
 // An expression consisting solely of an lvalue
@@ -96,8 +81,7 @@ struct LValueExpression : public Expression {
     std::string name;
     TypeId type() const override { return NoType; } //TODO: implement
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
-    // Other data should be looked up in the corresponding
-    // LValue object
+    // Other data should be looked up in the corresponding LValue object
     void print(std::ostream& output) const override;
 };
 
@@ -135,7 +119,7 @@ struct FunctionCall : public Expression {
     void print(std::ostream&) const override;
 };
 
-// A named object that holds a value and can be assigned at least once 
+// A named object that holds a value and can be assigned at least once
 struct LValue {
     std::string name;
     std::string type;

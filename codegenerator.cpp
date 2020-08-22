@@ -10,7 +10,6 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Verifier.h>
 #pragma GCC diagnostic pop
-#include <type_traits>
 
 CodeGenerator::CodeGenerator(const std::vector<Function>& functions,
                              const std::vector<Type>& types)
@@ -52,15 +51,15 @@ llvm::Value* CodeGenerator::in_expression(const Expression* expression)
 
 llvm::Value* CodeGenerator::in_string_literal(const Expression* expression)
 {
-    auto* literal = static_cast<const Literal<StringLiteral_t>*>(expression);
+    auto* literal = static_cast<const StringLiteral*>(expression);
     // TODO: make sure this doesn't mess-up the insertion point for IR instructions
     return m_ir_builder.CreateGlobalStringPtr(literal->value);
 }
 
 llvm::Value* CodeGenerator::in_char_literal(const Expression* expression)
 {
-    auto* literal = static_cast<const Literal<CharLiteral_t>*>(expression);
-    const CharLiteral_t value = literal->value;
+    auto* literal = static_cast<const CharLiteral*>(expression);
+    const auto value = literal->value;
     // Create a signed `char` type
     return llvm::ConstantInt::get(m_context,
                                   llvm::APInt(sizeof(value), value, true));
@@ -68,8 +67,8 @@ llvm::Value* CodeGenerator::in_char_literal(const Expression* expression)
 
 llvm::Value* CodeGenerator::in_int_literal(const Expression* expression)
 {
-    auto* literal = static_cast<const Literal<IntLiteral_t>*>(expression);
-    const IntLiteral_t value = literal->value;
+    auto* literal = static_cast<const IntLiteral*>(expression);
+    const auto value = literal->value;
     // TODO: determine signed-ness; right now, assume signed
     return llvm::ConstantInt::get(m_context,
                                   llvm::APInt(sizeof(value), value, true));
@@ -77,7 +76,7 @@ llvm::Value* CodeGenerator::in_int_literal(const Expression* expression)
 
 llvm::Value* CodeGenerator::in_float_literal(const Expression* expression)
 {
-    auto* literal = static_cast<const Literal<FloatLiteral_t>*>(expression);
+    auto* literal = static_cast<const FloatLiteral*>(expression);
     return llvm::ConstantFP::get(m_context, llvm::APFloat(literal->value));
 }
 
@@ -103,53 +102,51 @@ llvm::Value* CodeGenerator::in_function_call(const Expression*)
 
 void CodeGenerator::run()
 {
-    {
-        // Reused between iterations to reduce allocations
-        std::vector<llvm::Type*> parameter_types;
-        std::vector<llvm::StringRef> parameter_names;
-        for(const Function& function : m_functions) {
-            // First, create a function declaration
-            parameter_types.reserve(function.parameters.size());
-            parameter_names.reserve(function.parameters.size());
+    // Reused between iterations to reduce allocations
+    std::vector<llvm::Type*> parameter_types;
+    std::vector<llvm::StringRef> parameter_names;
+    for(const Function& function : m_functions) {
+        // First, create a function declaration
+        parameter_types.reserve(function.parameters.size());
+        parameter_names.reserve(function.parameters.size());
 
-            for(const auto& param : function.parameters) {
-                parameter_types.push_back(m_types[param->type]);
-                parameter_names.push_back(param->name);
+        for(const auto& param : function.parameters) {
+            parameter_types.push_back(m_types[param->type]);
+            parameter_names.push_back(param->name);
+        }
+
+        // TODO: add support for return types other than void
+        auto* funct_type = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
+                                                   parameter_types, false);
+        // TODO: add more fine-grained support for Linkage
+        auto* curr_funct = llvm::Function::Create(funct_type,
+                                                  llvm::Function::ExternalLinkage,
+                                                  function.name,
+                                                  m_curr_module.get());
+
+        auto param_name_it = parameter_names.begin();
+        for(auto& param : curr_funct->args()) {
+            param.setName(*param_name_it);
+            ++param_name_it;
+        }
+
+        parameter_types.clear();
+        parameter_names.clear();
+
+        // Next, create a block containing the body of the function
+        auto* funct_body = llvm::BasicBlock::Create(m_context, "body", curr_funct);
+        m_ir_builder.SetInsertPoint(funct_body);
+        for(const auto& statement : function.statements) {
+            switch(statement->type()) {
+            case StatementType::Basic: {
+                auto* curr_statement = static_cast<const BasicStatement*>(statement.get());
+                //in_expression(curr_statement->expression.get());
+                break;
             }
-
-            // TODO: add support for return types other than void
-            auto* funct_type = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
-                                                       parameter_types, false);
-            // TODO: add more fine-grained support for Linkage
-            auto* curr_funct = llvm::Function::Create(funct_type,
-                                                      llvm::Function::ExternalLinkage,
-                                                      function.name,
-                                                      m_curr_module.get());
-
-            auto param_name_it = parameter_names.begin();
-            for(auto& param : curr_funct->args()) {
-                param.setName(*param_name_it);
-                ++param_name_it;
-            }
-
-            parameter_types.clear();
-            parameter_names.clear();
-
-            // Next, create a block containing the body of the function
-            auto* funct_body = llvm::BasicBlock::Create(m_context, "body", curr_funct);
-            m_ir_builder.SetInsertPoint(funct_body);
-            for(const auto& statement : function.statements) {
-                switch(statement->type()) {
-                case StatementType::Basic: {
-                    auto* curr_statement = static_cast<const BasicStatement*>(statement.get());
-                    //in_expression(curr_statement->expression.get());
-                    break;
-                }
-                default:
-                    // TODO: add support for if-blocks, variable initializations, etc.
-                    break;
-                }
+            default:
+                // TODO: add support for if-blocks, variable initializations, etc.
+                break;
             }
         }
     }
-} 
+}
