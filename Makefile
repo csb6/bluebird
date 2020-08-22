@@ -9,10 +9,12 @@ llvm_linker_flags := `llvm-config --ldflags --system-libs --libs all`
 llvm_compiler_flags := `llvm-config --cxxflags`
 flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
 
-# Link
+# Link (default rule)
 exe_name: $(object_files) $(llvm_linked_files)
-	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) \
-$(object_files) $(llvm_linked_files)
+	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files)
+
+debug: flags += --debug
+debug: exe_name
 
 # Autogenerate header dependencies
 -include $(all_object_files:.o=.d)
