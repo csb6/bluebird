@@ -191,7 +191,7 @@ Expression* Parser::in_lvalue_expression()
 
     const auto match = m_names_table.find(current->text);
     if(!match) {
-        print_error("Unknown lvalue `" + current->text + "`");
+        print_error(current->line_num, "Unknown lvalue `" + current->text + "`");
         exit(1);
     } else if(match.value() != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
@@ -303,7 +303,10 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     }
     Magnum::Pointer<LValue> new_lvalue;
     new_lvalue = Magnum::pointer<LValue>();
-    //TODO: add check to see if this name is already declared/used
+    if(auto name_exists = m_names_table.find(token->text); name_exists) {
+        print_error(token->line_num, "`" + token->text + "` cannot be used as an lvalue name. It is already defined as another kind of name");
+        exit(1);
+    }
     new_lvalue->name = token->text;
 
     ++token;
@@ -391,7 +394,6 @@ Magnum::Pointer<Statement> Parser::in_statement()
     };
 }
 
-// TODO: fix bug (remove semicolon from parser-test:8, run to see no error)
 Magnum::Pointer<BasicStatement> Parser::in_basic_statement()
 {
     auto new_statement = Magnum::pointer<BasicStatement>();
@@ -446,7 +448,8 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
             // Found a statement, parse it
             new_block->statements.push_back(in_statement());
         } else {
-            // End of block (TODO: close scope here)
+            // End of block
+            m_names_table.close_scope();
             ++token; // Take the `if` associated with `end`
             if(token->type != TokenType::Keyword_If) {
                 print_error(token->line_num,
@@ -454,7 +457,6 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
                 exit(1);
             }
 
-            m_names_table.close_scope();
             ++token;
             break;
         }
@@ -511,7 +513,7 @@ void Parser::in_function_definition()
                 exit(1);
             }
         } else if(token->type == TokenType::Closed_Parentheses) {
-            // Next, look for `is` keyword (TODO: open a new scope here)
+            // Next, look for `is` keyword
             ++token;
             if(token->type != TokenType::Keyword_Is) {
                 print_error_expected("keyword `is` to follow parameters of the function",
@@ -536,7 +538,8 @@ void Parser::in_function_definition()
             // Found a statement, parse it
             new_funct.statements.push_back(in_statement());
         } else {
-            // End of function (TODO: close scope here)
+            // End of function
+            m_names_table.close_scope();
             ++token; // Take the name associated with `end` (e.g. `main` in `end main`)
             if(token->type != TokenType::Name && token->text != new_funct.name) {
                 print_error(token->line_num,
@@ -551,7 +554,6 @@ void Parser::in_function_definition()
                 exit(1);
             }
 
-            m_names_table.close_scope();
             m_functions.push_back(std::move(new_funct));
             ++token;
             return;
@@ -623,7 +625,7 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
 
 SymbolTable::SymbolTable()
 {
-    m_scopes.reserve(25);
+    m_scopes.reserve(20);
     // Add root scope
     m_scopes.push_back({-1});
     m_curr_scope = 0;

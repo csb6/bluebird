@@ -11,7 +11,7 @@
 
 struct ScopeTable {
     short parent; // Index in SymbolTable::m_scopes
-    std::unordered_map<short, NameType> symbols;
+    std::unordered_map<short, NameType> symbols{};
 };
 
 class SymbolTable {
