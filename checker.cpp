@@ -11,7 +11,7 @@ void Checker::check_types(const Statement* statement) const
     switch(statement->type()) {
     case StatementType::Basic: {
         auto* actual = static_cast<const BasicStatement*>(statement);
-        check_types(actual->expression.get());
+        check_types(statement, actual->expression.get());
         break;
     }
     case StatementType::Initialization:
@@ -21,18 +21,19 @@ void Checker::check_types(const Statement* statement) const
     }
 }
 
-void Checker::check_types(const Expression* expression) const
+void Checker::check_types(const Statement* statement, const Expression* expression) const
 {
     switch(expression->expr_type()) {
     case ExpressionType::Binary: {
         // TODO: check if this binary op is legal for this type
         auto* actual = static_cast<const BinaryExpression*>(expression);
         // Ensure the sub-expressions are correct first
-        check_types(actual->left.get());
-        check_types(actual->right.get());
+        check_types(statement, actual->left.get());
+        check_types(statement, actual->right.get());
         // Check that the types of both sides of the operator match
         if(actual->left->type() != actual->right->type()) {
-            std::cerr << "Types don't match:\n  Left: ";
+            std::cerr << "In statement starting at line " << statement->line_num
+                      << ": \nTypes don't match:\n  Left: ";
             actual->left->print(std::cerr);
             std::cerr << "\n  Operator: " << actual->op << "\n  Right: ";
             actual->right->print(std::cerr);

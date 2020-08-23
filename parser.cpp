@@ -348,7 +348,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         exit(1);
     }
 
-    auto new_statement = Magnum::pointer<Initialization>();
+    auto new_statement = Magnum::pointer<Initialization>(token->line_num);
 
     // Add this new lvalue to list of tracked names
     {
@@ -396,7 +396,7 @@ Magnum::Pointer<Statement> Parser::in_statement()
 
 Magnum::Pointer<BasicStatement> Parser::in_basic_statement()
 {
-    auto new_statement = Magnum::pointer<BasicStatement>();
+    auto new_statement = Magnum::pointer<BasicStatement>(token->line_num);
     new_statement->expression = Magnum::pointer<Expression>(parse_expression());
 
     if(token->type != TokenType::End_Statement) {
@@ -422,7 +422,7 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
     }
 
     ++token;
-    auto new_block = Magnum::pointer<IfBlock>();
+    auto new_block = Magnum::pointer<IfBlock>(token->line_num);
 
     m_names_table.open_scope();
 

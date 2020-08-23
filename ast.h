@@ -130,7 +130,9 @@ struct LValue {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
+    explicit Statement(unsigned int line) : line_num(line) {}
     virtual ~Statement() {}
+    unsigned int line_num;
     virtual StatementType type() const = 0;
     virtual void print(std::ostream&) const = 0;
 };
@@ -138,6 +140,7 @@ struct Statement {
 // A brief, usually one-line statement that holds a single expression
 struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
+    BasicStatement(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::Basic; }
     void print(std::ostream& output) const override;
 };
@@ -146,6 +149,7 @@ struct BasicStatement : public Statement {
 // value of some expression
 struct Initialization : public BasicStatement {
     LValue* target;
+    Initialization(unsigned int line) : BasicStatement(line) {}
     StatementType type() const override { return StatementType::Initialization; }
     void print(std::ostream& output) const override
     {
@@ -157,6 +161,7 @@ struct Initialization : public BasicStatement {
 struct IfBlock : public Statement {
     Magnum::Pointer<Expression> condition;
     std::vector<Magnum::Pointer<Statement>> statements;
+    IfBlock(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::IfBlock; }
     void print(std::ostream& output) const override;
 };

@@ -34,11 +34,11 @@ int main(int argc, char **argv)
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
     
-    //Checker checker{parser.functions(), parser.types(), parser.names_table()};
+    //Checker checker{parser.functions(), parser.types()};
     //checker.run();
 
-    CodeGenerator codegen{parser.functions(), parser.types()};
-    codegen.run();
+    //CodeGenerator codegen{parser.functions(), parser.types()};
+    //codegen.run();
 
     std::cout << parser << '\n';
 

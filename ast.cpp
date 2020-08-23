@@ -9,7 +9,7 @@ bool Range::contains(long value) const
 
 void LValueExpression::print(std::ostream& output) const
 {
-    output << "LValueExpr: " << name << '\n';
+    output << name;
 }
 
 UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
