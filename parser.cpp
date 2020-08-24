@@ -146,6 +146,14 @@ void print_error_expected(unsigned int line_num, std::string_view expected,
     std::cerr << '\n';
 }
 
+void assert_token_is(TokenType type, std::string_view description, Token token)
+{
+    if(token.type != type) {
+        print_error_expected(description, token);
+        exit(1);
+    }
+}
+
 Parser::Parser(TokenIterator input_begin,
                TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
@@ -197,11 +205,7 @@ Expression* Parser::in_literal()
 Expression* Parser::in_lvalue_expression()
 {
     const TokenIterator current = token++;
-
-    if(current->type != TokenType::Name) {
-        print_error_expected("variable/constant name", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Name, "variable/constant name", *current);
 
     const auto match = m_names_table.find(current->text);
     if(!match) {
@@ -247,10 +251,7 @@ FunctionCall* Parser::in_function_call()
 {
     auto* new_function_call = new FunctionCall();
 
-    if(token->type != TokenType::Name) {
-        print_error_expected("function name", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
     const auto match = m_names_table.find(token->text);
@@ -267,10 +268,8 @@ FunctionCall* Parser::in_function_call()
     new_function_call->name = token->text;
 
     ++token;
-    if(token->type != TokenType::Open_Parentheses) {
-        print_error_expected("'(' token before function call argument list", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Open_Parentheses,
+                    "'(' token before function call argument list", *token);
 
     // Next, parse the arguments, each of which should be some sort of expression
     ++token;
@@ -293,10 +292,8 @@ FunctionCall* Parser::in_function_call()
 
 Expression* Parser::in_parentheses()
 {
-    if(token->type != TokenType::Open_Parentheses) {
-        print_error_expected("opening parentheses for an expression group", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Open_Parentheses,
+                    "opening parentheses for an expression group", *token);
 
     ++token;
     Expression* result = parse_expression(TokenType::Closed_Parentheses);
@@ -311,10 +308,7 @@ Expression* Parser::in_parentheses()
 
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
-    if(token->type != TokenType::Name) {
-        print_error_expected("the name of an lvalue", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Name, "the name of an lvalue", *token);
     Magnum::Pointer<LValue> new_lvalue;
     new_lvalue = Magnum::pointer<LValue>();
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
@@ -324,10 +318,7 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     new_lvalue->name = token->text;
 
     ++token;
-    if(token->type != TokenType::Type_Indicator) {
-        print_error_expected("`:` before typename", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
 
     ++token;
     if(token->type == TokenType::Keyword_Const) {
@@ -335,10 +326,7 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
         new_lvalue->is_mutable = false;
         ++token;
     }
-    if(token->type != TokenType::Name) {
-        print_error_expected("typename", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Name, "typename", *token);
 
     const auto match = m_names_table.find(token->text);
     if(!match) {
@@ -357,10 +345,7 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 
 Magnum::Pointer<Initialization> Parser::in_initialization()
 {
-    if(token->type != TokenType::Keyword_Let) {
-        print_error_expected("keyword `let`", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
 
     auto new_statement = Magnum::pointer<Initialization>(token->line_num);
 
@@ -413,27 +398,17 @@ Magnum::Pointer<BasicStatement> Parser::in_basic_statement()
     auto new_statement = Magnum::pointer<BasicStatement>(token->line_num);
     new_statement->expression = Magnum::pointer<Expression>(parse_expression());
 
-    if(token->type != TokenType::End_Statement) {
-        print_error_expected("end of statement (a.k.a. `;`)", *token);
-        exit(1);
-    }
-
+    assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
     return new_statement;
 }
 
 Magnum::Pointer<IfBlock> Parser::in_if_block()
 {
-    if(token->type != TokenType::Keyword_If) {
-        print_error_expected("keyword if", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Keyword_If, "keyword if", *token);
 
     ++token;
-    if(token->type != TokenType::Open_Parentheses) {
-        print_error_expected("`(`", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Open_Parentheses, "`(`", *token);
 
     ++token;
     auto new_block = Magnum::pointer<IfBlock>(token->line_num);
@@ -444,16 +419,11 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
     new_block->condition = Magnum::pointer<Expression>(
         parse_expression(TokenType::Closed_Parentheses));
 
-    if(token->type != TokenType::Closed_Parentheses) {
-        print_error_expected("`)` to close `if` condition", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Closed_Parentheses,
+                    "`)` to close `if` condition", *token);
 
     ++token;
-    if(token->type != TokenType::Keyword_Do) {
-        print_error_expected("keyword `do`", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Keyword_Do, "keyword `do`", *token);
 
     // Next, parse the statements inside the if-block
     ++token;
@@ -470,7 +440,6 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
                             "No closing `end if` for if-block");
                 exit(1);
             }
-
             ++token;
             break;
         }
@@ -486,10 +455,7 @@ void Parser::in_function_definition()
     // First, set the function's name, making sure it isn't being used for
     // anything else
     ++token;
-    if(token->type != TokenType::Name) {
-        print_error_expected("name to follow `function keyword`", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Name, "name to follow `function keyword`", *token);
 
     const auto match = m_names_table.find(token->text);
     if(!match) {
@@ -505,10 +471,8 @@ void Parser::in_function_definition()
     }
 
     ++token;
-    if(token->type != TokenType::Open_Parentheses) {
-        print_error_expected("`(` to follow name of function in definition", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Open_Parentheses,
+                    "`(` to follow name of function in definition", *token);
 
     // Next, parse the parameters
     ++token;
@@ -529,11 +493,8 @@ void Parser::in_function_definition()
         } else if(token->type == TokenType::Closed_Parentheses) {
             // Next, look for `is` keyword
             ++token;
-            if(token->type != TokenType::Keyword_Is) {
-                print_error_expected("keyword `is` to follow parameters of the function",
-                                     *token);
-                exit(1);
-            }
+            assert_token_is(TokenType::Keyword_Is,
+                            "keyword `is` to follow parameters of the function", *token);
             break;
         } else {
             print_error_expected("parameter name", *token);
@@ -563,11 +524,8 @@ void Parser::in_function_definition()
             }
 
             ++token;
-            if(token->type != TokenType::End_Statement) {
-                print_error_expected("end of statement (a.k.a. `;`)", *token);
-                exit(1);
-            }
-
+            assert_token_is(TokenType::End_Statement,
+                            "end of statement (a.k.a. `;`)", *token);
             m_functions.push_back(std::move(new_funct));
             ++token;
             return;
@@ -577,17 +535,12 @@ void Parser::in_function_definition()
 
 void Parser::in_type_definition()
 {
-    if(token->type != TokenType::Keyword_Type) {
-        print_error_expected("keyword `type`", *token);
-        exit(1);
-    }
-
+    assert_token_is(TokenType::Keyword_Type, "keyword `type`", *token);
     ++token;
-    if(token->type != TokenType::Name) {
-        print_error_expected("typename", *token);
-        exit(1);
-    } else if(const auto match = m_names_table.find(token->text);
-              match && match.value() != NameType::DeclaredType) {
+    assert_token_is(TokenType::Name, "typename", *token);
+
+    if(const auto match = m_names_table.find(token->text);
+       match && match.value() != NameType::DeclaredType) {
         print_error(token->line_num, "Name: " + token->text + " already in use");
         exit(1);
     }
@@ -596,10 +549,7 @@ void Parser::in_type_definition()
     m_types.push_back({token->text});
 
     ++token;
-    if(token->type != TokenType::Keyword_Is) {
-        print_error_expected("keyword is", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::Keyword_Is, "keyword `is`", *token);
 
     // TODO: add ability to distinguish between new distinct types and new subtypes
     ++token;
@@ -637,10 +587,7 @@ void Parser::in_type_definition()
         exit(1);
     }
 
-    if(token->type != TokenType::End_Statement) {
-        print_error_expected("end of statement (a.k.a. `;`)", *token);
-        exit(1);
-    }
+    assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
 }
 
