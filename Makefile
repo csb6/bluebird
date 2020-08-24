@@ -10,14 +10,18 @@ llvm_compiler_flags := `llvm-config --cxxflags`
 flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
 
 # Link (default rule)
-exe_name: $(object_files) $(llvm_linked_files)
+link: $(object_files) $(llvm_linked_files)
 	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files)
 
 debug: flags += --debug
-debug: exe_name
+debug: link
+
+release: flags += -O3 -flto -fno-rtti -ffunction-sections -fdata-sections
+release: link
 
 # Autogenerate header dependencies
--include $(all_object_files:.o=.d)
+-include $(object_files:.o=.d)
+-include $(llvm_linked_files:.o=.d)
 
 # Build
 $(llvm_linked_files): %.o: %.cpp

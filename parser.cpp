@@ -1,6 +1,7 @@
 #include "parser.h"
 #include <string_view>
 #include <iostream>
+#include <algorithm>
 
 using Precedence = char;
 constexpr Precedence Invalid_Binary_Operator = -2;
