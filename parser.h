@@ -10,7 +10,12 @@
 #include <iosfwd>
 
 struct ScopeTable {
-    short parent; // Index in SymbolTable::m_scopes
+    // Enclosing scope's index in SymbolTable::m_scopes
+    short parent;
+    // Most scopes won't have any types defined in them, so this field
+    // is empty if set to -1. If >= 0, then is index in SymbolTable::m_discrete_types
+    short discrete_type_id = -1;
+    // Symbol id -> kind of symbol (e.g. lvalue, funct, etc.)
     std::unordered_map<short, NameType> symbols{};
 };
 
@@ -19,6 +24,9 @@ private:
     // Name of symbol -> id
     std::unordered_map<std::string, short> m_ids;
     std::vector<ScopeTable> m_scopes;
+    // Contains all scopes' collections of discrete (integer-like) types
+    //  For each element: maps symbol id of a type -> its range
+    std::vector<std::unordered_map<short, Range>> m_discrete_types;
 
     short m_curr_scope;
     short m_curr_symbol_id = 0;

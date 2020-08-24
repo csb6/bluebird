@@ -40,14 +40,14 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Else:
         output << "Keyword `else`";
         break;
+    case TokenType::Keyword_Range:
+        output << "Keyword `range`";
+        break;
     case TokenType::End_Statement:
         output << "End Statement Marker (a.k.a `;`)";
         break;
     case TokenType::String_Literal:
         output << "String Literal";
-        break;
-    case TokenType::Keyword_Ct_Funct:
-        output << "Keyword `ct_funct`";
         break;
     case TokenType::Op_Plus:
         output << '+';
@@ -108,6 +108,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         break;
     case TokenType::Op_Bit_Not:
         output << '~';
+        break;
+    case TokenType::Op_Thru:
+        output << "thru";
+        break;
+    case TokenType::Op_Upto:
+        output << "upto";
         break;
     case TokenType::Comma:
         output << "Comma marker";

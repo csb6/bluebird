@@ -1,5 +1,5 @@
-type Integer;
-type Natural;
+type Integer is range 0 thru 1_000_000;
+type Natural is range 1 thru 1_000_000;
 
 // This is a line comment
 function foo(a : Natural, b : Integer) is
@@ -22,7 +22,7 @@ function foo(a : Natural, b : Integer) is
    34 or 67 and -(5 and 67);
 end foo;
 
-type Number;
+type Number is range 5 upto 42;
 
 /*Some comment
 function not_really is end not_really

@@ -29,7 +29,6 @@ int main(int argc, char **argv)
 
     Lexer lexer{source_file.begin(), source_file.end()};
     lexer.run();
-    lexer.print_tokens();
 
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();

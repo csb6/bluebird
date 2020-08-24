@@ -22,4 +22,4 @@ function foo() is
     max(45, 67);
 end foo;
 
-type Natural;
+type Natural is range 1 thru 1_000_000;

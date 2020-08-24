@@ -55,10 +55,10 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
 
 void Checker::run()
 {
-    // First, typecheck expressions
     for(const auto& function : m_functions) {
         for(const auto& statement : function.statements) {
             check_types(statement.get());
+            // TODO: add more checks for this statement here
         }
     }
 }

@@ -20,13 +20,13 @@ constexpr Precedence operator_precedence_table[] = {
          Invalid_Binary_Operator,
     //  Keyword_Type:
          Invalid_Binary_Operator,
-    //  Keyword_Ct_Funct:
-         Invalid_Binary_Operator,
     //  Keyword_End:
          Invalid_Binary_Operator,
     //   Keyword_If
          Invalid_Binary_Operator,
     //   Keyword_Else
+         Invalid_Binary_Operator,
+    //   Keyword_Type
          Invalid_Binary_Operator,
     // Non-operator symbols
     //  Open_Parentheses:
@@ -84,6 +84,11 @@ constexpr Precedence operator_precedence_table[] = {
           9,
     //   Op_Bit_Not:
           Invalid_Binary_Operator,
+    //  Range
+    //   Op_Thru:
+          13,
+    //   Op_Upto:
+          13,
     // Pseudo-Operators
     //  Op_Assign:
          Invalid_Binary_Operator,
@@ -130,6 +135,15 @@ void print_error_expected(std::string_view expected, Token actual)
     std::cerr << "Line " << actual.line_num << ": "
               << "Expected " << expected << ", but instead found token:\n";
     std::cerr << actual;
+}
+
+void print_error_expected(unsigned int line_num, std::string_view expected,
+                          const Expression* actual)
+{
+    std::cerr << "Line " << line_num << ": "
+              << "Expected " << expected << ", but instead found expression:\n";
+    actual->print(std::cerr);
+    std::cerr << '\n';
 }
 
 Parser::Parser(TokenIterator input_begin,
@@ -581,9 +595,48 @@ void Parser::in_type_definition()
     m_names_table.add(token->text, NameType::Type);
     m_types.push_back({token->text});
 
-    // TODO: handle ranges/arrays/record types here
-
     ++token;
+    if(token->type != TokenType::Keyword_Is) {
+        print_error_expected("keyword is", *token);
+        exit(1);
+    }
+
+    // TODO: add ability to distinguish between new distinct types and new subtypes
+    ++token;
+    if(token->type == TokenType::Keyword_Range) {
+        // Handle discrete types
+        ++token;
+        Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
+        if(expr->expr_type() != ExpressionType::Binary) {
+            print_error_expected("binary expression with operator `thru` or `upto`", *token);
+            exit(1);
+        }
+        const auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
+        if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
+            print_error_expected("binary expression with operator `thru` or `upto`", *token);
+            exit(1);
+        }
+
+        // TODO: compile-time eval both sides of the range operator. For now, only allow
+        //  int literals to keep things simple. Also need to add support for `-` operator
+        //  for negative integer literals
+        if(range_expr->left->expr_type() != ExpressionType::IntLiteral) {
+            print_error_expected(token->line_num, "integer literal", range_expr->left.get());
+            exit(1);
+        } else if(range_expr->right->expr_type() != ExpressionType::IntLiteral) {
+            print_error_expected(token->line_num, "integer literal", range_expr->right.get());
+            exit(1);
+        }
+
+        // TODO: add the range to SymbolTable::m_discrete types, then update the scope
+        // table so that the current scope points to the type's definition/its unique
+        // id
+    } else {
+        // TODO: handle arrays/record types here
+        print_error_expected("keyword range", *token);
+        exit(1);
+    }
+
     if(token->type != TokenType::End_Statement) {
         print_error_expected("end of statement (a.k.a. `;`)", *token);
         exit(1);

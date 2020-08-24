@@ -49,7 +49,7 @@ struct StringLiteral : public Expression {
     explicit StringLiteral(const std::string& v) : value(v) {}
     TypeId type() const override { return StringType; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 struct CharLiteral : public Expression {
@@ -57,7 +57,7 @@ struct CharLiteral : public Expression {
     explicit CharLiteral(char v) : value(v) {}
     TypeId type() const override { return CharType; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 struct IntLiteral : public Expression {
@@ -65,7 +65,7 @@ struct IntLiteral : public Expression {
     explicit IntLiteral(int v) : value(v) {}
     TypeId type() const override { return IntType; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 struct FloatLiteral : public Expression {
@@ -73,7 +73,7 @@ struct FloatLiteral : public Expression {
     explicit FloatLiteral(int v) : value(v) {}
     TypeId type() const override { return FloatType; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 // An expression consisting solely of an lvalue
@@ -82,7 +82,7 @@ struct LValueExpression : public Expression {
     TypeId type() const override { return NoType; } //TODO: implement
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 // An expression that consists of an operator and an expression
@@ -142,7 +142,7 @@ struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
     BasicStatement(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::Basic; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -163,7 +163,7 @@ struct IfBlock : public Statement {
     std::vector<Magnum::Pointer<Statement>> statements;
     IfBlock(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::IfBlock; }
-    void print(std::ostream& output) const override;
+    void print(std::ostream&) const override;
 };
 
 // A procedure containing statements and optionally inputs/outputs

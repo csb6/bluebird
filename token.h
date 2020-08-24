@@ -6,7 +6,7 @@
 enum class TokenType : char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
-    Keyword_Ct_Funct, Keyword_End, Keyword_If, Keyword_Else,
+    Keyword_End, Keyword_If, Keyword_Else, Keyword_Range,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma,
@@ -19,6 +19,8 @@ enum class TokenType : char {
     Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge,
     //  Bitwise
     Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor, Op_Bit_Not,
+    //  Range
+    Op_Thru, Op_Upto,
     // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt
     //  parser code and not subject to precedence rules/table)
     Op_Assign,
