@@ -155,8 +155,32 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-Parser::Parser(TokenIterator input_begin,
-               TokenIterator input_end)
+// Returns newly allocated IntLiteral
+Expression* evaluate_negated_int_literal(Token token, Expression* expression)
+{
+    switch(expression->expr_type()) {
+    case ExpressionType::IntLiteral:
+        // No negation, so nothing to evaluate
+        return expression;
+    case ExpressionType::Unary: {
+        auto* negate_expr = static_cast<const UnaryExpression*>(expression);
+        if(negate_expr->right->expr_type() == ExpressionType::IntLiteral
+           && negate_expr->op == TokenType::Op_Minus) {
+            // Only allowed unary operator is negation (`-`)
+            auto* literal_expr = static_cast<const IntLiteral*>(negate_expr->right.get());
+            return new IntLiteral(-literal_expr->value);
+        } else {
+            print_error_expected(token.line_num, "integer literal", expression);
+            exit(1);
+        }
+    }
+    default:
+        print_error_expected(token.line_num, "integer literal", expression);
+        exit(1);
+    }
+}
+
+Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
 {
     // Built-in functions/names (eventually, the standard library)
@@ -562,21 +586,24 @@ void Parser::in_type_definition()
             print_error_expected("binary expression with operator `thru` or `upto`", *token);
             exit(1);
         }
-        const auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
+        auto* range_expr = static_cast<BinaryExpression*>(expr.get());
         if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
             print_error_expected("binary expression with operator `thru` or `upto`", *token);
             exit(1);
         }
 
-        // TODO: compile-time eval both sides of the range operator. For now, only allow
-        //  int literals to keep things simple. Also need to add support for `-` operator
-        //  for negative integer literals
-        if(range_expr->left->expr_type() != ExpressionType::IntLiteral) {
-            print_error_expected(token->line_num, "integer literal", range_expr->left.get());
-            exit(1);
-        } else if(range_expr->right->expr_type() != ExpressionType::IntLiteral) {
-            print_error_expected(token->line_num, "integer literal", range_expr->right.get());
-            exit(1);
+        // TODO: Fully compile-time eval both sides of the range operator
+        Expression* lower_limit = evaluate_negated_int_literal(*token,
+                                                               range_expr->left.get());
+        Expression* upper_limit = evaluate_negated_int_literal(*token,
+                                                               range_expr->right.get());
+
+        if(lower_limit != range_expr->left.get()) {
+            // Had to flatten a -(int_literal) into int_literal (with value negated)
+            range_expr->left = Magnum::pointer(lower_limit);
+        }
+        if(upper_limit != range_expr->right.get()) {
+            range_expr->right = Magnum::pointer(upper_limit);
         }
 
         // TODO: add the range to SymbolTable::m_discrete types, then update the scope
