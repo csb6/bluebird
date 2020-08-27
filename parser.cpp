@@ -156,12 +156,12 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
 }
 
 // Returns newly allocated IntLiteral
-Expression* evaluate_negated_int_literal(Token token, Expression* expression)
+IntLiteral* evaluate_negated_int_literal(Token token, Expression* expression)
 {
     switch(expression->expr_type()) {
     case ExpressionType::IntLiteral:
         // No negation, so nothing to evaluate
-        return expression;
+        return static_cast<IntLiteral*>(expression);
     case ExpressionType::Unary: {
         auto* negate_expr = static_cast<const UnaryExpression*>(expression);
         if(negate_expr->right->expr_type() == ExpressionType::IntLiteral
@@ -592,18 +592,27 @@ void Parser::in_type_definition()
             exit(1);
         }
 
-        // TODO: Fully compile-time eval both sides of the range operator
-        Expression* lower_limit = evaluate_negated_int_literal(*token,
+        // TODO: Fully compile-time eval both sides of the range operator, with support
+        //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
+        //  bitwise operators
+        IntLiteral* lower_limit = evaluate_negated_int_literal(*token,
                                                                range_expr->left.get());
-        Expression* upper_limit = evaluate_negated_int_literal(*token,
+        IntLiteral* upper_limit = evaluate_negated_int_literal(*token,
                                                                range_expr->right.get());
 
-        if(lower_limit != range_expr->left.get()) {
-            // Had to flatten a -(int_literal) into int_literal (with value negated)
+        // Had to flatten a -(int_literal) into int_literal (with value negated)
+        if(lower_limit != range_expr->left.get())
             range_expr->left = Magnum::pointer(lower_limit);
-        }
-        if(upper_limit != range_expr->right.get()) {
+        if(upper_limit != range_expr->right.get())
             range_expr->right = Magnum::pointer(upper_limit);
+
+        if(upper_limit->value < lower_limit->value) {
+            print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
+            exit(1);
+        } else if(range_expr->op == TokenType::Op_Upto
+                  && upper_limit->value == lower_limit->value) {
+            print_error(token->line_num, "Error: In `upto` range, lower limit is same as upper limit");
+            exit(1);
         }
 
         // TODO: add the range to SymbolTable::m_discrete types, then update the scope

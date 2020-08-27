@@ -1,6 +1,9 @@
 type Integer is range -1_000_000 thru 1_000_000;
 type Positive is range 0 thru 1_000_000;
 type Natural is range 1 thru 1_000_000;
+type One_Number is range 89 thru 89;
+// type Zero_Number is range 89 upto 89; // Illegal
+// type Impossible_Range is range -88 thru -89; //Illegal
 
 // This is a line comment
 function foo(a : Natural, b : Integer) is
