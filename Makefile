@@ -10,7 +10,7 @@ llvm_compiler_flags := `llvm-config --cxxflags`
 flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
 
 # Link (default rule)
-link: $(object_files) $(llvm_linked_files)
+$(exe_name): $(object_files) $(llvm_linked_files)
 	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files)
 
 debug: flags += --debug
