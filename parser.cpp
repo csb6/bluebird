@@ -155,20 +155,19 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-// Returns newly allocated IntLiteral
-IntLiteral* evaluate_negated_int_literal(Token token, Expression* expression)
+int evaluate_negated_int_literal(Token token, const Expression* expression)
 {
     switch(expression->expr_type()) {
     case ExpressionType::IntLiteral:
         // No negation, so nothing to evaluate
-        return static_cast<IntLiteral*>(expression);
+        return static_cast<const IntLiteral*>(expression)->value;
     case ExpressionType::Unary: {
         auto* negate_expr = static_cast<const UnaryExpression*>(expression);
         if(negate_expr->right->expr_type() == ExpressionType::IntLiteral
            && negate_expr->op == TokenType::Op_Minus) {
             // Only allowed unary operator is negation (`-`)
             auto* literal_expr = static_cast<const IntLiteral*>(negate_expr->right.get());
-            return new IntLiteral(-literal_expr->value);
+            return -literal_expr->value;
         } else {
             print_error_expected(token.line_num, "integer literal", expression);
             exit(1);
@@ -586,7 +585,7 @@ void Parser::in_type_definition()
             print_error_expected("binary expression with operator `thru` or `upto`", *token);
             exit(1);
         }
-        auto* range_expr = static_cast<BinaryExpression*>(expr.get());
+        auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
         if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
             print_error_expected("binary expression with operator `thru` or `upto`", *token);
             exit(1);
@@ -595,22 +594,13 @@ void Parser::in_type_definition()
         // TODO: Fully compile-time eval both sides of the range operator, with support
         //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
         //  bitwise operators
-        IntLiteral* lower_limit = evaluate_negated_int_literal(*token,
-                                                               range_expr->left.get());
-        IntLiteral* upper_limit = evaluate_negated_int_literal(*token,
-                                                               range_expr->right.get());
+        int lower_limit = evaluate_negated_int_literal(*token, range_expr->left.get());
+        int upper_limit = evaluate_negated_int_literal(*token, range_expr->right.get());
 
-        // Had to flatten a -(int_literal) into int_literal (with value negated)
-        if(lower_limit != range_expr->left.get())
-            range_expr->left = Magnum::pointer(lower_limit);
-        if(upper_limit != range_expr->right.get())
-            range_expr->right = Magnum::pointer(upper_limit);
-
-        if(upper_limit->value < lower_limit->value) {
+        if(upper_limit < lower_limit) {
             print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
             exit(1);
-        } else if(range_expr->op == TokenType::Op_Upto
-                  && upper_limit->value == lower_limit->value) {
+        } else if(range_expr->op == TokenType::Op_Upto && upper_limit == lower_limit) {
             print_error(token->line_num, "Error: In `upto` range, lower limit is same as upper limit");
             exit(1);
         }
@@ -670,8 +660,7 @@ SymbolTable::SymbolTable()
 
 void SymbolTable::open_scope()
 {
-    ScopeTable new_scope = {m_curr_scope};
-    m_scopes.push_back(new_scope);
+    m_scopes.push_back({m_curr_scope});
     m_curr_scope = m_scopes.size() - 1;
 }
 
@@ -681,7 +670,7 @@ void SymbolTable::close_scope()
 }
 
 
-std::optional<NameType> SymbolTable::find_id(short name_id) const
+std::optional<NameType> SymbolTable::find_by_id(SymbolId name_id) const
 {
     short scope_index = m_curr_scope;
     while(scope_index != -1) {
@@ -698,7 +687,7 @@ std::optional<NameType> SymbolTable::find_id(short name_id) const
     return {};
 }
 
-std::pair<std::string, short> SymbolTable::find_name(short name_id) const
+std::pair<std::string, SymbolId> SymbolTable::find_name(SymbolId name_id) const
 {
     // Map name id back to its string name 
     return *std::find_if(m_ids.begin(), m_ids.end(),
@@ -715,13 +704,13 @@ std::optional<NameType> SymbolTable::find(const std::string& name) const
         return {};
     }
 
-    return find_id(it->second);
+    return find_by_id(it->second);
 }
 
 bool SymbolTable::add(const std::string& name, NameType type)
 {
     auto it = m_ids.find(name);
-    short name_id;
+    SymbolId name_id;
     if(it == m_ids.end()) {
         name_id = m_curr_symbol_id++;
         m_ids[name] = name_id;
@@ -729,7 +718,7 @@ bool SymbolTable::add(const std::string& name, NameType type)
         name_id = it->second;
     }
 
-    auto match = find_id(name_id);
+    auto match = find_by_id(name_id);
     if(!match) {
         // No conflicts here; add the symbol
         m_scopes[m_curr_scope].symbols[name_id] = type;
@@ -743,11 +732,11 @@ bool SymbolTable::add(const std::string& name, NameType type)
 
 void SymbolTable::update(const std::string& name, NameType type)
 {
-    short name_id = m_ids[name];
+    SymbolId name_id = m_ids[name];
     m_scopes[m_curr_scope].symbols[name_id] = type;
 }
 
-void delete_id(ScopeTable& scope, short name_id)
+void delete_id(ScopeTable& scope, SymbolId name_id)
 {
     scope.symbols.erase(name_id);
 }
@@ -763,7 +752,7 @@ void SymbolTable::validate_names()
             switch(name_type) {
             case NameType::DeclaredFunct: {
                 // First, try to resolve the declared function to a definition
-                auto body = find_id(name_id);
+                auto body = find_by_id(name_id);
                 if(!body) {
                     const auto name = find_name(name_id);
                     std::cerr << "Error: Function `" << name.first
@@ -778,7 +767,7 @@ void SymbolTable::validate_names()
             }
             case NameType::DeclaredType: {
                 // First, try to resolve the declared type to a definition
-                auto definition = find_id(name_id);
+                auto definition = find_by_id(name_id);
                 if(!definition) {
                     const auto name = find_name(name_id);
                     std::cerr << "Error: Type `" << name.first

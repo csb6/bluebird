@@ -16,29 +16,31 @@ struct ScopeTable {
     // is empty if set to -1. If >= 0, then is index in SymbolTable::m_discrete_types
     short discrete_type_id = -1;
     // Symbol id -> kind of symbol (e.g. lvalue, funct, etc.)
-    std::unordered_map<short, NameType> symbols{};
+    std::unordered_map<SymbolId, NameType> symbols{};
 };
 
 class SymbolTable {
 private:
-    // Name of symbol -> id
-    std::unordered_map<std::string, short> m_ids;
+    std::unordered_map<std::string, SymbolId> m_ids;
     std::vector<ScopeTable> m_scopes;
     // Contains all scopes' collections of discrete (integer-like) types
     //  For each element: maps symbol id of a type -> its range
-    std::vector<std::unordered_map<short, Range>> m_discrete_types;
+    std::vector<std::unordered_map<SymbolId, Range>> m_discrete_types;
 
     short m_curr_scope;
-    short m_curr_symbol_id = 0;
-    std::optional<NameType> find_id(short name_id) const;
-    std::pair<std::string, short> find_name(short name_id) const;
+    // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
+    SymbolId m_curr_symbol_id = FirstFreeId;
+    std::optional<NameType> find_by_id(SymbolId name_id) const;
+    std::pair<std::string, SymbolId> find_name(SymbolId name_id) const;
 public:
     SymbolTable();
     void open_scope();
     void close_scope();
     std::optional<NameType> find(const std::string& name) const;
+    // Add/update names in the current scope
     bool add(const std::string& name, NameType);
     void update(const std::string& name, NameType);
+    // Checking that no names are declared but not defined (or imported)
     void validate_names();
 };
 

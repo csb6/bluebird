@@ -23,14 +23,15 @@ enum class StatementType : char {
     Basic, Initialization, IfBlock
 };
 
-// Represents a unique type (e.g. Number, Positive, String)
-using TypeId = unsigned int;
+// Represents a unique type (e.g. Number, Positive, String) or symbol (e.g. a variable)
+using SymbolId = unsigned short;
 // Basic, "unconstrained" types (used for typeless constants, literals, etc.)
-constexpr TypeId NoType = 0;
-constexpr TypeId StringType = 1;
-constexpr TypeId CharType = 2;
-constexpr TypeId IntType = 3;
-constexpr TypeId FloatType = 4;
+constexpr SymbolId NoType = 0;
+constexpr SymbolId StringType = 1;
+constexpr SymbolId CharType = 2;
+constexpr SymbolId IntType = 3;
+constexpr SymbolId FloatType = 4;
+constexpr SymbolId FirstFreeId = 5;
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
@@ -39,7 +40,7 @@ struct Expression {
     virtual ExpressionType expr_type() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
-    virtual TypeId type() const = 0;
+    virtual SymbolId type() const = 0;
     virtual void print(std::ostream&) const = 0;
 };
 
@@ -47,7 +48,7 @@ struct Expression {
 struct StringLiteral : public Expression {
     std::string value;
     explicit StringLiteral(const std::string& v) : value(v) {}
-    TypeId type() const override { return StringType; }
+    SymbolId type() const override { return StringType; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
     void print(std::ostream&) const override;
 };
@@ -55,7 +56,7 @@ struct StringLiteral : public Expression {
 struct CharLiteral : public Expression {
     char value;
     explicit CharLiteral(char v) : value(v) {}
-    TypeId type() const override { return CharType; }
+    SymbolId type() const override { return CharType; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
     void print(std::ostream&) const override;
 };
@@ -63,7 +64,7 @@ struct CharLiteral : public Expression {
 struct IntLiteral : public Expression {
     int value;
     explicit IntLiteral(int v) : value(v) {}
-    TypeId type() const override { return IntType; }
+    SymbolId type() const override { return IntType; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;
 };
@@ -71,7 +72,7 @@ struct IntLiteral : public Expression {
 struct FloatLiteral : public Expression {
     double value;
     explicit FloatLiteral(int v) : value(v) {}
-    TypeId type() const override { return FloatType; }
+    SymbolId type() const override { return FloatType; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
     void print(std::ostream&) const override;
 };
@@ -79,7 +80,7 @@ struct FloatLiteral : public Expression {
 // An expression consisting solely of an lvalue
 struct LValueExpression : public Expression {
     std::string name;
-    TypeId type() const override { return NoType; } //TODO: implement
+    SymbolId type() const override { return NoType; } //TODO: implement
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
     void print(std::ostream&) const override;
@@ -92,7 +93,7 @@ struct UnaryExpression : public Expression {
 
     UnaryExpression(TokenType, Expression*);
     ExpressionType expr_type() const override { return ExpressionType::Unary; }
-    TypeId type() const override { return right->type(); }
+    SymbolId type() const override { return right->type(); }
     void print(std::ostream&) const override;
 };
 
@@ -103,7 +104,7 @@ struct BinaryExpression : public Expression {
     Magnum::Pointer<Expression> right;
 
     BinaryExpression(Expression* l, TokenType oper, Expression* r);
-    TypeId type() const override { return left->type(); }
+    SymbolId type() const override { return left->type(); }
     ExpressionType expr_type() const override { return ExpressionType::Binary; }
     void print(std::ostream&) const override;
 };
@@ -112,9 +113,9 @@ struct BinaryExpression : public Expression {
 struct FunctionCall : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
-    TypeId return_type = NoType;
+    SymbolId return_type = NoType;
 
-    TypeId type() const override { return return_type; }
+    SymbolId type() const override { return return_type; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
 };

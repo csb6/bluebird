@@ -14,10 +14,10 @@ $(exe_name): $(object_files) $(llvm_linked_files)
 	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files)
 
 debug: flags += --debug
-debug: link
+debug: $(exe_name)
 
 release: flags += -O3 -flto -fno-rtti -ffunction-sections -fdata-sections
-release: link
+release: $(exe_name)
 
 # Autogenerate header dependencies
 -include $(object_files:.o=.d)
