@@ -155,7 +155,7 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-int evaluate_negated_int_literal(Token token, const Expression* expression)
+int evaluate_int_expression(Token token, const Expression* expression)
 {
     switch(expression->expr_type()) {
     case ExpressionType::IntLiteral:
@@ -594,8 +594,8 @@ void Parser::in_type_definition()
         // TODO: Fully compile-time eval both sides of the range operator, with support
         //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
         //  bitwise operators
-        int lower_limit = evaluate_negated_int_literal(*token, range_expr->left.get());
-        int upper_limit = evaluate_negated_int_literal(*token, range_expr->right.get());
+        int lower_limit = evaluate_int_expression(*token, range_expr->left.get());
+        int upper_limit = evaluate_int_expression(*token, range_expr->right.get());
 
         if(upper_limit < lower_limit) {
             print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
