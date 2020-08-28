@@ -5,8 +5,7 @@ Bluebird is a work-in-progess imperative programming language modeled after C++ 
 The goal is to create a language that supports generic programming with strong typing and syntax somewhere between Ada's
 verbose but unambiguous syntax and C++'s more concise syntax.
 
-It is still in the early stages, but right now it has a lexer and a parser that implement a lot of the basic features. Code generation and
-semantic analysis are starting to develop, but aren't done yet.
+It is still in the early stages, but right now it has a lexer and a parser implementing many basic features. Code generation and semantic analysis are in development, but aren't currently usable.
 
 ## Goals
 
@@ -17,18 +16,18 @@ semantic analysis are starting to develop, but aren't done yet.
 - Modules with mandatory specifications (a.k.a. header files), but no textual inclusion
 - Very strong typing in the tradition of Ada, with few to no implicit conversions, but
 with support for casting when needed
-- Ranges as a core language construct, with support for users-defined ranges
-- Types that support constraining values to a range
-- Support for low-level bitwise operations and ways to precisely control the representation of data
+- Ranges as a core language construct, with support for user-defined ranges
+- Types that can be constrained to a range
+- Support for low-level bitwise operations and precise control over data representation
 - Support for a large number of optional compile and run-time checks
-- Built-in support for partial evaluation of functions
-- Support for simple compile-time evaluation of expressions and calls to at least some
-functions
-- Standard library consisting of a large amount of generic data structures and algorithms
-- Compiler implemented with minimal dependencies/complexity/build times
-- Use a minimally complex build system for the compiler and have a simple, standard build
-solution for the language itself
+- Built-in support for the partial evaluation of functions
+- Support for compile-time evaluation of expressions and at least some subset of functions
+- Standard library containing useful and efficient generic data structures and algorithms
+- Highly modular compiler implemented with minimal dependencies and a reasonable build time
+- Minimally complex build system for the compiler and have a simple, standard build
+system for the language itself
 - Easy way to create C and C++ bindings
+- Compiler tools for interacting with each stage of the compiler, potentially with a GUI
 
 ## Currently Implemented Features
 
@@ -37,14 +36,13 @@ solution for the language itself
 - If statements
 - Type definitions for integer types
 - Logical, comparison, bitwise, and arithmetic operators, as well as parentheses for grouping
-- Detailed error checking throughout the lexer and parser
-- Automatic resolution of variable and function names, preventing need for forward declarations within a file
+- Detailed error checking in the lexing and parsing stages
+- Automatic resolution of variable and function names, preventing the need for forward declarations within a file
 
 ## Syntax
 
 The syntax is very Ada-like, favoring English keywords over symbols and full words over abbreviations (where sensible). Here is a sample
-program demonstrating most of the language keywords and what the compiler can handle at
-this early stage:
+program demonstrating most of the language keywords:
 
 ```
 // Comment
