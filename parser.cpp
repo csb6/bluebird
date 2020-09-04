@@ -569,7 +569,8 @@ void Parser::in_type_definition()
         exit(1);
     }
 
-    m_names_table.add(token->text, NameType::Type);
+    const auto type_name = token->text;
+    m_names_table.add(type_name, NameType::Type);
     m_types.push_back({token->text});
 
     ++token;
@@ -595,10 +596,7 @@ void Parser::in_type_definition()
         //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
         //  bitwise operators
         multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
-        multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};
-
-        // TODO: when creating the range object, normalize the bit_size fields of the
-        // two limits
+        multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};      
 
         if(upper_limit < lower_limit) {
             print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
@@ -608,9 +606,8 @@ void Parser::in_type_definition()
             exit(1);
         }
 
-        // TODO: add the range to SymbolTable::m_discrete types, then update the scope
-        // table so that the current scope points to the type's definition/its unique
-        // id
+        // TODO: fix abort trap occurring here
+        //m_names_table.set_range(type_name, Range{lower_limit, upper_limit});
     } else {
         // TODO: handle arrays/record types here
         print_error_expected("keyword range", *token);
@@ -737,6 +734,19 @@ void SymbolTable::update(const std::string& name, NameType type)
 {
     SymbolId name_id = m_ids[name];
     m_scopes[m_curr_scope].symbols[name_id] = type;
+}
+
+void SymbolTable::set_range(const std::string& type_name, Range range)
+{
+    SymbolId type_id = m_ids[type_name];
+    ScopeTable& scope = m_scopes[m_curr_scope];
+    if(scope.discrete_type_id == -1) {
+        // Most scopes won't have any types defined in them, so this field
+        // is empty if set to -1. If >= 0, then is index in SymbolTable::m_discrete_types
+        m_discrete_types.emplace_back();
+        scope.discrete_type_id = m_discrete_types.size() - 1;
+    }
+    m_discrete_types[scope.discrete_type_id][type_id] = range;
 }
 
 void delete_id(ScopeTable& scope, SymbolId name_id)

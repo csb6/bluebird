@@ -6,6 +6,7 @@
 // Wrapper class for boost::multiprecision::cpp_int
 class multi_int {
  public:
+    multi_int();
     explicit multi_int(const std::string&);
     multi_int(const multi_int&);
     ~multi_int();

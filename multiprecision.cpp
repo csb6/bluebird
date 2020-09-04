@@ -3,10 +3,13 @@
 #include <iostream>
 
 struct multi_int_impl {
+    multi_int_impl() = default;
     explicit multi_int_impl(const std::string& v) : value(v) {}
     boost::multiprecision::cpp_int value;
 };
 
+multi_int::multi_int() : impl(new multi_int_impl())
+{}
 
 multi_int::multi_int(const std::string& value) : impl(new multi_int_impl(value))
 {}

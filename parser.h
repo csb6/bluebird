@@ -40,6 +40,8 @@ public:
     // Add/update names in the current scope
     bool add(const std::string& name, NameType);
     void update(const std::string& name, NameType);
+    // Assumes the range type name is already added to the symbol table
+    void set_range(const std::string& type_name, Range);
     // Checking that no names are declared but not defined (or imported)
     void validate_names();
 };

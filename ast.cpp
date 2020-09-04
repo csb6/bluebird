@@ -1,11 +1,10 @@
 #include "ast.h"
 #include <iomanip> // for setprecision()
 
-bool Range::contains(long value) const
-{
-    return value >= lower_bound && value <= upper_bound;
-}
-
+Range::Range(const multi_int& lower, const multi_int& upper)
+    : lower_bound(lower), upper_bound(upper),
+      bit_size(std::max(lower.bits_needed(), upper.bits_needed()))
+{}
 
 IntLiteral::IntLiteral(const std::string& v)
     : value(v), bit_size(value.bits_needed())
