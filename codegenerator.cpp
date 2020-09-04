@@ -77,9 +77,8 @@ llvm::Value* CodeGenerator::in_int_literal(const Expression* expression)
     auto* literal = static_cast<const IntLiteral*>(expression);
     const auto value = literal->value;
     // TODO: determine signed-ness; right now, assume signed
-    return llvm::ConstantInt::get(m_context,
-                                  llvm::APInt(value.bits_needed(),
-                                              value.str(), 10));
+    return llvm::ConstantInt::get(m_context, llvm::APInt(literal->bit_size,
+                                                         value.str(), 10));
 }
 
 llvm::Value* CodeGenerator::in_float_literal(const Expression* expression)

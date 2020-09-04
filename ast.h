@@ -65,7 +65,8 @@ struct CharLiteral : public Expression {
 struct IntLiteral : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
-    explicit IntLiteral(const std::string& v) : value(v) {}
+    unsigned short bit_size;
+    explicit IntLiteral(const std::string& v);
     SymbolId type() const override { return IntType; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;

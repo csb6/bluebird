@@ -9,7 +9,7 @@ class multi_int {
     explicit multi_int(const std::string&);
     multi_int(const multi_int&);
     ~multi_int();
-    unsigned long bits_needed() const;
+    unsigned short bits_needed() const;
     std::string str() const;
 
     multi_int& operator+=(const multi_int&);

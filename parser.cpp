@@ -597,6 +597,9 @@ void Parser::in_type_definition()
         multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
         multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};
 
+        // TODO: when creating the range object, normalize the bit_size fields of the
+        // two limits
+
         if(upper_limit < lower_limit) {
             print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
             exit(1);

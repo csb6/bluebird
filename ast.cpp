@@ -7,6 +7,10 @@ bool Range::contains(long value) const
 }
 
 
+IntLiteral::IntLiteral(const std::string& v)
+    : value(v), bit_size(value.bits_needed())
+{}
+
 void LValueExpression::print(std::ostream& output) const
 {
     output << name;

@@ -20,12 +20,14 @@ multi_int::~multi_int()
     delete impl;
 }
 
-unsigned long multi_int::bits_needed() const
+unsigned short multi_int::bits_needed() const
 {
     // First, try and fit into common int sizes
-    for(unsigned long i = 0; i <= 12; ++i) {
-        if(impl->value < (2ul << i)) {
-            return i + 1;
+    if(impl->value >= 0) {
+        for(unsigned short i = 0; i <= 12; ++i) {
+            if(impl->value < (2ul << i)) {
+                return i + 1;
+            }
         }
     }
 
@@ -37,8 +39,12 @@ unsigned long multi_int::bits_needed() const
       so 10^17 roughly = 2^56
      */
     size_t precision = impl->value.str().size();
+    if(impl->value < 0) {
+        // Ignore the negative sign ('-') in precision
+        precision--;
+    }
     unsigned long range = std::pow(10, precision);
-    return (log2(range) + 1) / log2(2);
+    return static_cast<unsigned short>(log2(range) + 1);
 }
 
 std::string multi_int::str() const
