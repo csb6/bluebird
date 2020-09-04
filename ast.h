@@ -5,6 +5,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include "multiprecision.h"
 
 namespace Magnum = Corrade::Containers;
 
@@ -62,8 +63,9 @@ struct CharLiteral : public Expression {
 };
 
 struct IntLiteral : public Expression {
-    int value;
-    explicit IntLiteral(int v) : value(v) {}
+    // Holds arbitrarily-sized integers
+    multi_int value;
+    explicit IntLiteral(const std::string& v) : value(v) {}
     SymbolId type() const override { return IntType; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;

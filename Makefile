@@ -1,7 +1,7 @@
 # Files that depend on LLVM
 llvm_linked_files := main.o codegenerator.o
 # All other files
-object_files := lexer.o parser.o token.o ast.o checker.o
+object_files := lexer.o parser.o token.o ast.o checker.o multiprecision.o
 
 exe_name := bluebird
 compiler := clang++

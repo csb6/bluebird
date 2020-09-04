@@ -155,7 +155,7 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-int evaluate_int_expression(Token token, const Expression* expression)
+multi_int evaluate_int_expression(Token token, const Expression* expression)
 {
     switch(expression->expr_type()) {
     case ExpressionType::IntLiteral:
@@ -217,7 +217,7 @@ Expression* Parser::in_literal()
     case TokenType::Char_Literal:
         return new CharLiteral(current->text[0]);
     case TokenType::Int_Literal:
-        return new IntLiteral(std::stoi(current->text));
+        return new IntLiteral(current->text);
     case TokenType::Float_Literal:
         return new FloatLiteral(std::stod(current->text));
     default:
@@ -594,8 +594,8 @@ void Parser::in_type_definition()
         // TODO: Fully compile-time eval both sides of the range operator, with support
         //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
         //  bitwise operators
-        int lower_limit = evaluate_int_expression(*token, range_expr->left.get());
-        int upper_limit = evaluate_int_expression(*token, range_expr->right.get());
+        multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
+        multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};
 
         if(upper_limit < lower_limit) {
             print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
