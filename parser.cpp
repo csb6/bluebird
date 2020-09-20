@@ -557,6 +557,37 @@ void Parser::in_function_definition()
     }
 }
 
+void Parser::in_range_type_definition(const std::string& type_name)
+{
+    Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
+    if(expr->expr_type() != ExpressionType::Binary) {
+        print_error_expected("binary expression with operator `thru` or `upto`", *token);
+        exit(1);
+    }
+    auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
+    if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
+        print_error_expected("binary expression with operator `thru` or `upto`", *token);
+        exit(1);
+    }
+
+    // TODO: Fully compile-time eval both sides of the range operator, with support
+    //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
+    //  bitwise operators
+    multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
+    multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};      
+
+    if(upper_limit < lower_limit) {
+        print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
+        exit(1);
+    } else if(range_expr->op == TokenType::Op_Upto && upper_limit == lower_limit) {
+        print_error(token->line_num, "Error: In `upto` range, lower limit cannot be same as upper limit");
+        exit(1);
+    }
+
+    m_names_table.add(type_name, Range{std::move(lower_limit), std::move(upper_limit)});
+    m_types.push_back({token->text});
+}
+
 void Parser::in_type_definition()
 {
     assert_token_is(TokenType::Keyword_Type, "keyword `type`", *token);
@@ -569,9 +600,9 @@ void Parser::in_type_definition()
         exit(1);
     }
 
-    const auto type_name = token->text;
-    m_names_table.add(type_name, NameType::Type);
-    m_types.push_back({token->text});
+    const auto& type_name = token->text;
+    //m_names_table.add(type_name, NameType::Type);
+    //m_types.push_back({token->text});
 
     ++token;
     assert_token_is(TokenType::Keyword_Is, "keyword `is`", *token);
@@ -580,34 +611,8 @@ void Parser::in_type_definition()
     ++token;
     if(token->type == TokenType::Keyword_Range) {
         // Handle discrete types
-        ++token;
-        Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
-        if(expr->expr_type() != ExpressionType::Binary) {
-            print_error_expected("binary expression with operator `thru` or `upto`", *token);
-            exit(1);
-        }
-        auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
-        if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
-            print_error_expected("binary expression with operator `thru` or `upto`", *token);
-            exit(1);
-        }
-
-        // TODO: Fully compile-time eval both sides of the range operator, with support
-        //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
-        //  bitwise operators
-        multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
-        multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};      
-
-        if(upper_limit < lower_limit) {
-            print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
-            exit(1);
-        } else if(range_expr->op == TokenType::Op_Upto && upper_limit == lower_limit) {
-            print_error(token->line_num, "Error: In `upto` range, lower limit is same as upper limit");
-            exit(1);
-        }
-
-        // TODO: fix abort trap occurring here
-        //m_names_table.set_range(type_name, Range{lower_limit, upper_limit});
+        ++token; // Eat keyword `range`
+        in_range_type_definition(type_name);
     } else {
         // TODO: handle arrays/record types here
         print_error_expected("keyword range", *token);
@@ -730,14 +735,12 @@ bool SymbolTable::add(const std::string& name, NameType type)
     }
 }
 
-void SymbolTable::update(const std::string& name, NameType type)
+bool SymbolTable::add(const std::string& type_name, Range&& range)
 {
-    SymbolId name_id = m_ids[name];
-    m_scopes[m_curr_scope].symbols[name_id] = type;
-}
+    if(!add(type_name, NameType::Type)) {
+        return false;
+    }
 
-void SymbolTable::set_range(const std::string& type_name, Range range)
-{
     SymbolId type_id = m_ids[type_name];
     ScopeTable& scope = m_scopes[m_curr_scope];
     if(scope.discrete_type_id == -1) {
@@ -747,6 +750,13 @@ void SymbolTable::set_range(const std::string& type_name, Range range)
         scope.discrete_type_id = m_discrete_types.size() - 1;
     }
     m_discrete_types[scope.discrete_type_id][type_id] = range;
+    return true;
+}
+
+void SymbolTable::update(const std::string& name, NameType type)
+{
+    SymbolId name_id = m_ids[name];
+    m_scopes[m_curr_scope].symbols[name_id] = type;
 }
 
 void delete_id(ScopeTable& scope, SymbolId name_id)

@@ -1,6 +1,11 @@
 #include "ast.h"
 #include <iomanip> // for setprecision()
 
+Range::Range(const multi_int&& lower, const multi_int&& upper)
+    : lower_bound(lower), upper_bound(upper),
+      bit_size(std::max(lower.bits_needed(), upper.bits_needed()))
+{}
+
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       bit_size(std::max(lower.bits_needed(), upper.bits_needed()))

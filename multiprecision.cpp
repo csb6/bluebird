@@ -4,6 +4,8 @@
 
 struct multi_int_impl {
     multi_int_impl() = default;
+    multi_int_impl(multi_int_impl&) = default;
+    multi_int_impl(multi_int_impl&&) = default;
     explicit multi_int_impl(const std::string& v) : value(v) {}
     boost::multiprecision::cpp_int value;
 };
@@ -12,42 +14,39 @@ multi_int::multi_int() : impl(new multi_int_impl())
 {}
 
 multi_int::multi_int(const std::string& value) : impl(new multi_int_impl(value))
-{}
+{
+    set_bits_needed();
+}
 
 multi_int::multi_int(const multi_int& other)
-    : impl{new multi_int_impl{*other.impl}}
+    : impl{new multi_int_impl{*other.impl}}, m_bits_needed(other.m_bits_needed)
 {}
+
+multi_int& multi_int::operator=(const multi_int& other)
+{
+    impl = new multi_int_impl{*other.impl};
+    m_bits_needed = other.m_bits_needed;
+    return *this;
+}
 
 multi_int::~multi_int()
 {
     delete impl;
 }
 
-unsigned short multi_int::bits_needed() const
+void multi_int::set_bits_needed()
 {
-    // First, try and fit into common int sizes
-    if(impl->value >= 0) {
-        for(unsigned short i = 0; i <= 12; ++i) {
-            if(impl->value < (2ul << i)) {
-                return i + 1;
-            }
-        }
+    if(impl->value < 0) {
+        impl->value = abs(impl->value) * 2;
     }
 
-    // Else, find a roughly appropriate size
-    /*For x = 2^n, solve for n.
-      n = log(x) / log(2)
-      Ex:
-      log(10^17) / log(2) = 56.472...
-      so 10^17 roughly = 2^56
-     */
-    size_t precision = impl->value.str().size();
-    if(impl->value < 0) {
-        // Ignore the negative sign ('-') in precision
-        precision--;
+    unsigned short exp = 0;
+    boost::multiprecision::cpp_int curr_power{1};
+    while(curr_power < impl->value) {
+        curr_power *= 2;
+        ++exp;
     }
-    unsigned long range = std::pow(10, precision);
-    return static_cast<unsigned short>(log2(range) + 1);
+    m_bits_needed = exp + 1;
 }
 
 std::string multi_int::str() const

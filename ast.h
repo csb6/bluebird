@@ -190,6 +190,11 @@ struct Range {
     multi_int lower_bound, upper_bound;
     unsigned short bit_size;
     Range() : bit_size(0) {}
+    // Copy Constructors
     Range(const multi_int& lower, const multi_int& upper);
+    Range& operator=(const Range&) = default;
+    // Move Constructors
+    Range(const multi_int&& lower, const multi_int&& upper);
+    Range& operator=(Range&&) = default;
 };
 #endif
