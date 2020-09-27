@@ -241,7 +241,8 @@ Expression* Parser::in_lvalue_expression()
         exit(1);
     }
 
-    auto new_lvalue_expr = new LValueExpression();
+    //TODO: link somehow to LValue object, get its the SymbolId of its type
+    auto new_lvalue_expr = new LValueExpression(current->text, 0);
     new_lvalue_expr->name = current->text;
     return new_lvalue_expr;
 }

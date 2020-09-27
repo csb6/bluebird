@@ -1,0 +1,44 @@
+As of right now (commit 8887e44794a37249c12363378fadf71a7b8f3a66), the symbol table is
+showing its design flaws. As I am adding support for adding/recognizing types for
+lvalues, the current system of having separate data structures for looking up the
+kind of symbol and the metadata for that symbol is becoming more awkward.
+
+What I need:
+
+A tree structure
+- Each node represents one scope
+- A map (string name -> NameType and index)
+A vector of Ranges (represents Discrete types)
+- No deletions, append to end, noting index
+A vector of LValues (represents variables/constants within the program)
+- No deletions, append to end, noting index
+
+struct SymbolInfo {
+       NameType name_type;
+       size_t index;
+};
+
+struct Scope {
+       short parent_index;
+       std::unordered_map<SymbolId, SymbolInfo> symbols{};
+};
+
+class SymbolTable {
+public:
+      void open_scope();
+      void close_scope();
+      std::optional<NameType> find(const std::string& name) const;
+      bool add(const std::string& name, const std::string& type_name);
+      bool add(const std::string& type_name, multi_int lower, multi_int upper);
+      void update(const std::string& name, NameType);
+private:
+      // Scope tree
+      std::vector<Scope> m_scopes;
+
+      // AST entities
+      std::vector<Range> m_range_types;
+      std::vector<LValue> m_lvalues;
+
+      // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
+      SymbolId m_curr_symbol_id = FirstFreeId;
+};

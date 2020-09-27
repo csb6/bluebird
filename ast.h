@@ -83,7 +83,9 @@ struct FloatLiteral : public Expression {
 // An expression consisting solely of an lvalue
 struct LValueExpression : public Expression {
     std::string name;
-    SymbolId type() const override { return NoType; } //TODO: implement
+    SymbolId type_id;
+    LValueExpression(const std::string &n, SymbolId i) : name(n), type_id(i) {}
+    SymbolId type() const override { return type_id; }
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
     void print(std::ostream&) const override;
