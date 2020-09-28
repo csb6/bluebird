@@ -180,11 +180,12 @@ multi_int evaluate_int_expression(Token token, const Expression* expression)
 }
 
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
-    : m_input_begin(input_begin), m_input_end(input_end)
+    : m_input_begin(input_begin), m_input_end(input_end),
+      m_names_table(m_range_types, m_lvalues, m_functions)
 {
     // Built-in functions/names (eventually, the standard library)
-    m_names_table.add("print", NameType::Funct);
-    m_names_table.add("max", NameType::Funct);
+    m_names_table.add_function("print");
+    m_names_table.add_function("max");
 }
 
 // Pratt parser
@@ -233,9 +234,10 @@ Expression* Parser::in_lvalue_expression()
 
     const auto match = m_names_table.find(current->text);
     if(!match) {
-        print_error(current->line_num, "Unknown lvalue `" + current->text + "`");
+        print_error(current->line_num,
+                    "Unknown variable/constant `" + current->text + "`");
         exit(1);
-    } else if(match.value() != NameType::LValue) {
+    } else if(match.value().name_type != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
                     + current->text + "` is already being used as a name");
         exit(1);
@@ -283,14 +285,16 @@ FunctionCall* Parser::in_function_call()
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        m_names_table.add(token->text, NameType::DeclaredFunct);
-    } else if(match.value() != NameType::Funct && match.value() != NameType::DeclaredFunct) {
+        m_names_table.add_function(token->text);
+    } else if(match.value().name_type != NameType::Funct
+              && match.value().name_type != NameType::DeclaredFunct) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a function name, but it is defined as another kind of name");
         exit(1);
     }
 
     new_function_call->name = token->text;
+    // TODO: link FunctionCall object to its corresponding Function
 
     ++token;
     assert_token_is(TokenType::Open_Parentheses,
@@ -334,12 +338,11 @@ Expression* Parser::in_parentheses()
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
     assert_token_is(TokenType::Name, "the name of an lvalue", *token);
-    Magnum::Pointer<LValue> new_lvalue;
-    new_lvalue = Magnum::pointer<LValue>();
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
-        print_error(token->line_num, "`" + token->text + "` cannot be used as an lvalue name. It is already defined as another kind of name");
+        print_error(token->line_num, "`" + token->text + "` cannot be used as an lvalue name. It is already defined as a name");
         exit(1);
     }
+    Magnum::Pointer<LValue> new_lvalue = Magnum::pointer<LValue>();
     new_lvalue->name = token->text;
 
     ++token;
@@ -357,8 +360,9 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        m_names_table.add(token->text, NameType::DeclaredType);
-    } else if(match.value() != NameType::Type && match.value() != NameType::DeclaredType) {
+        m_names_table.add_type(token->text);
+    } else if(match.value().name_type != NameType::Type
+              && match.value().name_type != NameType::DeclaredType) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a typename, but it is defined as another kind of name");
         exit(1);
@@ -375,17 +379,14 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     auto new_statement = Magnum::pointer<Initialization>(token->line_num);
 
     // Add this new lvalue to list of tracked names
-    {
-        ++token;
-        Magnum::Pointer<LValue> new_lvalue = in_lvalue_declaration();
-        if(const auto match = m_names_table.find(new_lvalue->name); match) {
-            print_error(token->line_num, "Name `" + new_lvalue->name + "` is already in use");
-            exit(1);
-        }
-        m_names_table.add(new_lvalue->name, NameType::LValue);
-        m_lvalues.push_back(std::move(new_lvalue));
-        new_statement->target = m_lvalues.back().get();
+    ++token;
+    Magnum::Pointer<LValue> new_lvalue = in_lvalue_declaration();
+    if(const auto match = m_names_table.find(new_lvalue->name); match) {
+        print_error(token->line_num, "Name `" + new_lvalue->name + "` is already in use");
+        exit(1);
     }
+    m_names_table.add_lvalue(std::move(new_lvalue));
+    new_statement->target = m_lvalues.back().get();
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -483,12 +484,8 @@ void Parser::in_function_definition()
     assert_token_is(TokenType::Name, "name to follow `function keyword`", *token);
 
     const auto match = m_names_table.find(token->text);
-    if(!match) {
+    if(!match || match.value().name_type == NameType::DeclaredFunct) {
         new_funct.name = token->text;
-        m_names_table.add(new_funct.name, NameType::Funct);
-    } else if(match.value() == NameType::DeclaredFunct) {
-        new_funct.name = token->text;
-        m_names_table.update(new_funct.name, NameType::Funct);
     } else {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     + " already in use");
@@ -551,7 +548,8 @@ void Parser::in_function_definition()
             ++token;
             assert_token_is(TokenType::End_Statement,
                             "end of statement (a.k.a. `;`)", *token);
-            m_functions.push_back(std::move(new_funct));
+            m_names_table.add_function(std::move(new_funct));
+            //m_functions.push_back(std::move(new_funct));
             ++token;
             return;
         }
@@ -585,8 +583,9 @@ void Parser::in_range_type_definition(const std::string& type_name)
         exit(1);
     }
 
-    m_names_table.add(type_name, Range{std::move(lower_limit), std::move(upper_limit)});
-    m_types.push_back({token->text});
+    m_names_table.add_type(RangeType{{type_name},
+                                     Range{std::move(lower_limit), std::move(upper_limit)}});
+    //m_types.push_back({token->text});
 }
 
 void Parser::in_type_definition()
@@ -596,7 +595,7 @@ void Parser::in_type_definition()
     assert_token_is(TokenType::Name, "typename", *token);
 
     if(const auto match = m_names_table.find(token->text);
-       match && match.value() != NameType::DeclaredType) {
+       match && match.value().name_type != NameType::DeclaredType) {
         print_error(token->line_num, "Name: " + token->text + " already in use");
         exit(1);
     }
@@ -644,7 +643,7 @@ void Parser::run()
     }
 
     // Check that there are no unresolved types/functions
-    m_names_table.validate_names();
+    //m_names_table.validate_names();
 }
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
@@ -656,12 +655,22 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
 }
 
 
-SymbolTable::SymbolTable()
+SymbolTable::SymbolTable(std::vector<RangeType>& range_types,
+                         std::vector<Magnum::Pointer<LValue>>& lvalues,
+                         std::vector<Function>& functions)
+    : m_range_types(range_types), m_lvalues(lvalues), m_functions(functions)
 {
     m_scopes.reserve(20);
     // Add root scope
     m_scopes.push_back({-1});
     m_curr_scope = 0;
+
+    m_range_types.reserve(20);
+    m_lvalues.reserve(20);
+    m_functions.reserve(20);
+
+    // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
+    m_curr_symbol_id = FirstFreeId;
 }
 
 void SymbolTable::open_scope()
@@ -672,95 +681,72 @@ void SymbolTable::open_scope()
 
 void SymbolTable::close_scope()
 {
-    m_curr_scope = m_scopes[m_curr_scope].parent;
+    m_curr_scope = m_scopes[m_curr_scope].parent_index;
 }
 
-
-std::optional<NameType> SymbolTable::find_by_id(SymbolId name_id) const
+std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
 {
     short scope_index = m_curr_scope;
-    while(scope_index != -1) {
-        const ScopeTable& scope = m_scopes[scope_index];
-        auto match = scope.symbols.find(name_id);
+    while(scope_index > 0) {
+        const Scope& scope = m_scopes[scope_index];
+        const auto match = scope.symbols.find(name);
         if(match != scope.symbols.end()) {
-            // Found match in this scope
             return {match->second};
         } else {
-            // No match, try searching the containing scope
-            scope_index = scope.parent;
+            scope_index = scope.parent_index;
         }
     }
     return {};
 }
 
-std::pair<std::string, SymbolId> SymbolTable::find_name(SymbolId name_id) const
+const RangeType& SymbolTable::get_range_type(short index) const
 {
-    // Map name id back to its string name 
-    return *std::find_if(m_ids.begin(), m_ids.end(),
-                         [name_id](const auto& each) {
-                             return each.second == name_id;
-                         });
+    return m_range_types[index];
 }
 
-std::optional<NameType> SymbolTable::find(const std::string& name) const
+const LValue& SymbolTable::get_lvalue(short index) const
 {
-    auto it = m_ids.find(name);
-    if(it == m_ids.end()) {
-        // Identifier not used anywhere
-        return {};
-    }
-
-    return find_by_id(it->second);
+    return *m_lvalues[index];
 }
 
-bool SymbolTable::add(const std::string& name, NameType type)
+const Function& SymbolTable::get_function(short index) const
 {
-    auto it = m_ids.find(name);
-    SymbolId name_id;
-    if(it == m_ids.end()) {
-        name_id = m_curr_symbol_id++;
-        m_ids[name] = name_id;
-    } else {
-        name_id = it->second;
-    }
-
-    auto match = find_by_id(name_id);
-    if(!match) {
-        // No conflicts here; add the symbol
-        m_scopes[m_curr_scope].symbols[name_id] = type;
-        return true;
-    } else {
-        // Symbol already used as a name somewhere else in the
-        // visible scopes
-        return false;
-    }
+    return m_functions[index];
 }
 
-bool SymbolTable::add(const std::string& type_name, Range&& range)
+void SymbolTable::add_lvalue(Magnum::Pointer<LValue> lvalue)
 {
-    if(!add(type_name, NameType::Type)) {
-        return false;
-    }
-
-    SymbolId type_id = m_ids[type_name];
-    ScopeTable& scope = m_scopes[m_curr_scope];
-    if(scope.discrete_type_id == -1) {
-        // Most scopes won't have any types defined in them, so this field
-        // is empty if set to -1. If >= 0, then is index in SymbolTable::m_discrete_types
-        m_discrete_types.emplace_back();
-        scope.discrete_type_id = m_discrete_types.size() - 1;
-    }
-    m_discrete_types[scope.discrete_type_id][type_id] = range;
-    return true;
+    m_scopes[m_curr_scope].symbols[lvalue->name]
+        = SymbolInfo{NameType::LValue, m_lvalues.size()};
+    m_lvalues.push_back(std::move(lvalue));
 }
 
-void SymbolTable::update(const std::string& name, NameType type)
+void SymbolTable::add_type(RangeType&& type)
 {
-    SymbolId name_id = m_ids[name];
-    m_scopes[m_curr_scope].symbols[name_id] = type;
+    m_scopes[m_curr_scope].symbols[type.name]
+        = SymbolInfo{NameType::Type, m_range_types.size()};
+    m_range_types.push_back(std::move(type));
 }
 
-void delete_id(ScopeTable& scope, SymbolId name_id)
+
+void SymbolTable::add_type(const std::string& name)
+{
+    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredType};
+}
+
+void SymbolTable::add_function(Function&& function)
+{
+    m_scopes[m_curr_scope].symbols[function.name]
+        = SymbolInfo{NameType::Funct, m_functions.size()};
+    m_functions.push_back(std::move(function));
+}
+
+void SymbolTable::add_function(const std::string& name)
+{
+    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredFunct};
+}
+
+/*void delete_id(Scope& scope, SymbolId name_id)
 {
     scope.symbols.erase(name_id);
 }
@@ -810,4 +796,4 @@ void SymbolTable::validate_names()
             }
         }
     }
-}
+    }*/

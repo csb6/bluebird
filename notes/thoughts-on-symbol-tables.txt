@@ -27,18 +27,26 @@ class SymbolTable {
 public:
       void open_scope();
       void close_scope();
-      std::optional<NameType> find(const std::string& name) const;
-      bool add(const std::string& name, const std::string& type_name);
-      bool add(const std::string& type_name, multi_int lower, multi_int upper);
+      std::optional<SymbolInfo> find(const std::string& name) const;
+      const LValue& get_lvalue(short index) const;
+      const Range& get_range_type(short index) const;
+      bool add_lvalue(const std::string& name, const std::string& type_name);
+      bool add_type(const std::string& name, multi_int lower, multi_int upper);
+      bool add_function(const std::string& name);
       void update(const std::string& name, NameType);
 private:
       // Scope tree
       std::vector<Scope> m_scopes;
+      short m_curr_scope;
 
       // AST entities
       std::vector<Range> m_range_types;
       std::vector<LValue> m_lvalues;
+      std::vector<Function> m_functions;
 
       // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
       SymbolId m_curr_symbol_id = FirstFreeId;
+
+      // Checking that no names are declared but not defined (or imported)
+      void validate_names();
 };

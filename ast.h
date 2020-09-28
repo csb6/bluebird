@@ -180,23 +180,27 @@ struct Function {
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 
-// A kind of object
-struct Type {
-    std::string name;
-    friend std::ostream& operator<<(std::ostream&, const Type&);
-};
-
 // A lazily-evaluated sequence of number-like objects
 // Upper/lower bounds are inclusive
 struct Range {
     multi_int lower_bound, upper_bound;
     unsigned short bit_size;
     Range() : bit_size(0) {}
-    // Copy Constructors
-    Range(const multi_int& lower, const multi_int& upper);
-    Range& operator=(const Range&) = default;
     // Move Constructors
     Range(const multi_int&& lower, const multi_int&& upper);
+    Range(Range&&) = default;
     Range& operator=(Range&&) = default;
+};
+
+// A kind of object
+struct Type {
+    std::string name;
+    friend std::ostream& operator<<(std::ostream&, const Type&);
+};
+
+// Type with integer bounds
+struct RangeType : public Type {
+    Range range;
+    //friend std::ostream& operator<<(std::ostream&, const RangeType&);
 };
 #endif

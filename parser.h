@@ -9,40 +9,49 @@
 #include <CorradePointer.h>
 #include <iosfwd>
 
-struct ScopeTable {
-    // Enclosing scope's index in SymbolTable::m_scopes
-    short parent;
-    // Most scopes won't have any types defined in them, so this field
-    // is empty if set to -1. If >= 0, then is index in SymbolTable::m_discrete_types
-    short discrete_type_id = -1;
-    // Symbol id -> kind of symbol (e.g. lvalue, funct, etc.)
-    std::unordered_map<SymbolId, NameType> symbols{};
+struct SymbolInfo {
+    NameType name_type;
+    size_t index = -1;
+};
+
+struct Scope {
+    short parent_index;
+    std::unordered_map<std::string, SymbolInfo> symbols{};
 };
 
 class SymbolTable {
-private:
-    std::unordered_map<std::string, SymbolId> m_ids;
-    std::vector<ScopeTable> m_scopes;
-    // Contains all scopes' collections of discrete (integer-like) types
-    //  For each element: maps symbol id of a type -> its range
-    std::vector<std::unordered_map<SymbolId, Range>> m_discrete_types;
-
-    short m_curr_scope;
-    // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
-    SymbolId m_curr_symbol_id = FirstFreeId;
-    std::optional<NameType> find_by_id(SymbolId name_id) const;
-    std::pair<std::string, SymbolId> find_name(SymbolId name_id) const;
 public:
-    SymbolTable();
+    SymbolTable(std::vector<RangeType>& range_types,
+                std::vector<Magnum::Pointer<LValue>>& lvalues,
+                std::vector<Function>& functions);
     void open_scope();
     void close_scope();
-    std::optional<NameType> find(const std::string& name) const;
-    // Add/update names in the current scope
-    bool add(const std::string& name, NameType);
-    bool add(const std::string& type_name, Range&&);
-    void update(const std::string& name, NameType);
+    std::optional<SymbolInfo> find(const std::string& name) const;
+
+    const RangeType& get_range_type(short index) const;
+    const LValue& get_lvalue(short index) const;
+    const Function& get_function(short index) const;
+
+    // All add functions assume the name isn't already used for something else
+    void add_lvalue(Magnum::Pointer<LValue>);
+    void add_type(RangeType&&);
+    void add_type(const std::string& name);
+    void add_function(Function&&);
+    void add_function(const std::string& name);
+
     // Checking that no names are declared but not defined (or imported)
     void validate_names();
+private:
+    // Scope tree
+    std::vector<Scope> m_scopes;
+    short m_curr_scope;
+
+    // AST entities
+    std::vector<RangeType>& m_range_types;
+    std::vector<Magnum::Pointer<LValue>>& m_lvalues;
+    std::vector<Function>& m_functions;
+
+    SymbolId m_curr_symbol_id;
 };
 
 class Parser {
@@ -52,9 +61,10 @@ private:
     TokenIterator m_input_begin;
     TokenIterator m_input_end;
     TokenIterator token;
-    std::vector<Function> m_functions;
-    std::vector<Type> m_types;
+
+    std::vector<RangeType> m_range_types;
     std::vector<Magnum::Pointer<LValue>> m_lvalues;
+    std::vector<Function> m_functions;
     SymbolTable m_names_table;
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
@@ -81,7 +91,7 @@ public:
            TokenIterator input_end);
     void run();
     const auto& functions() const { return m_functions; }
-    const auto& types() const { return m_types; }
+    const auto& types() const { return m_range_types; }
     const auto& names_table() const { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);
