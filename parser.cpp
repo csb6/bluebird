@@ -573,7 +573,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
     //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
     //  bitwise operators
     multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
-    multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};      
+    multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};
 
     if(upper_limit < lower_limit) {
         print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
@@ -584,7 +584,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
     }
 
     m_names_table.add_type(RangeType{{type_name},
-                                     Range{std::move(lower_limit), std::move(upper_limit)}});
+                                     Range{lower_limit, upper_limit}});
     //m_types.push_back({token->text});
 }
 

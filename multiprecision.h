@@ -11,9 +11,6 @@ class multi_int {
     // Copy Constructors
     multi_int(const multi_int&);
     multi_int& operator=(const multi_int&);
-    // Move Constructors
-    multi_int(multi_int&&) = default;
-    multi_int& operator=(multi_int&&) = default;
     ~multi_int();
 
     auto bits_needed() const { return m_bits_needed; };

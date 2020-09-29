@@ -187,9 +187,7 @@ struct Range {
     unsigned short bit_size;
     Range() : bit_size(0) {}
     // Move Constructors
-    Range(const multi_int&& lower, const multi_int&& upper);
-    Range(Range&&) = default;
-    Range& operator=(Range&&) = default;
+    Range(const multi_int& lower, const multi_int& upper);
 };
 
 // A kind of object
