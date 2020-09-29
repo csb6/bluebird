@@ -118,9 +118,9 @@ struct BinaryExpression : public Expression {
 struct FunctionCall : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
-    SymbolId return_type = NoType;
+    size_t function_index;
 
-    SymbolId type() const override { return return_type; }
+    SymbolId type() const override { return NoType; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
 };
@@ -154,14 +154,10 @@ struct BasicStatement : public Statement {
 // Statement where a new variable is declared and optionally assigned the
 // value of some expression
 struct Initialization : public BasicStatement {
-    LValue* target;
+    size_t lvalue_index;
     Initialization(unsigned int line) : BasicStatement(line) {}
     StatementType type() const override { return StatementType::Initialization; }
-    void print(std::ostream& output) const override
-    {
-        target->print(output);
-        BasicStatement::print(output);
-    }
+    void print(std::ostream& output) const override;
 };
 
 struct IfBlock : public Statement {

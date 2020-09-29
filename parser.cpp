@@ -286,6 +286,7 @@ FunctionCall* Parser::in_function_call()
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
         m_names_table.add_function(token->text);
+        new_function_call->function_index = m_functions.size() - 1;
     } else if(match.value().name_type != NameType::Funct
               && match.value().name_type != NameType::DeclaredFunct) {
         print_error(token->line_num, "Expected `" + token->text
@@ -386,7 +387,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         exit(1);
     }
     m_names_table.add_lvalue(std::move(new_lvalue));
-    new_statement->target = m_lvalues.back().get();
+    new_statement->lvalue_index = m_lvalues.size() - 1;
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -549,7 +550,6 @@ void Parser::in_function_definition()
             assert_token_is(TokenType::End_Statement,
                             "end of statement (a.k.a. `;`)", *token);
             m_names_table.add_function(std::move(new_funct));
-            //m_functions.push_back(std::move(new_funct));
             ++token;
             return;
         }
@@ -585,7 +585,6 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
     m_names_table.add_type(RangeType{{type_name},
                                      Range{lower_limit, upper_limit}});
-    //m_types.push_back({token->text});
 }
 
 void Parser::in_type_definition()

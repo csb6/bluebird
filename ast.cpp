@@ -82,6 +82,12 @@ void BasicStatement::print(std::ostream& output) const
     }
 }
 
+void Initialization::print(std::ostream& output) const
+{
+    output << "Initialization ";
+    BasicStatement::print(output);
+}
+
 void IfBlock::print(std::ostream& output) const
 {
     output << "If Block:\n";
