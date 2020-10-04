@@ -6,7 +6,6 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
-#include <CorradePointer.h>
 #include "memory-pool.h"
 #include <iosfwd>
 
@@ -81,6 +80,8 @@ private:
 
     // Points to memory in m_functions
     std::vector<Function*> m_function_list;
+    // Points to memory in m_range_types
+    std::vector<RangeType*> m_range_type_list;
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
@@ -105,8 +106,8 @@ public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
     void run();
-    const auto& functions() const { return m_functions; }
-    const auto& types() const { return m_range_types; }
+    const auto& functions() const { return m_function_list; }
+    const auto& types() const { return m_range_type_list; }
     const auto& names_table() const { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);

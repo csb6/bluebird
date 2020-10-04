@@ -11,6 +11,8 @@
 #include <llvm/IR/Verifier.h>
 #pragma GCC diagnostic pop
 
+#include "ast.h"
+
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
@@ -18,7 +20,7 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 }
 
 
-CodeGenerator::CodeGenerator(const std::vector<Function>& functions)
+CodeGenerator::CodeGenerator(const std::vector<Function*>& functions)
     : m_ir_builder(m_context), m_functions(functions)
 {}
 
@@ -167,12 +169,12 @@ void CodeGenerator::run()
     // Reused between iterations to reduce allocations
     std::vector<llvm::Type*> parameter_types;
     std::vector<llvm::StringRef> parameter_names;
-    for(const Function& function : m_functions) {
+    for(const Function *function : m_functions) {
         // First, create a function declaration
-        parameter_types.reserve(function.parameters.size());
-        parameter_names.reserve(function.parameters.size());
+        parameter_types.reserve(function->parameters.size());
+        parameter_names.reserve(function->parameters.size());
 
-        for(const auto *param : function.parameters) {
+        for(const auto *param : function->parameters) {
             parameter_types.push_back(
                 llvm::Type::getIntNTy(m_context, param->type->range.bit_size));
             parameter_names.push_back(param->name);
@@ -184,7 +186,7 @@ void CodeGenerator::run()
         // TODO: add more fine-grained support for Linkage
         auto* curr_funct = llvm::Function::Create(funct_type,
                                                   llvm::Function::ExternalLinkage,
-                                                  function.name,
+                                                  function->name,
                                                   m_curr_module.get());
 
         auto param_name_it = parameter_names.begin();
@@ -199,7 +201,7 @@ void CodeGenerator::run()
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "body", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
-        for(const auto& statement : function.statements) {
+        for(const auto *statement : function->statements) {
             switch(statement->type()) {
             case StatementType::Basic: {
                 //auto* curr_statement = static_cast<const BasicStatement*>(statement.get());

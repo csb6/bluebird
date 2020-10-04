@@ -10,9 +10,11 @@
 #include <llvm/IR/Module.h>
 #pragma GCC diagnostic pop
 
-#include "ast.h"
 #include <vector>
 #include <string>
+#include <CorradePointer.h>
+
+namespace Magnum = Corrade::Containers;
 
 class CodeGenerator {
 private:
@@ -20,10 +22,10 @@ private:
     llvm::IRBuilder<> m_ir_builder;
     Magnum::Pointer<llvm::Module> m_curr_module;
 
-    const std::vector<Function>& m_functions;
+    const std::vector<struct Function*>& m_functions;
 
     // Generate code for expressions
-    llvm::Value* in_expression(const Expression*);
+    llvm::Value* in_expression(const struct Expression*);
     llvm::Value* in_string_literal(const Expression*);
     llvm::Value* in_char_literal(const Expression*);
     llvm::Value* in_int_literal(const Expression*);
@@ -33,7 +35,7 @@ private:
     llvm::Value* in_binary_expression(const Expression*);
     llvm::Value* in_function_call(const Expression*);
 public:
-    CodeGenerator(const std::vector<Function>&);
+    CodeGenerator(const std::vector<Function*>&);
     void run();
 };
 #endif

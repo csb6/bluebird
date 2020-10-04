@@ -1,8 +1,9 @@
 #include "checker.h"
+#include "ast.h"
 #include <iostream>
 
-Checker::Checker(const std::vector<Function>& functions,
-                 const std::vector<Type>& types)
+Checker::Checker(const std::vector<Function*>& functions,
+                 const std::vector<RangeType*>& types)
     : m_functions(functions), m_types(types)
 {}
 
@@ -55,8 +56,8 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
 
 void Checker::run()
 {
-    for(const auto& function : m_functions) {
-        for(const auto& statement : function.statements) {
+    for(const auto *function : m_functions) {
+        for(const auto &statement : function->statements) {
             check_types(statement);
             // TODO: add more checks for this statement here
         }

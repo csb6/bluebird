@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     //Checker checker{parser.functions(), parser.types()};
     //checker.run();
 
-    //CodeGenerator codegen{parser.functions(), parser.types()};
+    //CodeGenerator codegen{parser.functions()};
     //codegen.run();
 
     std::cout << parser << '\n';

@@ -588,8 +588,9 @@ void Parser::in_range_type_definition(const std::string& type_name)
         exit(1);
     }
 
-    m_names_table.add_type(RangeType{{type_name},
-                                     Range{lower_limit, upper_limit}});
+    RangeType* ptr = m_names_table.add_type(RangeType{{type_name},
+                                                      Range{lower_limit, upper_limit}});
+    m_range_type_list.push_back(ptr);
 }
 
 void Parser::in_type_definition()
