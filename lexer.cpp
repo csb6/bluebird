@@ -1,23 +1,5 @@
 #include "lexer.h"
 #include <iostream>
-#include <unordered_map>
-
-std::unordered_map<std::string, TokenType> identifier_table = {
-    {"is", TokenType::Keyword_Is},
-    {"do", TokenType::Keyword_Do},
-    {"let", TokenType::Keyword_Let},
-    {"if", TokenType::Keyword_If},
-    {"constant", TokenType::Keyword_Const},
-    {"type", TokenType::Keyword_Type},
-    {"range", TokenType::Keyword_Range},
-    {"function", TokenType::Keyword_Funct},
-    {"end", TokenType::Keyword_End},
-    {"and", TokenType::Op_And},
-    {"or", TokenType::Op_Or},
-    {"not", TokenType::Op_Not},
-    {"thru", TokenType::Op_Thru},
-    {"upto", TokenType::Op_Upto}
-};
 
 enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
@@ -26,7 +8,23 @@ enum class State : char {
 Lexer::Lexer(std::string::const_iterator input_begin,
              std::string::const_iterator input_end)
     : m_input_begin(input_begin),
-      m_input_end(input_end)
+      m_input_end(input_end),
+      m_identifier_table{
+         {"is", TokenType::Keyword_Is},
+         {"do", TokenType::Keyword_Do},
+         {"let", TokenType::Keyword_Let},
+         {"if", TokenType::Keyword_If},
+         {"constant", TokenType::Keyword_Const},
+         {"type", TokenType::Keyword_Type},
+         {"range", TokenType::Keyword_Range},
+         {"function", TokenType::Keyword_Funct},
+         {"end", TokenType::Keyword_End},
+         {"and", TokenType::Op_And},
+         {"or", TokenType::Op_Or},
+         {"not", TokenType::Op_Not},
+         {"thru", TokenType::Op_Thru},
+         {"upto", TokenType::Op_Upto}
+      }
 {}
 
 void Lexer::run()
@@ -184,9 +182,9 @@ void Lexer::run()
         case State::InIdentifier:
             // Identifiers can have letters/underscores in them, but not as 1st letter
             if(!std::isalpha(curr) && curr != '_') {
-                if(identifier_table.count(token_text) > 0) {
+                if(m_identifier_table.count(token_text) > 0) {
                     // Found a keyword
-                    m_tokens.emplace_back(line_num, identifier_table[token_text]);
+                    m_tokens.emplace_back(line_num, m_identifier_table[token_text]);
                 } else {
                     // Found a name
                     m_tokens.emplace_back(line_num, TokenType::Name, token_text);
