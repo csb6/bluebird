@@ -11,7 +11,6 @@
 #pragma GCC diagnostic pop
 
 #include "ast.h"
-#include <unordered_map>
 #include <vector>
 #include <string>
 
@@ -22,7 +21,6 @@ private:
     Magnum::Pointer<llvm::Module> m_curr_module;
 
     const std::vector<Function>& m_functions;
-    std::unordered_map<std::string, llvm::Type*> m_types;
 
     // Generate code for expressions
     llvm::Value* in_expression(const Expression*);
@@ -35,7 +33,7 @@ private:
     llvm::Value* in_binary_expression(const Expression*);
     llvm::Value* in_function_call(const Expression*);
 public:
-    CodeGenerator(const std::vector<Function>&, const std::vector<Type>&);
+    CodeGenerator(const std::vector<Function>&);
     void run();
 };
 #endif

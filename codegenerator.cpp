@@ -18,21 +18,9 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 }
 
 
-CodeGenerator::CodeGenerator(const std::vector<Function>& functions,
-                             const std::vector<Type>& types)
+CodeGenerator::CodeGenerator(const std::vector<Function>& functions)
     : m_ir_builder(m_context), m_functions(functions)
-{
-    // Translate the specific type names from the parser (owner of the types variable)
-    // to the machine representation, since that is what LLVM needs. All typechecking
-    // will be done before this stage, so assume all types are correct.
-    for(const Type& type : types) {
-        // TODO: take into account properties of each type in order to make it
-        // have the right implementation (e.g. an array, character, etc.)
-        //   Right now, assume all types are 32-bit integer types
-        auto* number_type = llvm::IntegerType::get(m_context, 32);
-        m_types[type.name] = number_type;
-    }
-}
+{}
 
 llvm::Value* CodeGenerator::in_expression(const Expression* expression)
 {
@@ -184,8 +172,9 @@ void CodeGenerator::run()
         parameter_types.reserve(function.parameters.size());
         parameter_names.reserve(function.parameters.size());
 
-        for(const auto& param : function.parameters) {
-            parameter_types.push_back(m_types[param->type]);
+        for(const auto *param : function.parameters) {
+            parameter_types.push_back(
+                llvm::Type::getIntNTy(m_context, param->type->range.bit_size));
             parameter_names.push_back(param->name);
         }
 

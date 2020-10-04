@@ -116,8 +116,8 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
 {
     output << "Function: " << function.name << '\n';
     output << "Parameters:\n";
-    for(const auto& param : function.parameters) {
-        output << param->name << ' ';
+    for(const auto *param : function.parameters) {
+        param->print(output);
     }
     output << "\nStatements:\n";
 

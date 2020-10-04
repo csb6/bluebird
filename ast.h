@@ -118,7 +118,7 @@ struct BinaryExpression : public Expression {
 struct FunctionCall : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
-    size_t function_index;
+    struct Function* function;
 
     SymbolId type() const override { return NoType; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
@@ -128,7 +128,7 @@ struct FunctionCall : public Expression {
 // A named object that holds a value and can be assigned at least once
 struct LValue {
     std::string name;
-    std::string type;
+    struct RangeType* type;
     bool is_mutable = true;
     void print(std::ostream&) const;
 };
@@ -136,6 +136,7 @@ struct LValue {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
+    Statement() {}
     explicit Statement(unsigned int line) : line_num(line) {}
     virtual ~Statement() {}
     unsigned int line_num;
@@ -146,7 +147,7 @@ struct Statement {
 // A brief, usually one-line statement that holds a single expression
 struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
-    BasicStatement(unsigned int line) : Statement(line) {}
+    explicit BasicStatement(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::Basic; }
     void print(std::ostream&) const override;
 };
@@ -154,15 +155,15 @@ struct BasicStatement : public Statement {
 // Statement where a new variable is declared and optionally assigned the
 // value of some expression
 struct Initialization : public BasicStatement {
-    size_t lvalue_index;
-    Initialization(unsigned int line) : BasicStatement(line) {}
+    LValue* lvalue;
+    explicit Initialization(unsigned int line) : BasicStatement(line) {}
     StatementType type() const override { return StatementType::Initialization; }
     void print(std::ostream& output) const override;
 };
 
 struct IfBlock : public Statement {
     Magnum::Pointer<Expression> condition;
-    std::vector<Magnum::Pointer<Statement>> statements;
+    std::vector<Statement*> statements;
     IfBlock(unsigned int line) : Statement(line) {}
     StatementType type() const override { return StatementType::IfBlock; }
     void print(std::ostream&) const override;
@@ -171,8 +172,8 @@ struct IfBlock : public Statement {
 // A procedure containing statements and optionally inputs/outputs
 struct Function {
     std::string name;
-    std::vector<Magnum::Pointer<LValue>> parameters;
-    std::vector<Magnum::Pointer<Statement>> statements;
+    std::vector<LValue*> parameters;
+    std::vector<Statement*> statements;
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 

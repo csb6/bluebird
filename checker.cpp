@@ -57,7 +57,7 @@ void Checker::run()
 {
     for(const auto& function : m_functions) {
         for(const auto& statement : function.statements) {
-            check_types(statement.get());
+            check_types(statement);
             // TODO: add more checks for this statement here
         }
     }
