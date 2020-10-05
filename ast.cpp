@@ -10,6 +10,11 @@ IntLiteral::IntLiteral(const std::string& v)
     : value(v), bit_size(value.bits_needed())
 {}
 
+std::string_view LValueExpression::type() const
+{
+    return lvalue->type->name;
+}
+
 void LValueExpression::print(std::ostream& output) const
 {
     output << name;

@@ -35,8 +35,7 @@ struct Scope {
 
 class SymbolTable {
 public:
-    SymbolTable(MemoryPool& range_types,
-                MemoryPool& lvalues,
+    SymbolTable(MemoryPool& range_types, MemoryPool& lvalues,
                 MemoryPool& functions);
     void open_scope();
     void close_scope();
@@ -60,8 +59,6 @@ private:
     MemoryPool &m_range_types;
     MemoryPool &m_lvalues;
     MemoryPool &m_functions;
-
-    SymbolId m_curr_symbol_id;
 };
 
 class Parser {

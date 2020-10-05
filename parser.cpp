@@ -234,6 +234,7 @@ Expression* Parser::in_lvalue_expression()
     const TokenIterator current = token++;
     assert_token_is(TokenType::Name, "variable/constant name", *current);
 
+    // Need to find the right LValue that this LValueExpression is a usage of
     const auto match = m_names_table.find(current->text);
     if(!match) {
         print_error(current->line_num,
@@ -243,12 +244,11 @@ Expression* Parser::in_lvalue_expression()
         print_error("Expected name of variable/constant, but `"
                     + current->text + "` is already being used as a name");
         exit(1);
+    } else {
+        auto *new_lvalue_expr = new LValueExpression(current->text, match.value().lvalue);
+        new_lvalue_expr->name = current->text;
+        return new_lvalue_expr;
     }
-
-    //TODO: link somehow to LValue object, get its the SymbolId of its type
-    auto new_lvalue_expr = new LValueExpression(current->text, 0);
-    new_lvalue_expr->name = current->text;
-    return new_lvalue_expr;
 }
 
 Expression* Parser::in_expression()
@@ -665,9 +665,6 @@ SymbolTable::SymbolTable(MemoryPool& range_types, MemoryPool& lvalues,
     // Add root scope
     m_scopes.push_back({-1});
     m_curr_scope = 0;
-
-    // Note: account for pre-defined symbol ids (e.g. for IntType, etc., see ast.h)
-    m_curr_symbol_id = FirstFreeId;
 }
 
 void SymbolTable::open_scope()

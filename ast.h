@@ -5,6 +5,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <string_view>
 #include "multiprecision.h"
 
 namespace Magnum = Corrade::Containers;
@@ -24,16 +25,6 @@ enum class StatementType : char {
     Basic, Initialization, IfBlock
 };
 
-// Represents a unique type (e.g. Number, Positive, String) or symbol (e.g. a variable)
-using SymbolId = unsigned short;
-// Basic, "unconstrained" types (used for typeless constants, literals, etc.)
-constexpr SymbolId NoType = 0;
-constexpr SymbolId StringType = 1;
-constexpr SymbolId CharType = 2;
-constexpr SymbolId IntType = 3;
-constexpr SymbolId FloatType = 4;
-constexpr SymbolId FirstFreeId = 5;
-
 // An abstract object or non-standalone group of expressions
 struct Expression {
     virtual ~Expression() {}
@@ -41,7 +32,7 @@ struct Expression {
     virtual ExpressionType expr_type() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
-    virtual SymbolId type() const = 0;
+    virtual std::string_view type() const = 0;
     virtual void print(std::ostream&) const = 0;
 };
 
@@ -49,7 +40,7 @@ struct Expression {
 struct StringLiteral : public Expression {
     std::string value;
     explicit StringLiteral(const std::string& v) : value(v) {}
-    SymbolId type() const override { return StringType; }
+    std::string_view type() const override { return "_string"; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
     void print(std::ostream&) const override;
 };
@@ -57,7 +48,7 @@ struct StringLiteral : public Expression {
 struct CharLiteral : public Expression {
     char value;
     explicit CharLiteral(char v) : value(v) {}
-    SymbolId type() const override { return CharType; }
+    std::string_view type() const override { return "_char"; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
     void print(std::ostream&) const override;
 };
@@ -67,7 +58,7 @@ struct IntLiteral : public Expression {
     multi_int value;
     unsigned short bit_size;
     explicit IntLiteral(const std::string& v);
-    SymbolId type() const override { return IntType; }
+    std::string_view type() const override { return "_int"; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;
 };
@@ -75,7 +66,7 @@ struct IntLiteral : public Expression {
 struct FloatLiteral : public Expression {
     double value;
     explicit FloatLiteral(int v) : value(v) {}
-    SymbolId type() const override { return FloatType; }
+    std::string_view type() const override { return "_float"; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
     void print(std::ostream&) const override;
 };
@@ -83,9 +74,10 @@ struct FloatLiteral : public Expression {
 // An expression consisting solely of an lvalue
 struct LValueExpression : public Expression {
     std::string name;
-    SymbolId type_id;
-    LValueExpression(const std::string &n, SymbolId i) : name(n), type_id(i) {}
-    SymbolId type() const override { return type_id; }
+    const struct LValue *lvalue;
+    LValueExpression(const std::string &n,
+                     const LValue *v) : name(n), lvalue(v) {}
+    std::string_view type() const override;
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
     void print(std::ostream&) const override;
@@ -98,7 +90,7 @@ struct UnaryExpression : public Expression {
 
     UnaryExpression(TokenType, Expression*);
     ExpressionType expr_type() const override { return ExpressionType::Unary; }
-    SymbolId type() const override { return right->type(); }
+    std::string_view type() const override { return right->type(); }
     void print(std::ostream&) const override;
 };
 
@@ -109,7 +101,7 @@ struct BinaryExpression : public Expression {
     Magnum::Pointer<Expression> right;
 
     BinaryExpression(Expression* l, TokenType oper, Expression* r);
-    SymbolId type() const override { return left->type(); }
+    std::string_view type() const override { return left->type(); }
     ExpressionType expr_type() const override { return ExpressionType::Binary; }
     void print(std::ostream&) const override;
 };
@@ -120,7 +112,7 @@ struct FunctionCall : public Expression {
     std::vector<Magnum::Pointer<Expression>> arguments;
     struct Function* function;
 
-    SymbolId type() const override { return NoType; }
+    std::string_view type() const override { return "_no_type"; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
 };
