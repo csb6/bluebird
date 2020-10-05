@@ -24,6 +24,10 @@ enum class StatementType : char {
     Basic, Initialization, IfBlock
 };
 
+enum class TypeCategory : char {
+    Range, Normal, Literal
+};
+
 // A lazily-evaluated sequence of number-like objects
 // Upper/lower bounds are inclusive
 struct Range {
@@ -37,15 +41,30 @@ struct Range {
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type StringLiteral, CharLiteral, IntLiteral,
-        FloatLiteral, Void;
+    static const Type Void;
+    virtual TypeCategory category() const { return TypeCategory::Normal; }
     std::string name;
+    Type() {}
+    explicit Type(const std::string &n) : name(n) {}
     friend std::ostream& operator<<(std::ostream&, const Type&);
+};
+
+// "Typeless" literals (have no bounds, match with type of typed values
+// within the same expression)
+struct LiteralType : public Type {
+    static const LiteralType String, Char, Int, Float;
+    virtual TypeCategory category() const override { return TypeCategory::Literal; }
+    using Type::Type;
 };
 
 // Type with integer bounds
 struct RangeType : public Type {
     Range range;
+    TypeCategory category() const override { return TypeCategory::Range; }
+    RangeType() {}
+    explicit RangeType(const std::string &n, Range &&r)
+        : Type(n), range(r)
+    {}
     //friend std::ostream& operator<<(std::ostream&, const RangeType&);
 };
 
@@ -64,7 +83,7 @@ struct Expression {
 struct StringLiteral : public Expression {
     std::string value;
     explicit StringLiteral(const std::string& v) : value(v) {}
-    const Type* type() const override { return &Type::StringLiteral; }
+    const Type* type() const override { return &LiteralType::String; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
     void print(std::ostream&) const override;
 };
@@ -72,7 +91,7 @@ struct StringLiteral : public Expression {
 struct CharLiteral : public Expression {
     char value;
     explicit CharLiteral(char v) : value(v) {}
-    const Type* type() const override { return &Type::CharLiteral; }
+    const Type* type() const override { return &LiteralType::Char; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
     void print(std::ostream&) const override;
 };
@@ -82,7 +101,7 @@ struct IntLiteral : public Expression {
     multi_int value;
     unsigned short bit_size;
     explicit IntLiteral(const std::string& v);
-    const Type* type() const override { return &Type::IntLiteral; }
+    const Type* type() const override { return &LiteralType::Int; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;
 };
@@ -90,7 +109,7 @@ struct IntLiteral : public Expression {
 struct FloatLiteral : public Expression {
     double value;
     explicit FloatLiteral(int v) : value(v) {}
-    const Type* type() const override { return &Type::FloatLiteral; }
+    const Type* type() const override { return &LiteralType::Float; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
     void print(std::ostream&) const override;
 };

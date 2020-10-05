@@ -33,8 +33,8 @@ int main(int argc, char **argv)
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
 
-    //Checker checker{parser.functions(), parser.types()};
-    //checker.run();
+    Checker checker{parser.functions(), parser.types()};
+    checker.run();
 
     //CodeGenerator codegen{parser.functions()};
     //codegen.run();

@@ -36,7 +36,8 @@ function main() is
     let n : constant Number = 89;
     1 + 1;
     // More comments
-    2 * 10 + 4 - print("hello", 1);
+    2 * 10 + 4;
+    print("hello", 1);
     2 * 2 + 4 / 5;
     1 * 1 * (4 + 6);
 end main;

@@ -22,6 +22,22 @@ void Checker::check_types(const Statement* statement) const
     }
 }
 
+bool type_matches_literal(const Type *left, const Type *right)
+{
+    const TypeCategory left_cat = left->category();
+    const TypeCategory right_cat = right->category();
+    // TODO: check that the literal is in the range of the non-literal type
+    if((left_cat == TypeCategory::Literal)
+       & (right_cat != TypeCategory::Literal)) {
+        return left == &LiteralType::Int && right_cat == TypeCategory::Range;
+    } else if((left_cat != TypeCategory::Literal)
+              & (right_cat == TypeCategory::Literal)) {
+        return right == &LiteralType::Int && left_cat == TypeCategory::Range;
+    } else {
+        return false;
+    }
+}
+
 void Checker::check_types(const Statement* statement, const Expression* expression) const
 {
     switch(expression->expr_type()) {
@@ -32,7 +48,8 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
         check_types(statement, actual->left.get());
         check_types(statement, actual->right.get());
         // Check that the types of both sides of the operator match
-        if(actual->left->type() != actual->right->type()) {
+        if(actual->left->type() != actual->right->type()
+           && !type_matches_literal(actual->left->type(), actual->right->type())) {
             std::cerr << "In statement starting at line " << statement->line_num
                       << ": \nTypes don't match:\n  Left: ";
             actual->left->print(std::cerr);

@@ -146,11 +146,11 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     return output;
 }
 
-const Type Type::StringLiteral{"StringLiteral"};
-const Type Type::CharLiteral{"CharLiteral"};
-const Type Type::IntLiteral{"IntLiteral"};
-const Type Type::FloatLiteral{"FloatLiteral"};
 const Type Type::Void{"VoidType"};
+const LiteralType LiteralType::String{"StringLiteral"};
+const LiteralType LiteralType::Char{"CharLiteral"};
+const LiteralType LiteralType::Int{"IntLiteral"};
+const LiteralType LiteralType::Float{"FloatLiteral"};
 
 std::ostream& operator<<(std::ostream& output, const Type& type)
 {
