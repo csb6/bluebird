@@ -5,7 +5,6 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
-#include <string_view>
 #include "multiprecision.h"
 
 namespace Magnum = Corrade::Containers;
@@ -25,6 +24,31 @@ enum class StatementType : char {
     Basic, Initialization, IfBlock
 };
 
+// A lazily-evaluated sequence of number-like objects
+// Upper/lower bounds are inclusive
+struct Range {
+    multi_int lower_bound, upper_bound;
+    unsigned short bit_size;
+    Range() : bit_size(0) {}
+    // Move Constructors
+    Range(const multi_int& lower, const multi_int& upper);
+};
+
+// A kind of object
+struct Type {
+    // Some default types that don't have to be declared
+    static const Type StringLiteral, CharLiteral, IntLiteral,
+        FloatLiteral, Void;
+    std::string name;
+    friend std::ostream& operator<<(std::ostream&, const Type&);
+};
+
+// Type with integer bounds
+struct RangeType : public Type {
+    Range range;
+    //friend std::ostream& operator<<(std::ostream&, const RangeType&);
+};
+
 // An abstract object or non-standalone group of expressions
 struct Expression {
     virtual ~Expression() {}
@@ -32,7 +56,7 @@ struct Expression {
     virtual ExpressionType expr_type() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
-    virtual std::string_view type() const = 0;
+    virtual const Type* type() const = 0;
     virtual void print(std::ostream&) const = 0;
 };
 
@@ -40,7 +64,7 @@ struct Expression {
 struct StringLiteral : public Expression {
     std::string value;
     explicit StringLiteral(const std::string& v) : value(v) {}
-    std::string_view type() const override { return "_string"; }
+    const Type* type() const override { return &Type::StringLiteral; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
     void print(std::ostream&) const override;
 };
@@ -48,7 +72,7 @@ struct StringLiteral : public Expression {
 struct CharLiteral : public Expression {
     char value;
     explicit CharLiteral(char v) : value(v) {}
-    std::string_view type() const override { return "_char"; }
+    const Type* type() const override { return &Type::CharLiteral; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
     void print(std::ostream&) const override;
 };
@@ -58,7 +82,7 @@ struct IntLiteral : public Expression {
     multi_int value;
     unsigned short bit_size;
     explicit IntLiteral(const std::string& v);
-    std::string_view type() const override { return "_int"; }
+    const Type* type() const override { return &Type::IntLiteral; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;
 };
@@ -66,7 +90,7 @@ struct IntLiteral : public Expression {
 struct FloatLiteral : public Expression {
     double value;
     explicit FloatLiteral(int v) : value(v) {}
-    std::string_view type() const override { return "_float"; }
+    const Type* type() const override { return &Type::FloatLiteral; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
     void print(std::ostream&) const override;
 };
@@ -77,7 +101,7 @@ struct LValueExpression : public Expression {
     const struct LValue *lvalue;
     LValueExpression(const std::string &n,
                      const LValue *v) : name(n), lvalue(v) {}
-    std::string_view type() const override;
+    const Type* type() const override;
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
     void print(std::ostream&) const override;
@@ -90,7 +114,7 @@ struct UnaryExpression : public Expression {
 
     UnaryExpression(TokenType, Expression*);
     ExpressionType expr_type() const override { return ExpressionType::Unary; }
-    std::string_view type() const override { return right->type(); }
+    const Type* type() const override { return right->type(); }
     void print(std::ostream&) const override;
 };
 
@@ -101,7 +125,7 @@ struct BinaryExpression : public Expression {
     Magnum::Pointer<Expression> right;
 
     BinaryExpression(Expression* l, TokenType oper, Expression* r);
-    std::string_view type() const override { return left->type(); }
+    const Type* type() const override;
     ExpressionType expr_type() const override { return ExpressionType::Binary; }
     void print(std::ostream&) const override;
 };
@@ -112,7 +136,8 @@ struct FunctionCall : public Expression {
     std::vector<Magnum::Pointer<Expression>> arguments;
     struct Function* function;
 
-    std::string_view type() const override { return "_no_type"; }
+    // TODO: have this be the return type
+    const Type* type() const override { return &Type::Void; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
 };
@@ -120,7 +145,7 @@ struct FunctionCall : public Expression {
 // A named object that holds a value and can be assigned at least once
 struct LValue {
     std::string name;
-    struct RangeType* type;
+    RangeType* type;
     bool is_mutable = true;
     void print(std::ostream&) const;
 };
@@ -167,27 +192,5 @@ struct Function {
     std::vector<LValue*> parameters;
     std::vector<Statement*> statements;
     friend std::ostream& operator<<(std::ostream&, const Function&);
-};
-
-// A lazily-evaluated sequence of number-like objects
-// Upper/lower bounds are inclusive
-struct Range {
-    multi_int lower_bound, upper_bound;
-    unsigned short bit_size;
-    Range() : bit_size(0) {}
-    // Move Constructors
-    Range(const multi_int& lower, const multi_int& upper);
-};
-
-// A kind of object
-struct Type {
-    std::string name;
-    friend std::ostream& operator<<(std::ostream&, const Type&);
-};
-
-// Type with integer bounds
-struct RangeType : public Type {
-    Range range;
-    //friend std::ostream& operator<<(std::ostream&, const RangeType&);
 };
 #endif

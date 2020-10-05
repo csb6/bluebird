@@ -10,9 +10,9 @@ IntLiteral::IntLiteral(const std::string& v)
     : value(v), bit_size(value.bits_needed())
 {}
 
-std::string_view LValueExpression::type() const
+const Type* LValueExpression::type() const
 {
-    return lvalue->type->name;
+    return lvalue->type;
 }
 
 void LValueExpression::print(std::ostream& output) const
@@ -56,6 +56,20 @@ BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
                                    Expression* r)
     : left(l), op(oper), right(r)
 {}
+
+const Type* BinaryExpression::type() const
+{
+    // If a literal and a typed expression of some sort
+    // are in this expression, want to return the type of
+    // the typed part (literals implicitly convert to that type)
+    switch(left->expr_type()) {
+    case ExpressionType::StringLiteral: case ExpressionType::CharLiteral:
+    case ExpressionType::IntLiteral:    case ExpressionType::FloatLiteral:
+        return right->type();
+    default:
+        return left->type();
+    }
+}
 
 void BinaryExpression::print(std::ostream& output) const
 {
@@ -132,6 +146,11 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     return output;
 }
 
+const Type Type::StringLiteral{"StringLiteral"};
+const Type Type::CharLiteral{"CharLiteral"};
+const Type Type::IntLiteral{"IntLiteral"};
+const Type Type::FloatLiteral{"FloatLiteral"};
+const Type Type::Void{"VoidType"};
 
 std::ostream& operator<<(std::ostream& output, const Type& type)
 {
