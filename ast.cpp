@@ -152,8 +152,7 @@ const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};
 const LiteralType LiteralType::Float{"FloatLiteral"};
 
-std::ostream& operator<<(std::ostream& output, const Type& type)
+void Type::print(std::ostream& output) const
 {
-    output << "Type: " << type.name << '\n';
-    return output;
+    output << "Type: " << name << '\n';
 }

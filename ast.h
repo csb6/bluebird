@@ -28,7 +28,7 @@ enum class TypeCategory : char {
     Range, Normal, Literal
 };
 
-// A lazily-evaluated sequence of number-like objects
+// A lazily-evaluated sequence
 // Upper/lower bounds are inclusive
 struct Range {
     multi_int lower_bound, upper_bound;
@@ -42,11 +42,12 @@ struct Range {
 struct Type {
     // Some default types that don't have to be declared
     static const Type Void;
-    virtual TypeCategory category() const { return TypeCategory::Normal; }
     std::string name;
     Type() {}
+    virtual ~Type() {}
     explicit Type(const std::string &n) : name(n) {}
-    friend std::ostream& operator<<(std::ostream&, const Type&);
+    virtual TypeCategory category() const { return TypeCategory::Normal; }
+    virtual void print(std::ostream&) const;
 };
 
 // "Typeless" literals (have no bounds, match with type of typed values
@@ -65,7 +66,6 @@ struct RangeType : public Type {
     explicit RangeType(const std::string &n, Range &&r)
         : Type(n), range(r)
     {}
-    //friend std::ostream& operator<<(std::ostream&, const RangeType&);
 };
 
 // An abstract object or non-standalone group of expressions

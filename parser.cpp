@@ -645,7 +645,7 @@ void Parser::run()
     }
 
     // Check that there are no unresolved types/functions
-    //m_names_table.validate_names();
+    m_names_table.validate_names();
 }
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
@@ -693,6 +693,24 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
     return {};
 }
 
+
+std::optional<SymbolInfo>
+SymbolTable::search_for_definition(const std::string& name, NameType kind) const
+{
+    short scope_index = m_curr_scope;
+    while(scope_index > 0) {
+        const Scope& scope = m_scopes[scope_index];
+        const auto match = scope.symbols.find(name);
+        if(match != scope.symbols.end()
+           && match->second.name_type == kind) {
+            return {match->second};
+        } else {
+            scope_index = scope.parent_index;
+        }
+    }
+    return {};
+}
+
 LValue* SymbolTable::add_lvalue(LValue&& lvalue)
 {
     LValue* ptr = m_lvalues.make<LValue>(lvalue);
@@ -720,8 +738,7 @@ RangeType* SymbolTable::add_type(const std::string& name)
 Function* SymbolTable::add_function(Function&& function)
 {
     Function* ptr = m_functions.make<Function>(function);
-    m_scopes[m_curr_scope].symbols[function.name]
-        = SymbolInfo{NameType::Funct, ptr};
+    m_scopes[m_curr_scope].symbols[function.name] = SymbolInfo{NameType::Funct, ptr};
     return ptr;
 }
 
@@ -732,11 +749,6 @@ Function* SymbolTable::add_function(const std::string& name)
     return ptr;
 }
 
-/*void delete_id(Scope& scope, SymbolId name_id)
-{
-    scope.symbols.erase(name_id);
-}
-
 void SymbolTable::validate_names()
 {
     // Check that all functions and types in this module have a definition.
@@ -744,42 +756,34 @@ void SymbolTable::validate_names()
 
     // TODO: Have mechanism where types/functions in other modules are resolved
     for(auto& scope : m_scopes) {
-        for(const auto[name_id, name_type] : scope.symbols) {
-            switch(name_type) {
-            case NameType::DeclaredFunct: {
-                // First, try to resolve the declared function to a definition
-                auto body = find_by_id(name_id);
-                if(!body) {
-                    const auto name = find_name(name_id);
-                    std::cerr << "Error: Function `" << name.first
-                              << "` is declared but has no body\n";
-                    exit(1);
-                } else {
-                    // If a definition was found, then don't need this temporary
-                    // 'DeclaredFunct' declaration anymore
-                    delete_id(scope, name_id);
-                }
-                break;
-            }
-            case NameType::DeclaredType: {
-                // First, try to resolve the declared type to a definition
-                auto definition = find_by_id(name_id);
-                if(!definition) {
-                    const auto name = find_name(name_id);
-                    std::cerr << "Error: Type `" << name.first
-                              << "` is declared but has no definition\n";
-                    exit(1);
-                } else {
-                    // If a definition was found, then don't need this temporary
-                    // 'DeclaredType' declaration anymore
-                    delete_id(scope, name_id);
-                }
-                break;
-            }
-            default:
-                // All other kinds of names are acceptable
-                break;
+        // Try and resolve the types of lvalues whose types were not declared beforehand
+        for(LValue* lvalue : scope.lvalues_type_unresolved) {
+            std::optional<SymbolInfo> match
+                = search_for_definition(lvalue->type->name, NameType::Type);
+            if(!match) {
+                std::cerr << "Error: Type `" << lvalue->type->name
+                          << "` is used but has no definition\n";
+                exit(1);
+            } else {
+                // Update to the newly-defined type
+                lvalue->type = match->range_type;
             }
         }
+        scope.lvalues_type_unresolved.clear();
+
+        // Try and resolve function calls to functions declared later
+        for(FunctionCall* funct_call : scope.unresolved_funct_calls) {
+            std::optional<SymbolInfo> match
+                = search_for_definition(funct_call->name, NameType::Funct);
+            if(!match) {
+                std::cerr << "Error: Function `" << funct_call->name
+                          << "` is used but has no definition\n";
+                exit(1);
+            } else {
+                // Update call to point to the actual function
+                funct_call->function = match->function;
+            }
+        }
+        scope.unresolved_funct_calls.clear();
     }
-    }*/
+}

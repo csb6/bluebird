@@ -29,8 +29,11 @@ struct SymbolInfo {
 };
 
 struct Scope {
+    using symbol_iterator = std::unordered_map<std::string, SymbolInfo>::iterator;
     short parent_index;
     std::unordered_map<std::string, SymbolInfo> symbols{};
+    std::vector<LValue*> lvalues_type_unresolved{};
+    std::vector<FunctionCall*> unresolved_funct_calls{};
 };
 
 class SymbolTable {
@@ -59,6 +62,11 @@ private:
     MemoryPool &m_range_types;
     MemoryPool &m_lvalues;
     MemoryPool &m_functions;
+
+    std::optional<SymbolInfo>
+    search_for_definition(const std::string& name, NameType) const;
+    std::optional<SymbolInfo>
+    search_for_funct_definition(const std::string& name) const;
 };
 
 class Parser {
