@@ -497,6 +497,7 @@ void Parser::in_function_definition()
     assert_token_is(TokenType::Open_Parentheses,
                     "`(` to follow name of function in definition", *token);
 
+    m_names_table.open_scope();
     // Next, parse the parameters
     ++token;
     while(token != m_input_end) {
@@ -526,8 +527,6 @@ void Parser::in_function_definition()
 
         ++token;
     }
-
-    m_names_table.open_scope();
 
     // Finally, parse the body of the function
     ++token;
