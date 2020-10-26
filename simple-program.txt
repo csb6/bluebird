@@ -5,6 +5,7 @@ end use_n;
 function main() is
    let n : Positive = 456;
    use_n(n);
+   (n + 5) * 8 + 90 - 8;
 end main;
 
 type Positive is range 1 thru 1_000_000;

@@ -109,6 +109,7 @@ void Initialization::print(std::ostream& output) const
     if(expression) {
         output << "Expression: ";
         expression->print(output);
+        output << '\n';
     } else {
         output << "Empty Statement\n";
     }
@@ -150,7 +151,6 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     for(const auto& statement : function.statements) {
         statement->print(output);
     }
-    output << '\n';
     return output;
 }
 

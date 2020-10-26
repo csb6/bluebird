@@ -2,16 +2,20 @@
 llvm_linked_files := main.o codegenerator.o
 # All other files
 object_files := lexer.o parser.o token.o ast.o checker.o multiprecision.o
+c_files = third_party/mini-gmp/mini-gmp.o
+VPATH = third_party/mini-gmp
 
 exe_name := bluebird
 compiler := clang++
+c_compiler := clang
 llvm_linker_flags := `llvm-config --ldflags --system-libs --libs all`
 llvm_compiler_flags := `llvm-config --cxxflags`
 flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
+c_flags := -std=c99 -Ithird_party
 
 # Link (default rule)
-$(exe_name): $(object_files) $(llvm_linked_files)
-	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files)
+$(exe_name): $(object_files) $(llvm_linked_files) $(c_files)
+	$(compiler) -o $(exe_name) $(llvm_linker_flags) $(flags) $(object_files) $(llvm_linked_files) $(c_files)
 
 debug: flags += --debug
 debug: $(exe_name)
@@ -31,6 +35,10 @@ $(llvm_linked_files): %.o: %.cpp
 $(object_files): %.o: %.cpp
 	$(compiler) -c $(flags) $*.cpp -o $*.o
 	$(compiler) -MM $(flags) $*.cpp > $*.d
+
+$(c_files): %.o: %.c
+	$(c_compiler) -c $(c_flags) $*.c -o $*.o
+	$(c_compiler) -MM $(c_flags) $*.c > $*.d
 
 clean:
 	-rm $(exe_name)
