@@ -258,4 +258,6 @@ void CodeGenerator::run()
             }
         }
     }
+
+    m_curr_module->print(llvm::errs(), nullptr);
 }
