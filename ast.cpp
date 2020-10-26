@@ -103,8 +103,16 @@ void BasicStatement::print(std::ostream& output) const
 
 void Initialization::print(std::ostream& output) const
 {
-    output << "Initialization ";
-    BasicStatement::print(output);
+    output << "Initialization of ";
+    lvalue->print(output);
+    output << " to ";
+    if(expression) {
+        output << "Statement:\n";
+        expression->print(output);
+        output << '\n';
+    } else {
+        output << "Empty Statement\n";
+    }
 }
 
 void IfBlock::print(std::ostream& output) const

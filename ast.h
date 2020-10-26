@@ -183,16 +183,17 @@ struct Statement {
 // A brief, usually one-line statement that holds a single expression
 struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
-    explicit BasicStatement(unsigned int line) : Statement(line) {}
+    using Statement::Statement;
     StatementType type() const override { return StatementType::Basic; }
     void print(std::ostream&) const override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
 // value of some expression
-struct Initialization : public BasicStatement {
+struct Initialization : public Statement {
+    Magnum::Pointer<Expression> expression;
     LValue* lvalue;
-    explicit Initialization(unsigned int line) : BasicStatement(line) {}
+    using Statement::Statement;
     StatementType type() const override { return StatementType::Initialization; }
     void print(std::ostream& output) const override;
 };
