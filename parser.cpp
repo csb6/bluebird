@@ -387,8 +387,7 @@ Initialization* Parser::in_initialization()
 
     // Add this new lvalue to list of tracked names
     ++token;
-    LValue* new_lvalue = in_lvalue_declaration();
-    new_statement->lvalue = new_lvalue;
+    new_statement->lvalue = in_lvalue_declaration();
 
     ++token;
     if(token->type == TokenType::End_Statement) {

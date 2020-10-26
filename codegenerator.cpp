@@ -9,9 +9,11 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IR/Instructions.h>
 #pragma GCC diagnostic pop
 
 #include "ast.h"
+#include <iostream>
 
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
@@ -21,7 +23,9 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 
 CodeGenerator::CodeGenerator(const std::vector<Function*>& functions)
-    : m_ir_builder(m_context), m_functions(functions)
+    : m_ir_builder(m_context), 
+      m_curr_module(new llvm::Module("main module", m_context)),
+      m_functions(functions)
 {}
 
 llvm::Value* CodeGenerator::in_expression(const Expression* expression)
@@ -77,9 +81,16 @@ llvm::Value* CodeGenerator::in_float_literal(const Expression* expression)
     return llvm::ConstantFP::get(m_context, llvm::APFloat(literal->value));
 }
 
-llvm::Value* CodeGenerator::in_lvalue_expression(const Expression*)
+llvm::Value* CodeGenerator::in_lvalue_expression(const Expression* expression)
 {
-    return nullptr;
+    auto* lvalue_expr = static_cast<const LValueExpression*>(expression);
+    llvm::AllocaInst* src_lvalue = m_lvalues[lvalue_expr->lvalue];
+    if(src_lvalue == nullptr) {
+        std::cerr << "Codegen error: Could not find lvalue referenced by:\n";
+        lvalue_expr->print(std::cerr);
+        exit(1);
+    }
+    return m_ir_builder.CreateLoad(src_lvalue, lvalue_expr->name);
 }
 
 llvm::Value* CodeGenerator::in_unary_expression(const Expression* expression)
@@ -159,10 +170,39 @@ llvm::Value* CodeGenerator::in_binary_expression(const Expression* expression)
     }
 }
 
-llvm::Value* CodeGenerator::in_function_call(const Expression*)
+llvm::Value* CodeGenerator::in_function_call(const Expression* expression)
 {
-    return nullptr;
+    auto* funct_call = static_cast<const FunctionCall*>(expression);
+    llvm::Function *funct_to_call = m_curr_module->getFunction(funct_call->name);
+    if(funct_to_call == nullptr) {
+        std::cerr << "Codegen error: Could not find function `"
+                  << funct_call->name << "`\n";
+        exit(1);
+    }
+    std::vector<llvm::Value*> args;
+    args.reserve(funct_call->arguments.size());
+    for(const auto& arg : funct_call->arguments) {
+        args.push_back(in_expression(arg.get()));
+    }
+    return m_ir_builder.CreateCall(funct_to_call, args, "call" + funct_call->name);
 }
+
+
+void CodeGenerator::add_lvalue_init(llvm::Function* function,
+                                    const Statement* statement)
+{
+    auto* init = static_cast<const Initialization*>(statement);
+    llvm::IRBuilder<> builder(&function->getEntryBlock(),
+                              function->getEntryBlock().begin());
+    auto* lvalue = init->lvalue;
+    // TODO: Fixe segfault in the call below (the issue is a null deref of
+    // lvalue->type->range.bit_size)
+    llvm::AllocaInst* alloc = builder.CreateAlloca(
+        llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), 0,
+        lvalue->name.c_str());
+    m_lvalues[lvalue] = alloc;
+}
+
 
 void CodeGenerator::run()
 {
@@ -188,7 +228,8 @@ void CodeGenerator::run()
                                                   llvm::Function::ExternalLinkage,
                                                   function->name,
                                                   m_curr_module.get());
-
+        assert(curr_funct->getParent() != nullptr);
+        
         auto param_name_it = parameter_names.begin();
         for(auto& param : curr_funct->args()) {
             param.setName(*param_name_it);
@@ -204,12 +245,15 @@ void CodeGenerator::run()
         for(const auto *statement : function->statements) {
             switch(statement->type()) {
             case StatementType::Basic: {
-                //auto* curr_statement = static_cast<const BasicStatement*>(statement.get());
-                //in_expression(curr_statement->expression.get());
+                auto* curr_statement = static_cast<const BasicStatement*>(statement);
+                in_expression(curr_statement->expression.get());
                 break;
             }
-            default:
-                // TODO: add support for if-blocks, variable initializations, etc.
+            case StatementType::Initialization:
+                add_lvalue_init(curr_funct, statement);
+                break;
+            case StatementType::IfBlock:
+                // TODO: add support for if-blocks
                 break;
             }
         }

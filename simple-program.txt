@@ -1,0 +1,10 @@
+
+function main() is
+   let n : Positive = 456;
+end main;
+
+function use_n(n : Positive) is
+   let x : Positive = 4;
+end use_n;
+
+type Positive is range 1 thru 1_000_000;

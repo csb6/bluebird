@@ -11,10 +11,15 @@
 #pragma GCC diagnostic pop
 
 #include <vector>
+#include <unordered_map>
 #include <string>
 #include <CorradePointer.h>
 
 namespace Magnum = Corrade::Containers;
+
+namespace llvm {
+    class AllocaInst;
+};
 
 class CodeGenerator {
 private:
@@ -23,6 +28,7 @@ private:
     Magnum::Pointer<llvm::Module> m_curr_module;
 
     const std::vector<struct Function*>& m_functions;
+    std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
 
     // Generate code for expressions
     llvm::Value* in_expression(const struct Expression*);
@@ -34,6 +40,9 @@ private:
     llvm::Value* in_unary_expression(const Expression*);
     llvm::Value* in_binary_expression(const Expression*);
     llvm::Value* in_function_call(const Expression*);
+
+    // Generate code for initializing lvalues
+    void add_lvalue_init(llvm::Function*, const struct Statement*);
 public:
     CodeGenerator(const std::vector<Function*>&);
     void run();

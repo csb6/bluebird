@@ -48,6 +48,7 @@ public:
     // All add functions assume the name isn't already used for something else
     LValue* add_lvalue(const std::string& name);
     RangeType* add_type(RangeType&&);
+    // Add a temporary type that lacks a definition
     RangeType* add_type(const std::string& name);
     Function* add_function(Function&&);
     Function* add_function(const std::string& name);
