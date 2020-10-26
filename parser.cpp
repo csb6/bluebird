@@ -337,15 +337,14 @@ Expression* Parser::in_parentheses()
     return result;
 }
 
-LValue Parser::in_lvalue_declaration()
+LValue* Parser::in_lvalue_declaration()
 {
     assert_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
         print_error(token->line_num, "`" + token->text + "` cannot be used as an lvalue name. It is already defined as a name");
         exit(1);
     }
-    LValue new_lvalue;
-    new_lvalue.name = token->text;
+    LValue* new_lvalue = m_names_table.add_lvalue(token->text);
 
     ++token;
     assert_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
@@ -353,7 +352,7 @@ LValue Parser::in_lvalue_declaration()
     ++token;
     if(token->type == TokenType::Keyword_Const) {
         // `constant` keyword marks kind of lvalue
-        new_lvalue.is_mutable = false;
+        new_lvalue->is_mutable = false;
         ++token;
     }
     assert_token_is(TokenType::Name, "typename", *token);
@@ -362,14 +361,19 @@ LValue Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue.type = m_names_table.add_type(token->text);
-    } else if(match.value().name_type != NameType::Type
-              && match.value().name_type != NameType::DeclaredType) {
+        new_lvalue->type = m_names_table.add_type(token->text);
+        m_names_table.add_unresolved(new_lvalue);
+    } else if(match.value().name_type == NameType::DeclaredType) {
+        // A temp type (one that lacks a definition) has already been declared, but
+        // the actual definition of it hasn't been resolved yet
+        new_lvalue->type = match.value().range_type;
+        m_names_table.add_unresolved(new_lvalue);
+    } else if(match.value().name_type == NameType::Type) {
+        new_lvalue->type = match.value().range_type;
+    } else {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a typename, but it is defined as another kind of name");
         exit(1);
-    } else {
-        new_lvalue.type = match.value().range_type;
     }
 
     return new_lvalue;
@@ -383,12 +387,8 @@ Initialization* Parser::in_initialization()
 
     // Add this new lvalue to list of tracked names
     ++token;
-    LValue new_lvalue = in_lvalue_declaration();
-    if(const auto match = m_names_table.find(new_lvalue.name); match) {
-        print_error(token->line_num, "Name `" + new_lvalue.name + "` is already in use");
-        exit(1);
-    }
-    new_statement->lvalue = m_names_table.add_lvalue(std::move(new_lvalue));
+    LValue* new_lvalue = in_lvalue_declaration();
+    new_statement->lvalue = new_lvalue;
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -503,10 +503,7 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            // TODO: add these lvalues to the symbol table for this scope,
-            //  then pass an index to new_funct
-            LValue* param = m_names_table.add_lvalue(in_lvalue_declaration());
-            new_funct.parameters.push_back(param);
+            new_funct.parameters.push_back(in_lvalue_declaration());
 
             ++token;
             // Check for a comma separator after typename
@@ -681,7 +678,7 @@ void SymbolTable::close_scope()
 std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
 {
     short scope_index = m_curr_scope;
-    while(scope_index > 0) {
+    while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
         if(match != scope.symbols.end()) {
@@ -698,7 +695,7 @@ std::optional<SymbolInfo>
 SymbolTable::search_for_definition(const std::string& name, NameType kind) const
 {
     short scope_index = m_curr_scope;
-    while(scope_index > 0) {
+    while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
         if(match != scope.symbols.end()
@@ -711,11 +708,10 @@ SymbolTable::search_for_definition(const std::string& name, NameType kind) const
     return {};
 }
 
-LValue* SymbolTable::add_lvalue(LValue&& lvalue)
+LValue* SymbolTable::add_lvalue(const std::string& name)
 {
-    LValue* ptr = m_lvalues.make<LValue>(lvalue);
-    m_scopes[m_curr_scope].symbols[lvalue.name]
-        = SymbolInfo{NameType::LValue, ptr};
+    LValue* ptr = m_lvalues.make<LValue>(name);
+    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::LValue, ptr};
     return ptr;
 }
 
@@ -730,8 +726,9 @@ RangeType* SymbolTable::add_type(RangeType&& type)
 
 RangeType* SymbolTable::add_type(const std::string& name)
 {
-    RangeType* ptr = m_range_types.make<RangeType>();
+    RangeType* ptr = m_range_types.make<RangeType>(name);
     m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredType, ptr};
+    // Return temp type until the type of this lvalue gets resolved
     return ptr;
 }
 
@@ -740,6 +737,11 @@ Function* SymbolTable::add_function(Function&& function)
     Function* ptr = m_functions.make<Function>(function);
     m_scopes[m_curr_scope].symbols[function.name] = SymbolInfo{NameType::Funct, ptr};
     return ptr;
+}
+
+void SymbolTable::add_unresolved(LValue* lvalue)
+{
+    m_scopes[m_curr_scope].lvalues_type_unresolved.push_back(lvalue);
 }
 
 Function* SymbolTable::add_function(const std::string& name)
@@ -765,7 +767,7 @@ void SymbolTable::validate_names()
                           << "` is used but has no definition\n";
                 exit(1);
             } else {
-                // Update to the newly-defined type
+                // Update to the newly-defined type (replacing the temp type)
                 lvalue->type = match->range_type;
             }
         }

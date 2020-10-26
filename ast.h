@@ -62,7 +62,7 @@ struct LiteralType : public Type {
 struct RangeType : public Type {
     Range range;
     TypeCategory category() const override { return TypeCategory::Range; }
-    RangeType() {}
+    using Type::Type;
     explicit RangeType(const std::string &n, Range &&r)
         : Type(n), range(r)
     {}

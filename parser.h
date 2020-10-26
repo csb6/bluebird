@@ -17,6 +17,7 @@ struct SymbolInfo {
         Function* function;
     };
     SymbolInfo() {}
+    SymbolInfo(NameType name) : name_type(name) {}
     SymbolInfo(NameType name, RangeType* type)
         : name_type(name), range_type(type)
     {}
@@ -45,11 +46,13 @@ public:
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
-    LValue* add_lvalue(LValue&&);
+    LValue* add_lvalue(const std::string& name);
     RangeType* add_type(RangeType&&);
     RangeType* add_type(const std::string& name);
     Function* add_function(Function&&);
     Function* add_function(const std::string& name);
+
+    void add_unresolved(LValue*);
 
     // Checking that no names are declared but not defined (or imported)
     void validate_names();
@@ -90,7 +93,7 @@ private:
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
-    LValue in_lvalue_declaration();
+    LValue* in_lvalue_declaration();
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();

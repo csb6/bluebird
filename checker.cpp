@@ -53,9 +53,12 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
             std::cerr << "In statement starting at line " << statement->line_num
                       << ": \nTypes don't match:\n  Left: ";
             actual->left->print(std::cerr);
-            std::cerr << "\n  Operator: " << actual->op << "\n  Right: ";
+            std::cerr << '\t';
+            actual->left->type()->print(std::cerr);
+            std::cerr << "  Operator: " << actual->op << "\n  Right: ";
             actual->right->print(std::cerr);
-            std::cerr << '\n';
+            std::cerr << '\t';
+            actual->right->type()->print(std::cerr);
             exit(1);
         }
         break;
