@@ -92,3 +92,11 @@ along with some generated LLVM IR instructions.
 
 - `make debug`: build with debug symbols
 - `make release`: build with optimizations
+
+## License
+
+This program is licensed under the AGPLv3 license. The text of the AGPL can be found in
+the LICENSE file.
+
+Dependencies in the `third_party/` directory may have separate licenses; refer to their
+documentation/source code for more information.
