@@ -84,8 +84,9 @@ There is a `Makefile`, which contains a few variables for setting up the build p
 
 To build the compiler, simply run `make`. You should end up with an executable named
 `bluebird` in the working directory. Pass it a filename to compile something
-(e.g. `bluebird parser-test.txt`). Right now, code generation is not complete, so no
-binary files will be generated; however, you should see a printout of the parse tree.
+(e.g. `bluebird examples/arithmetic.bird`). Right now, code generation is not complete, so no
+binary files will be generated; however, you should see a printout of the abstract syntax tree
+along with some generated LLVM IR instructions.
 
 #### Other build modes
 

@@ -1,8 +1,8 @@
 Todo:
 
 [ ] Implement rest of codegen code for working with mutable variables (see Kaleidoscope example)
-[ ] Review the multiprecision int code and consider switching to mini-gmp
-[ ] Fix bug where bit_size of types is off by 1 bit
+[X] Review the multiprecision int code and consider switching to mini-gmp
+[X] Fix bug where bit_size of types is off by 1 bit
 [ ] Consider simplifying how each type's bit_size is obtained
 [ ] Add support for signed vs. unsigned within int types
 [ ] Have codegen use LLVM's signed and unsigned operations on int types
