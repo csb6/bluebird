@@ -42,12 +42,12 @@ UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
 
 void StringLiteral::print(std::ostream& output) const
 {
-    output << value;
+    print_unescape(value, output);
 }
 
 void CharLiteral::print(std::ostream& output) const
 {
-    output << value;
+    print_unescape(value, output);
 }
 
 void IntLiteral::print(std::ostream& output) const

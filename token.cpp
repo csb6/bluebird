@@ -159,7 +159,65 @@ std::ostream& operator<<(std::ostream& output, const Token& token)
     output << token.type << '\n';
 
     if(!token.text.empty()) {
-        output << "  Text: " << token.text << '\n';
+        output << "  Text: ";
+        print_unescape(token.text, output);
+        output << '\n';
     }
     return output;
+}
+
+char escape_sequence(char letter)
+{
+    switch(letter) {
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 'f': return '\f';
+    case 'n': return '\n';
+    case 'r': return '\r';
+    case 't': return '\t';
+    case 'v': return '\v';
+    case '\\':
+    case '\'':
+    case '"':
+        return letter;
+    default:
+        // Invalid escape sequence
+        return -1;
+    }
+}
+
+void print_unescape(char source, std::ostream& output)
+{
+    switch(source) {
+    case '\a':
+        output << "\\a";
+        break;
+    case '\b':
+        output << "\\b";
+        break;
+    case '\f':
+        output << "\\f";
+        break;
+    case '\n':
+        output << "\\n";
+        break;
+    case '\r':
+        output << "\\r";
+        break;
+    case '\t':
+        output << "\\t";
+        break;
+    case '\v':
+        output << "\\v";
+        break;
+    default:
+        output << source;
+    }
+}
+
+void print_unescape(const std::string& source, std::ostream& output)
+{
+    for(char letter : source) {
+        print_unescape(letter, output);
+    }
 }

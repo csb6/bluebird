@@ -59,4 +59,8 @@ struct Token {
 };
 
 std::ostream& operator<<(std::ostream&, const TokenType);
+
+char escape_sequence(char);
+void print_unescape(char source, std::ostream&);
+void print_unescape(const std::string& source, std::ostream&);
 #endif

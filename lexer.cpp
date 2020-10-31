@@ -217,7 +217,13 @@ void Lexer::run()
             if(curr == '\\') {
                 // Escape sequence
                 ++input_iter;
-                token_text += *input_iter;
+                char escaped = escape_sequence(*input_iter);
+                if(escaped == -1) {
+                    std::cerr << "Error: Unrecognized escape sequence '\\"
+                              << *input_iter << "'\n";
+                    exit(1);
+                }
+                token_text += escaped;
             } else if(curr != '"') {
                 // Content of the string literal
                 token_text += curr;
@@ -232,7 +238,13 @@ void Lexer::run()
             if(curr == '\\') {
                 // Escape sequence
                 ++input_iter;
-                curr = *input_iter;
+                char escaped = escape_sequence(*input_iter);
+                if(escaped == -1) {
+                    std::cerr << "Error: Unrecognized escape sequence '\\"
+                              << *input_iter << "'\n";
+                    exit(1);
+                }
+                curr = escaped;
             }
             token_text += curr;
             m_tokens.emplace_back(line_num, TokenType::Char_Literal, token_text);
