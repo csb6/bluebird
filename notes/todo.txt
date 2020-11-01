@@ -9,3 +9,9 @@ Todo:
 [ ] Add support for automatically forward declaring functions in the same way it currently works for types
 [ ] Run the generated IR through LLVM's verifier after codegen is complete
 [ ] Work on the various TODOs throughout the codebase
+[ ] Think more about the potential for proving code, possibly using z3
+[ ] Figure out why IRBuilder isn't keeping some arithmetic expressions, and
+    creating weird constant folding outcomes in other cases
+[ ] Create some helper functions for printing out lexer errors (with line num)
+[ ] Consider reading characters on-demand from an iostream in the lexer instead
+    of reading everything into a big string at the start
