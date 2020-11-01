@@ -196,8 +196,11 @@ void Lexer::run()
             }
             break;
         case State::InIdentifier:
-            // Identifiers can have letters/underscores in them, but not as 1st letter
-            if(!std::isalpha(curr) && curr != '_') {
+            // Identifiers can have letters/digits.underscores in them,
+            // but not as 1st letter
+            if(std::isalnum(curr) || curr == '_') {
+                token_text += curr;
+            } else {
                 if(m_identifier_table.count(token_text) > 0) {
                     // Found a keyword
                     m_tokens.emplace_back(line_num, m_identifier_table[token_text]);
@@ -207,10 +210,7 @@ void Lexer::run()
                 }
                 token_text.clear();
                 curr_state = State::Start;
-                // Go back to prior char
                 --input_iter;
-            } else {
-                token_text += curr;
             }
             break;
         case State::InString:
@@ -224,14 +224,14 @@ void Lexer::run()
                     exit(1);
                 }
                 token_text += escaped;
-            } else if(curr != '"') {
-                // Content of the string literal
-                token_text += curr;
-            } else {
+            } else if(curr == '"') {
                 // End of string
                 m_tokens.emplace_back(line_num, TokenType::String_Literal, token_text);
                 token_text.clear();
                 curr_state = State::Start;
+            } else {
+                // Content of the string literal
+                token_text += curr;
             }
             break;
         case State::InChar:
@@ -265,7 +265,7 @@ void Lexer::run()
                     m_tokens.emplace_back(line_num, TokenType::Float_Literal, token_text);
                 token_text.clear();
                 curr_state = State::Start;
-                --input_iter; // put the current char back
+                --input_iter;
             }
             break;
         case State::InComment:
