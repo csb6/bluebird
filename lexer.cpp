@@ -16,6 +16,7 @@
 */
 #include "lexer.h"
 #include <iostream>
+#include <ostream>
 
 enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
@@ -26,15 +27,16 @@ Lexer::Lexer(std::string::const_iterator input_begin,
     : m_input_begin(input_begin),
       m_input_end(input_end),
       m_identifier_table{
+         {"function", TokenType::Keyword_Funct},
          {"is", TokenType::Keyword_Is},
          {"do", TokenType::Keyword_Do},
          {"let", TokenType::Keyword_Let},
-         {"if", TokenType::Keyword_If},
          {"constant", TokenType::Keyword_Const},
          {"type", TokenType::Keyword_Type},
-         {"range", TokenType::Keyword_Range},
-         {"function", TokenType::Keyword_Funct},
          {"end", TokenType::Keyword_End},
+         {"if", TokenType::Keyword_If},
+         {"else", TokenType::Keyword_Else},
+         {"range", TokenType::Keyword_Range},
          {"and", TokenType::Op_And},
          {"or", TokenType::Op_Or},
          {"not", TokenType::Op_Not},
@@ -289,9 +291,10 @@ void Lexer::run()
     }
 }
 
-void Lexer::print_tokens()
+std::ostream& operator<<(std::ostream& output, const Lexer& lexer)
 {
-    for(const auto& token : m_tokens) {
-        std::cout << "Line " << token.line_num << ": " << token;
+    for(const auto& token : lexer.m_tokens) {
+        output << "Line " << token.line_num << ": " << token;
     }
+    return output;
 }

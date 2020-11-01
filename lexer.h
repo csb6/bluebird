@@ -20,6 +20,7 @@
 #include <vector>
 #include <unordered_map>
 #include "token.h"
+#include <iosfwd>
 
 class Lexer {
 private:
@@ -27,6 +28,8 @@ private:
     std::string::const_iterator m_input_begin;
     std::string::const_iterator m_input_end;
     std::unordered_map<std::string, TokenType> m_identifier_table;
+
+    friend std::ostream& operator<<(std::ostream&, const Lexer&);
 public:
     explicit Lexer(std::string::const_iterator input_begin,
                    std::string::const_iterator input_end);
