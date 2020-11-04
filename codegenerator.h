@@ -60,7 +60,7 @@ private:
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
 public:
-    CodeGenerator(const std::vector<Function*>&);
+    explicit CodeGenerator(const std::vector<Function*>&);
     void run();
 };
 #endif

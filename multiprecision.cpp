@@ -82,6 +82,18 @@ multi_int& multi_int::operator/=(const multi_int& other)
     return *this;
 }
 
+multi_int& multi_int::negate()
+{
+    mpz_neg(m_number, m_number);
+    return *this;
+}
+
+multi_int& multi_int::ones_complement()
+{
+    mpz_com(m_number, m_number);
+    return *this;
+}
+
 
 multi_int operator-(const multi_int& a)
 {

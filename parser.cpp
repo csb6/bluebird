@@ -195,7 +195,29 @@ multi_int evaluate_int_expression(Token token, const Expression* expression)
     }
 }
 
-// TODO: add a fold_constants() overload for unary expressions
+Expression* fold_constants(TokenType op, Expression* right)
+{
+    if(right->expr_type() != ExpressionType::IntLiteral) {
+        return new UnaryExpression(op, right);
+    } else {
+        auto* r_int = static_cast<IntLiteral*>(right);
+        switch(op) {
+        case TokenType::Op_Minus:
+            r_int->value.negate();
+            break;
+        case TokenType::Op_Bit_Not:
+            r_int->value.ones_complement();
+            break;
+        case TokenType::Op_Not:
+            print_error("Error: logical NOT operator doesn't work on integer types");
+            break;
+        default:
+            assert(false);
+        }
+        return r_int;
+    }
+}
+
 Expression* fold_constants(Expression* left, TokenType op, Expression* right)
 {
     if(left->expr_type() != ExpressionType::IntLiteral
@@ -326,8 +348,7 @@ Expression* Parser::in_expression()
     case TokenType::Op_Minus: {
         TokenType op = token->type;
         ++token;
-        Expression* right = in_expression();
-        return new UnaryExpression(op, right);
+        return fold_constants(op, in_expression());
     }
     default:
         return in_literal();
