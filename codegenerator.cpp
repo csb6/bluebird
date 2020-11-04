@@ -44,7 +44,7 @@ CodeGenerator::CodeGenerator(const std::vector<Function*>& functions)
       m_functions(functions)
 {}
 
-llvm::Value* CodeGenerator::in_expression(const Expression* expression)
+llvm::Value* CodeGenerator::in_expression(Expression* expression)
 {
     switch(expression->expr_type()) {
     case ExpressionType::StringLiteral:
@@ -109,9 +109,9 @@ llvm::Value* CodeGenerator::in_lvalue_expression(const Expression* expression)
     return m_ir_builder.CreateLoad(src_lvalue, lvalue_expr->name);
 }
 
-llvm::Value* CodeGenerator::in_unary_expression(const Expression* expression)
+llvm::Value* CodeGenerator::in_unary_expression(Expression* expression)
 {
-    auto* expr = static_cast<const UnaryExpression*>(expression);
+    auto* expr = static_cast<UnaryExpression*>(expression);
     llvm::Value* operand = in_expression(expr->right.get());
 
     switch(expr->op) {
@@ -125,9 +125,30 @@ llvm::Value* CodeGenerator::in_unary_expression(const Expression* expression)
     }
 }
 
-llvm::Value* CodeGenerator::in_binary_expression(const Expression* expression)
+void set_int_literal_bit_size(Expression* l, Expression* r)
 {
-    auto* expr = static_cast<const BinaryExpression*>(expression);
+    const ExpressionType l_type = l->expr_type();
+    const ExpressionType r_type = r->expr_type();
+    if(l_type != ExpressionType::IntLiteral && r_type != ExpressionType::IntLiteral) {
+        return;
+    } else if(l_type == ExpressionType::IntLiteral) {
+        // literal op non-literal
+        auto* literal = static_cast<IntLiteral*>(l);
+        literal->bit_size = r->type()->bit_size();
+    } else if(r_type == ExpressionType::IntLiteral) {
+        // non-literal op literal
+        auto* literal = static_cast<IntLiteral*>(r);
+        literal->bit_size = l->type()->bit_size();
+    } else {
+        // literal op literal (this case should have already been removed)
+        assert(false);
+    }
+}
+
+llvm::Value* CodeGenerator::in_binary_expression(Expression* expression)
+{
+    auto* expr = static_cast<BinaryExpression*>(expression);
+    set_int_literal_bit_size(expr->left.get(), expr->right.get());
     llvm::Value* left = in_expression(expr->left.get());
     llvm::Value* right = in_expression(expr->right.get());
 
@@ -186,10 +207,10 @@ llvm::Value* CodeGenerator::in_binary_expression(const Expression* expression)
     }
 }
 
-llvm::Value* CodeGenerator::in_function_call(const Expression* expression)
+llvm::Value* CodeGenerator::in_function_call(Expression* expression)
 {
-    auto* funct_call = static_cast<const FunctionCall*>(expression);
-    llvm::Function *funct_to_call = m_curr_module->getFunction(funct_call->name);
+    auto* funct_call = static_cast<FunctionCall*>(expression);
+    llvm::Function* funct_to_call = m_curr_module->getFunction(funct_call->name);
     if(funct_to_call == nullptr) {
         std::cerr << "Codegen error: Could not find function `"
                   << funct_call->name << "`\n";
@@ -197,22 +218,20 @@ llvm::Value* CodeGenerator::in_function_call(const Expression* expression)
     }
     std::vector<llvm::Value*> args;
     args.reserve(funct_call->arguments.size());
-    for(const auto& arg : funct_call->arguments) {
+    for(auto& arg : funct_call->arguments) {
         args.push_back(in_expression(arg.get()));
     }
     return m_ir_builder.CreateCall(funct_to_call, args, "call" + funct_call->name);
 }
 
 
-void CodeGenerator::add_lvalue_init(llvm::Function* function,
-                                    const Statement* statement)
+void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
 {
     auto* init = static_cast<const Initialization*>(statement);
     llvm::IRBuilder<> builder(&function->getEntryBlock(),
                               function->getEntryBlock().begin());
     auto* lvalue = init->lvalue;
-    // TODO: Fixe segfault in the call below (the issue is a null deref of
-    // lvalue->type->range.bit_size)
+
     llvm::AllocaInst* alloc = builder.CreateAlloca(
         llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), 0,
         lvalue->name.c_str());
@@ -258,10 +277,10 @@ void CodeGenerator::run()
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "body", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
-        for(const auto *statement : function->statements) {
+        for(auto *statement : function->statements) {
             switch(statement->type()) {
             case StatementType::Basic: {
-                auto* curr_statement = static_cast<const BasicStatement*>(statement);
+                auto* curr_statement = static_cast<BasicStatement*>(statement);
                 in_expression(curr_statement->expression.get());
                 break;
             }

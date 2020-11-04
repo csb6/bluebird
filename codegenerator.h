@@ -47,18 +47,18 @@ private:
     std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
 
     // Generate code for expressions
-    llvm::Value* in_expression(const struct Expression*);
+    llvm::Value* in_expression(struct Expression*);
     llvm::Value* in_string_literal(const Expression*);
     llvm::Value* in_char_literal(const Expression*);
     llvm::Value* in_int_literal(const Expression*);
     llvm::Value* in_float_literal(const Expression*);
     llvm::Value* in_lvalue_expression(const Expression*);
-    llvm::Value* in_unary_expression(const Expression*);
-    llvm::Value* in_binary_expression(const Expression*);
-    llvm::Value* in_function_call(const Expression*);
+    llvm::Value* in_unary_expression(Expression*);
+    llvm::Value* in_binary_expression(Expression*);
+    llvm::Value* in_function_call(Expression*);
 
     // Generate code for initializing lvalues
-    void add_lvalue_init(llvm::Function*, const struct Statement*);
+    void add_lvalue_init(llvm::Function*, struct Statement*);
 public:
     CodeGenerator(const std::vector<Function*>&);
     void run();

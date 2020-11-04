@@ -195,6 +195,48 @@ multi_int evaluate_int_expression(Token token, const Expression* expression)
     }
 }
 
+// TODO: add a fold_constants() overload for unary expressions
+Expression* fold_constants(Expression* left, TokenType op, Expression* right)
+{
+    if(left->expr_type() != ExpressionType::IntLiteral
+       || right->expr_type() != ExpressionType::IntLiteral) {
+        // Can't do any folding, need TWO constant operands
+        return new BinaryExpression(left, op, right);
+    } else {
+        // Fold into a single literal (uses arbitrary-precision arithmetic)
+        auto* l_int = static_cast<IntLiteral*>(left);
+        auto* r_int = static_cast<IntLiteral*>(right);
+        switch(op) {
+        case TokenType::Op_Plus:
+            l_int->value += r_int->value;
+            break;
+        case TokenType::Op_Minus:
+            l_int->value -= r_int->value;
+            break;
+        case TokenType::Op_Mult:
+            l_int->value *= r_int->value;
+            break;
+        case TokenType::Op_Div:
+            l_int->value /= r_int->value;
+            break;
+        case TokenType::Op_Mod:
+            // TODO: Add multi_int::operator%=()
+            assert(false);
+            break;
+        case TokenType::Op_Thru:
+        case TokenType::Op_Upto:
+            // Can't do folds here, need to preserve left/right sides for a range
+            return new BinaryExpression(left, op, right);
+        default:
+            // TODO: Add multi_int::operator%=()
+            // TODO: Add support for rest of ops (e.g. bitwise, shifts)
+            assert(false);
+        }
+        delete right;
+        return left;
+    }
+}
+
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end),
       m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
@@ -220,7 +262,7 @@ Expression* Parser::parse_expression(TokenType right_token)
         }
         ++token;
         Expression* right_side = parse_expression(op);
-        left_side = new BinaryExpression(left_side, op, right_side);
+        left_side = fold_constants(left_side, op, right_side);
         curr_precedence = precedence_of(token->type);
     }
     return left_side;

@@ -62,6 +62,7 @@ struct Type {
     Type() {}
     virtual ~Type() {}
     explicit Type(const std::string &n) : name(n) {}
+    virtual unsigned short bit_size() const { return 0; }
     virtual TypeCategory category() const { return TypeCategory::Normal; }
     virtual void print(std::ostream&) const;
 };
@@ -70,18 +71,21 @@ struct Type {
 // within the same expression)
 struct LiteralType : public Type {
     static const LiteralType String, Char, Int, Float;
-    virtual TypeCategory category() const override { return TypeCategory::Literal; }
+    const unsigned short bits_amt;
     using Type::Type;
+    LiteralType(const std::string& n, unsigned short bit_num)
+        : Type(n), bits_amt(bit_num) {}
+    unsigned short bit_size() const override { return bits_amt; }
+    virtual TypeCategory category() const override { return TypeCategory::Literal; }
 };
 
 // Type with integer bounds
 struct RangeType : public Type {
     Range range;
-    TypeCategory category() const override { return TypeCategory::Range; }
     using Type::Type;
-    explicit RangeType(const std::string &n, Range &&r)
-        : Type(n), range(r)
-    {}
+    RangeType(const std::string &n, Range &&r) : Type(n), range(r) {}
+    unsigned short bit_size() const override { return range.bit_size; }
+    TypeCategory category() const override { return TypeCategory::Range; }
 };
 
 // An abstract object or non-standalone group of expressions
@@ -117,6 +121,7 @@ struct IntLiteral : public Expression {
     multi_int value;
     unsigned short bit_size;
     explicit IntLiteral(const std::string& v);
+    explicit IntLiteral(const multi_int& v) : value(v) {}
     const Type* type() const override { return &LiteralType::Int; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;

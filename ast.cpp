@@ -171,12 +171,12 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
 }
 
 const Type Type::Void{"VoidType"};
-const LiteralType LiteralType::String{"StringLiteral"};
-const LiteralType LiteralType::Char{"CharLiteral"};
-const LiteralType LiteralType::Int{"IntLiteral"};
-const LiteralType LiteralType::Float{"FloatLiteral"};
+const LiteralType LiteralType::String{"StringLiteral", 8};
+const LiteralType LiteralType::Char{"CharLiteral", 8};
+const LiteralType LiteralType::Int{"IntLiteral", 32};
+const LiteralType LiteralType::Float{"FloatLiteral", 32};
 
 void Type::print(std::ostream& output) const
 {
-    output << "Type: " << name << '\n';
+    output << "Type: " << name << " bit_size: " << bit_size() << '\n';
 }
