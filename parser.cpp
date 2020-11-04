@@ -68,6 +68,8 @@ constexpr Precedence operator_precedence_table[] = {
           15,
     //   Op_Mod:
           15,
+    //   Op_Rem:
+          15,
     //  Logical
     //   Op_And:
           7,
@@ -242,8 +244,10 @@ Expression* fold_constants(Expression* left, TokenType op, Expression* right)
             l_int->value /= r_int->value;
             break;
         case TokenType::Op_Mod:
-            // TODO: Add multi_int::operator%=()
-            assert(false);
+            l_int->value.mod(r_int->value);
+            break;
+        case TokenType::Op_Rem:
+            l_int->value.rem(r_int->value);
             break;
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:

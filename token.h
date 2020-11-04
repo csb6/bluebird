@@ -28,7 +28,7 @@ enum class TokenType : char {
     Comma,
     // Operators
     //  Arithmetic
-    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod,
+    Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod, Op_Rem,
     //  Logical
     Op_And, Op_Or, Op_Not,
     //  Comparison

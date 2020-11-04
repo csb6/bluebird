@@ -82,6 +82,18 @@ multi_int& multi_int::operator/=(const multi_int& other)
     return *this;
 }
 
+multi_int& multi_int::mod(const multi_int& other)
+{
+    mpz_mod(m_number, m_number, other.m_number);
+    return *this;
+}
+
+multi_int& multi_int::rem(const multi_int& other)
+{
+    mpz_tdiv_r(m_number, m_number, other.m_number);
+    return *this;
+}
+
 multi_int& multi_int::negate()
 {
     mpz_neg(m_number, m_number);

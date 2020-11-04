@@ -78,7 +78,10 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << '*';
         break;
     case TokenType::Op_Mod:
-        output << '%';
+        output << "mod";
+        break;
+    case TokenType::Op_Rem:
+        output << "rem";
         break;
     case TokenType::Op_And:
         output << "and";

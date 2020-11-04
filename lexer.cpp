@@ -34,6 +34,8 @@ Lexer::Lexer(std::string::const_iterator input_begin,
          {"constant", TokenType::Keyword_Const},
          {"type", TokenType::Keyword_Type},
          {"end", TokenType::Keyword_End},
+         {"mod", TokenType::Op_Mod},
+         {"rem", TokenType::Op_Rem},
          {"if", TokenType::Keyword_If},
          {"else", TokenType::Keyword_Else},
          {"range", TokenType::Keyword_Range},
@@ -109,9 +111,6 @@ void Lexer::run()
                     break;
                 case '*':
                     m_tokens.emplace_back(line_num, TokenType::Op_Mult);
-                    break;
-                case '%':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Mod);
                     break;
                 // Bitwise operators 
                 case '&':
@@ -203,9 +202,10 @@ void Lexer::run()
             if(std::isalnum(curr) || curr == '_') {
                 token_text += curr;
             } else {
-                if(m_identifier_table.count(token_text) > 0) {
+                auto match = m_identifier_table.find(token_text);
+                if(match != m_identifier_table.end()) {
                     // Found a keyword
-                    m_tokens.emplace_back(line_num, m_identifier_table[token_text]);
+                    m_tokens.emplace_back(line_num, match->second);
                 } else {
                     // Found a name
                     m_tokens.emplace_back(line_num, TokenType::Name, token_text);

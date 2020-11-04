@@ -38,6 +38,8 @@ class multi_int {
     multi_int& operator-=(const multi_int&);
     multi_int& operator*=(const multi_int&);
     multi_int& operator/=(const multi_int&);
+    multi_int& mod(const multi_int&);
+    multi_int& rem(const multi_int&);
     multi_int& negate();
     multi_int& ones_complement();
 
