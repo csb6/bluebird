@@ -47,6 +47,17 @@ Lexer::Lexer(std::string::const_iterator input_begin,
       }
 {}
 
+void print_error(unsigned int line_num, const char *text, char token)
+{
+    std::cerr << "Line " << line_num << ": " << text << token << '\n';
+}
+
+void print_error(unsigned int line_num, const char *text,
+                 const std::string &token = "")
+{
+    std::cerr << "Line " << line_num << ": " << text << token << '\n';
+}
+
 void Lexer::run()
 {
     State curr_state = State::Start;
@@ -167,8 +178,7 @@ void Lexer::run()
                         m_tokens.emplace_back(line_num, TokenType::Op_Ne);
                         ++input_iter;
                     } else {
-                        std::cerr << "Line " << line_num << ": Invalid operator: '!"
-                                  << *std::next(input_iter)  << "'\n";
+                        print_error(line_num, "Invalid operator: !");
                         exit(1);
                     }
                     break;
@@ -221,8 +231,8 @@ void Lexer::run()
                 ++input_iter;
                 char escaped = escape_sequence(*input_iter);
                 if(escaped == -1) {
-                    std::cerr << "Error: Unrecognized escape sequence '\\"
-                              << *input_iter << "'\n";
+                    print_error(line_num, "Unrecognized escape sequence: \\",
+                                *input_iter);
                     exit(1);
                 }
                 token_text += escaped;
@@ -242,8 +252,8 @@ void Lexer::run()
                 ++input_iter;
                 char escaped = escape_sequence(*input_iter);
                 if(escaped == -1) {
-                    std::cerr << "Error: Unrecognized escape sequence '\\"
-                              << *input_iter << "'\n";
+                    print_error(line_num, "Unrecognized escape sequence: \\",
+                                *input_iter);
                     exit(1);
                 }
                 curr = escaped;
@@ -286,7 +296,7 @@ void Lexer::run()
     }
 
     if(!token_text.empty()) {
-        std::cerr << "Incomplete token: " << token_text << '\n';
+        print_error(line_num, "Incomplete token: ", token_text);
         exit(1);
     }
 }
