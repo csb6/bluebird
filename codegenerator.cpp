@@ -121,13 +121,15 @@ void set_literal_type_info(Expression* l, Expression* r)
 llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
     set_literal_type_info(left.get(), right.get());
-    if(left->type()->category() != TypeCategory::Range
-       && right->type()->category() != TypeCategory::Range) {
+    bool type_is_signed;
+    if(left->type()->category() == TypeCategory::Range) {
+        type_is_signed = static_cast<const RangeType*>(left->type())->is_signed();
+    } else if(right->type()->category() == TypeCategory::Range) {
+        type_is_signed = static_cast<const RangeType*>(right->type())->is_signed();
+    } else {
         // TODO: add proper error printing code here
         assert(false);
     }
-    const RangeType* l_type = static_cast<const RangeType*>(left->type());
-    const RangeType* r_type = static_cast<const RangeType*>(right->type());
     llvm::Value* left_ir = left->codegen(gen);
     llvm::Value* right_ir = right->codegen(gen);
 
@@ -140,7 +142,7 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
     case TokenType::Op_Div:
         // Separate instructions for signed/unsigned ints
-        if(l_type->is_signed() | r_type->is_signed())
+        if(type_is_signed)
             return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
         else
             return gen.m_ir_builder.CreateUDiv(left_ir, right_ir, "udivtmp");
@@ -148,7 +150,7 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
     case TokenType::Op_Mod:
         // Separate instructions for signed/unsigned ints
-        if(l_type->is_signed() | r_type->is_signed())
+        if(type_is_signed)
             return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "smodtmp");
         else
             return gen.m_ir_builder.CreateURem(left_ir, right_ir, "umodtmp");
