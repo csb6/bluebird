@@ -15,3 +15,8 @@ Todo:
 [X] Create some helper functions for printing out lexer errors (with line num)
 [ ] Consider reading characters on-demand from an iostream in the lexer instead
     of reading everything into a big string at the start
+[X] Consider rewriting lexer to be array-based and making better use
+    of constexpr (this isn't practical without C++20, and even there, causes more complexity)
+[ ] Consider rewriting frontend/part of frontend in Ada (this is unlikely
+    to be practical but would be interesting to experiment with)
+[ ] Use property-based testing to test lexer 

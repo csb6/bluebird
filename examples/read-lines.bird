@@ -1,0 +1,40 @@
+/* Note: this isn't going to be able to compile/run for a while. This is just
+   a larger program to help think through design decisions
+*/
+
+import IO, Random, Strings;
+
+// Generic function (IO.InputRange and IO.OutputRange are concepts)
+function write_CSV_cells(input: IO.InputRange, output: IO.OutputRange) is
+
+   for n, cell in input.split('\n').split(',').enumerate(Positive) do
+      output << n << cell << '\n';
+   end;
+end;
+
+function test1 is
+   let output_file: IO.File = {"output.txt", IO.Write_Mode}; // Could throw exception
+
+   write_CSV_cells(IO.stdin, output_file);
+
+exception
+   when IO.File_Error =>
+       IO.stderr << "Could not open file: output.txt\n";
+end test1;
+
+
+type Student_Id is range 1_000_000 upto 9_999_999;
+type Student_Name is new String
+   with Invariant => not Student_Name.contains(Strings.Escape_Seq'Range)
+     and not Student_Name.contains(';');
+
+type Student is record
+   id : Student_Id;
+   name : Student_Name;
+end
+  with Bit_Copy, Copy;
+
+constructor Student(name: String) is
+   this.id = Random.choose(Student_Id'Range);
+   this.name = name as Student_Name;
+end;
