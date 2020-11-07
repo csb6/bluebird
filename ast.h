@@ -52,9 +52,9 @@ enum class TypeCategory : char {
 // Upper/lower bounds are inclusive
 struct Range {
     multi_int lower_bound, upper_bound;
+    bool is_signed;
     unsigned short bit_size;
-    Range() : bit_size(0) {}
-    // Move Constructors
+    Range() : is_signed(true), bit_size(0) {}
     Range(const multi_int& lower, const multi_int& upper);
 };
 
@@ -90,6 +90,7 @@ struct RangeType : public Type {
     RangeType(const std::string &n, Range &&r) : Type(n), range(r) {}
     unsigned short bit_size() const override { return range.bit_size; }
     TypeCategory category() const override { return TypeCategory::Range; }
+    bool is_signed() const { return range.is_signed; }
 };
 
 // An abstract object or non-standalone group of expressions
@@ -127,7 +128,7 @@ struct CharLiteral : public Expression {
 struct IntLiteral : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
-    unsigned short bit_size;
+    unsigned short bit_size = 0;
     explicit IntLiteral(const std::string& v);
     explicit IntLiteral(const multi_int& v) : value(v) {}
     const Type* type() const override { return &LiteralType::Int; }

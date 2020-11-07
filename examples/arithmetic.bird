@@ -3,8 +3,10 @@ function main() is
   let b : Integer = (1 + 2) * 3 + 4;
   // Right now, Integer's size is 7 bits, so if
   // c is 64 or greater, we get overflow
-  let c : Integer = 63;
-  let z : Integer = c;
+  let c : Integer = 60;
+  let z : Integer = c + 2;
+  let g : Negative = -10;
+  let h : Negative = g + 8;
 
   1 + 1;
   1 + 2 * 3;
@@ -17,3 +19,4 @@ function main() is
 end main;
 
 type Integer is range 0 thru 100;
+type Negative is range -100 upto 0;

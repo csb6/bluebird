@@ -106,6 +106,10 @@ multi_int& multi_int::ones_complement()
     return *this;
 }
 
+bool multi_int::is_negative() const
+{
+    return mpz_sgn(m_number) < 0;
+}
 
 multi_int operator-(const multi_int& a)
 {

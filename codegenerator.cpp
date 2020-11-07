@@ -59,9 +59,7 @@ llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 {
-    // TODO: determine signed-ness; right now, assume signed
-    return llvm::ConstantInt::get(gen.m_context,
-                                  llvm::APInt(bit_size, value.str(), 10));
+    return llvm::ConstantInt::get(gen.m_context, llvm::APInt(bit_size, value.str(), 10));
 }
 
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
@@ -95,14 +93,19 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
     }
 }
 
-void set_bit_size(const Type* concrete, Expression* literal)
+// For IntLiterals, sets the literal's bit size, etc to match that
+// of the range type or typed expression whose type it should match
+void set_literal_type_info(const Type* concrete, Expression* literal)
 {
-    if(literal->expr_type() == ExpressionType::IntLiteral) {
-        static_cast<IntLiteral*>(literal)->bit_size = concrete->bit_size();
+    if(literal->expr_type() == ExpressionType::IntLiteral
+       && concrete->category() == TypeCategory::Range) {
+        auto* lit = static_cast<IntLiteral*>(literal);
+        auto* range_type = static_cast<const RangeType*>(concrete);
+        lit->bit_size = range_type->bit_size();
     }
 }
 
-void set_int_literal_bit_size(Expression* l, Expression* r)
+void set_literal_type_info(Expression* l, Expression* r)
 {
     const ExpressionType l_type = l->expr_type();
     const ExpressionType r_type = r->expr_type();
@@ -110,14 +113,21 @@ void set_int_literal_bit_size(Expression* l, Expression* r)
         return;
     } else {
         // The literal expr (either l or r) will take on the bit size of the non-literal
-        set_bit_size(l->type(), r);
-        set_bit_size(r->type(), l);
+        set_literal_type_info(l->type(), r);
+        set_literal_type_info(r->type(), l);
     }
 }
 
 llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
-    set_int_literal_bit_size(left.get(), right.get());
+    set_literal_type_info(left.get(), right.get());
+    if(left->type()->category() != TypeCategory::Range
+       && right->type()->category() != TypeCategory::Range) {
+        // TODO: add proper error printing code here
+        assert(false);
+    }
+    const RangeType* l_type = static_cast<const RangeType*>(left->type());
+    const RangeType* r_type = static_cast<const RangeType*>(right->type());
     llvm::Value* left_ir = left->codegen(gen);
     llvm::Value* right_ir = right->codegen(gen);
 
@@ -129,15 +139,19 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     case TokenType::Op_Minus:
         return gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
     case TokenType::Op_Div:
-        // TODO: use different division depending on signed-ness.
-        // For now, assume signed
-        return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
+        // Separate instructions for signed/unsigned ints
+        if(l_type->is_signed() | r_type->is_signed())
+            return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
+        else
+            return gen.m_ir_builder.CreateUDiv(left_ir, right_ir, "udivtmp");
     case TokenType::Op_Mult:
         return gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
     case TokenType::Op_Mod:
-        // TODO: use different division depending on signed-ness.
-        // For now, assume signed
-        return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "modtmp");
+        // Separate instructions for signed/unsigned ints
+        if(l_type->is_signed() | r_type->is_signed())
+            return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "smodtmp");
+        else
+            return gen.m_ir_builder.CreateURem(left_ir, right_ir, "umodtmp");
     // TODO: implement short-circuiting for AND and OR
     case TokenType::Op_And:
         left_ir = gen.m_ir_builder.CreateAnd(left_ir, right_ir, "andtmp");
@@ -208,7 +222,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_lvalues[lvalue] = alloc;
 
     if(init->expression != nullptr) {
-        set_bit_size(lvalue->type, init->expression.get());
+        set_literal_type_info(lvalue->type, init->expression.get());
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
     m_ir_builder.restoreIP(prev_insert_point);
