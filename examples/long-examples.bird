@@ -1,0 +1,85 @@
+/* Note: this isn't going to be able to compile/run for a while. This is just
+   a set of programs to help me think through design decisions
+*/
+
+import IO, Random, Strings;
+
+// Generic function (IO.InputRange and IO.OutputRange are concepts)
+function write_CSV_cells(input: IO.InputRange, output: IO.OutputRange)
+is
+   for n, cell in input.split('\n').split(',').enumerate(Positive) do
+      output << n << ' ' << cell << '\n';
+   end;
+end;
+
+function test1
+is
+   let output_file: IO.File = {"output.txt", IO.Write_Mode}; // Could throw exception
+
+   write_CSV_cells(IO.stdin, output_file);
+
+exception
+   when IO.File_Error =>
+       IO.stderr << "Could not open file: output.txt\n";
+end test1;
+/* test1: Expected output for a certain CSV file:
+    1 id
+    2 heading
+    3 0
+    4 Why Indexing Should Start at 0
+    5 1
+    6 Why Indexing Should Start at any Integer
+    7 2
+    8 Why Indexing Should Be Tied to the Range of a Number-like Type
+*/
+
+
+type Student_Id is range 1_000_000 upto 9_999_999;
+type Student_Name is new String;
+
+type Student is record
+   id : Student_Id;
+   name : Student_Name;
+end
+  with Copy => false;
+
+constructor Student(name: String)
+is
+   this.id = Random.choose(Student_Id'Range);
+   this.name = name as Student_Name; // Could throw exception
+end;
+
+destructor Student
+is
+   IO.stdout << this << '\n';
+   IO.stdout << this'Typename << " is destroyed!\n\n";
+end;
+
+function test2
+is
+   let bill : Student = {"Bill"};
+   let amber : Student = {name => "Amber"};
+   let teachers_pet : Student = {1, "Timothy"};
+   //  (Won't compile; can't copy) let clone_of_timothy : Student = teachers_pet;
+end;
+
+// Not sure how to format the pretty-printing
+/* test2: One possible output:
+   Student: {
+      id: 1
+      name: "Timothy"
+   }
+   Student is destroyed!
+
+   Student: {
+      id: 345900777
+      name: "Amber"
+   }
+   Student is destroyed!
+
+   Student: {
+      id: 343477888
+      name: "Bill"
+   }
+   Student is destroyed!
+*/
