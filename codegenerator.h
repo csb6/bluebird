@@ -28,10 +28,6 @@
 
 #include <vector>
 #include <unordered_map>
-#include <string>
-#include <CorradePointer.h>
-
-namespace Magnum = Corrade::Containers;
 
 namespace llvm {
     class AllocaInst;
@@ -41,21 +37,21 @@ class CodeGenerator {
 private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
-    Magnum::Pointer<llvm::Module> m_curr_module;
+    llvm::Module m_module;
 
     const std::vector<struct Function*>& m_functions;
     std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
 
-    // Generate code for expressions
-    llvm::Value* in_expression(struct Expression*);
-    llvm::Value* in_string_literal(const Expression*);
-    llvm::Value* in_char_literal(const Expression*);
-    llvm::Value* in_int_literal(const Expression*);
-    llvm::Value* in_float_literal(const Expression*);
-    llvm::Value* in_lvalue_expression(const Expression*);
-    llvm::Value* in_unary_expression(Expression*);
-    llvm::Value* in_binary_expression(Expression*);
-    llvm::Value* in_function_call(Expression*);
+    // For the codegen virtual functions attached to each Expression subclass.
+    // These functions are defined in codegenerator.cpp
+    friend struct StringLiteral;
+    friend struct CharLiteral;
+    friend struct IntLiteral;
+    friend struct FloatLiteral;
+    friend struct LValueExpression;
+    friend struct UnaryExpression;
+    friend struct BinaryExpression;
+    friend struct FunctionCall;
 
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);

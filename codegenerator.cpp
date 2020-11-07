@@ -30,6 +30,7 @@
 
 #include "ast.h"
 #include <iostream>
+#include <string>
 
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
@@ -39,87 +40,56 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 
 CodeGenerator::CodeGenerator(const std::vector<Function*>& functions)
-    : m_ir_builder(m_context), 
-      m_curr_module(new llvm::Module("main module", m_context)),
+    : m_ir_builder(m_context), m_module("main module", m_context),
       m_functions(functions)
 {}
 
-llvm::Value* CodeGenerator::in_expression(Expression* expression)
+llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
 {
-    switch(expression->expr_type()) {
-    case ExpressionType::StringLiteral:
-        return in_string_literal(expression);
-    case ExpressionType::CharLiteral:
-        return in_char_literal(expression);
-    case ExpressionType::IntLiteral:
-        return in_int_literal(expression);
-    case ExpressionType::FloatLiteral:
-        return in_float_literal(expression);
-    case ExpressionType::LValue:
-        return in_lvalue_expression(expression);
-    case ExpressionType::Unary:
-        return in_unary_expression(expression);
-    case ExpressionType::Binary:
-        return in_binary_expression(expression);
-    case ExpressionType::FunctionCall:
-        return in_function_call(expression);
-    }
-}
-
-llvm::Value* CodeGenerator::in_string_literal(const Expression* expression)
-{
-    auto* literal = static_cast<const StringLiteral*>(expression);
     // TODO: make sure this doesn't mess-up the insertion point for IR instructions
-    return m_ir_builder.CreateGlobalStringPtr(literal->value);
+    return gen.m_ir_builder.CreateGlobalStringPtr(value);
 }
 
-llvm::Value* CodeGenerator::in_char_literal(const Expression* expression)
+llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 {
-    auto* literal = static_cast<const CharLiteral*>(expression);
-    const auto value = literal->value;
     // Create a signed `char` type
-    return llvm::ConstantInt::get(m_context,
+    return llvm::ConstantInt::get(gen.m_context,
                                   llvm::APInt(sizeof(value), value, true));
 }
 
-llvm::Value* CodeGenerator::in_int_literal(const Expression* expression)
+llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 {
-    auto* literal = static_cast<const IntLiteral*>(expression);
-    const auto value = literal->value;
     // TODO: determine signed-ness; right now, assume signed
-    return llvm::ConstantInt::get(m_context, llvm::APInt(literal->bit_size,
-                                                         value.str(), 10));
+    return llvm::ConstantInt::get(gen.m_context,
+                                  llvm::APInt(bit_size, value.str(), 10));
 }
 
-llvm::Value* CodeGenerator::in_float_literal(const Expression* expression)
+llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
 {
-    auto* literal = static_cast<const FloatLiteral*>(expression);
-    return llvm::ConstantFP::get(m_context, llvm::APFloat(literal->value));
+    return llvm::ConstantFP::get(gen.m_context, llvm::APFloat(value));
 }
 
-llvm::Value* CodeGenerator::in_lvalue_expression(const Expression* expression)
+llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 {
-    auto* lvalue_expr = static_cast<const LValueExpression*>(expression);
-    llvm::AllocaInst* src_lvalue = m_lvalues[lvalue_expr->lvalue];
+    llvm::AllocaInst* src_lvalue = gen.m_lvalues[lvalue];
     if(src_lvalue == nullptr) {
         std::cerr << "Codegen error: Could not find lvalue referenced by:\n";
-        lvalue_expr->print(std::cerr);
+        print(std::cerr);
         exit(1);
     }
-    return m_ir_builder.CreateLoad(src_lvalue, lvalue_expr->name);
+    return gen.m_ir_builder.CreateLoad(src_lvalue, name);
 }
 
-llvm::Value* CodeGenerator::in_unary_expression(Expression* expression)
+llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 {
-    auto* expr = static_cast<UnaryExpression*>(expression);
-    llvm::Value* operand = in_expression(expr->right.get());
+    llvm::Value* operand = right->codegen(gen);
 
-    switch(expr->op) {
+    switch(op) {
     case TokenType::Op_Not:
-        operand = m_ir_builder.CreateNot(operand, "nottmp");
-        return truncate_to_bool(m_ir_builder, operand);
+        operand = gen.m_ir_builder.CreateNot(operand, "nottmp");
+        return truncate_to_bool(gen.m_ir_builder, operand);
     case TokenType::Op_Bit_Not:
-        return m_ir_builder.CreateNot(operand, "bitnottmp");
+        return gen.m_ir_builder.CreateNot(operand, "bitnottmp");
     default:
         assert(false && "Unknown unary operator");
     }
@@ -145,83 +115,81 @@ void set_int_literal_bit_size(Expression* l, Expression* r)
     }
 }
 
-llvm::Value* CodeGenerator::in_binary_expression(Expression* expression)
+llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
-    auto* expr = static_cast<BinaryExpression*>(expression);
-    set_int_literal_bit_size(expr->left.get(), expr->right.get());
-    llvm::Value* left = in_expression(expr->left.get());
-    llvm::Value* right = in_expression(expr->right.get());
+    set_int_literal_bit_size(left.get(), right.get());
+    llvm::Value* left_ir = left->codegen(gen);
+    llvm::Value* right_ir = right->codegen(gen);
 
     // TODO: use float/user-defined versions of all these operators depending
     //   on their type
-    switch(expr->op) {
+    switch(op) {
     case TokenType::Op_Plus:
-        return m_ir_builder.CreateAdd(left, right, "addtmp");
+        return gen.m_ir_builder.CreateAdd(left_ir, right_ir, "addtmp");
     case TokenType::Op_Minus:
-        return m_ir_builder.CreateSub(left, right, "subtmp");
+        return gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
     case TokenType::Op_Div:
         // TODO: use different division depending on signed-ness.
         // For now, assume signed
-        return m_ir_builder.CreateSDiv(left, right, "sdivtmp");
+        return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
     case TokenType::Op_Mult:
-        return m_ir_builder.CreateMul(left, right, "multmp");
+        return gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
     case TokenType::Op_Mod:
         // TODO: use different division depending on signed-ness.
         // For now, assume signed
-        return m_ir_builder.CreateSRem(left, right, "modtmp");
+        return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "modtmp");
     // TODO: implement short-circuiting for AND and OR
     case TokenType::Op_And:
-        left = m_ir_builder.CreateAnd(left, right, "andtmp");
-        return truncate_to_bool(m_ir_builder, left);
+        left_ir = gen.m_ir_builder.CreateAnd(left_ir, right_ir, "andtmp");
+        return truncate_to_bool(gen.m_ir_builder, left_ir);
     case TokenType::Op_Or:
-        left = m_ir_builder.CreateOr(left, right, "ortmp");
-        return truncate_to_bool(m_ir_builder, left);
+        left_ir = gen.m_ir_builder.CreateOr(left_ir, right_ir, "ortmp");
+        return truncate_to_bool(gen.m_ir_builder, left_ir);
     // TODO: use different compare functions for floats, user-defined ops, etc.
     case TokenType::Op_Eq:
-        return m_ir_builder.CreateICmpEQ(left, right, "eqtmp");
+        return gen.m_ir_builder.CreateICmpEQ(left_ir, right_ir, "eqtmp");
     case TokenType::Op_Ne:
-        return m_ir_builder.CreateICmpNE(left, right, "netmp");
+        return gen.m_ir_builder.CreateICmpNE(left_ir, right_ir, "netmp");
     // TODO: vary compare function if signed or not
     // For now, assume signed
     case TokenType::Op_Lt:
-        return m_ir_builder.CreateICmpSLT(left, right, "lttmp");
+        return gen.m_ir_builder.CreateICmpSLT(left_ir, right_ir, "lttmp");
     case TokenType::Op_Gt:
-        return m_ir_builder.CreateICmpSGT(left, right, "gttmp");
+        return gen.m_ir_builder.CreateICmpSGT(left_ir, right_ir, "gttmp");
     case TokenType::Op_Le:
-        return m_ir_builder.CreateICmpSLE(left, right, "letmp");
+        return gen.m_ir_builder.CreateICmpSLE(left_ir, right_ir, "letmp");
     case TokenType::Op_Ge:
-        return m_ir_builder.CreateICmpSGE(left, right, "getmp");
+        return gen.m_ir_builder.CreateICmpSGE(left_ir, right_ir, "getmp");
     case TokenType::Op_Left_Shift:
-        return m_ir_builder.CreateShl(left, right, "sltmp");
+        return gen.m_ir_builder.CreateShl(left_ir, right_ir, "sltmp");
     case TokenType::Op_Right_Shift:
         // Fills in opened bits with zeros
-        return m_ir_builder.CreateLShr(left, right, "srtmp");
+        return gen.m_ir_builder.CreateLShr(left_ir, right_ir, "srtmp");
     case TokenType::Op_Bit_And:
-        return m_ir_builder.CreateAnd(left, right, "bitandtmp");
+        return gen.m_ir_builder.CreateAnd(left_ir, right_ir, "bitandtmp");
     case TokenType::Op_Bit_Or:
-        return m_ir_builder.CreateOr(left, right, "bitortmp");
+        return gen.m_ir_builder.CreateOr(left_ir, right_ir, "bitortmp");
     case TokenType::Op_Bit_Xor:
-        return m_ir_builder.CreateXor(left, right, "bitxortmp");
+        return gen.m_ir_builder.CreateXor(left_ir, right_ir, "bitxortmp");
     default:
         assert(false && "Unknown binary operator");
     }
 }
 
-llvm::Value* CodeGenerator::in_function_call(Expression* expression)
+llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 {
-    auto* funct_call = static_cast<FunctionCall*>(expression);
-    llvm::Function* funct_to_call = m_curr_module->getFunction(funct_call->name);
+    llvm::Function* funct_to_call = gen.m_module.getFunction(name);
     if(funct_to_call == nullptr) {
         std::cerr << "Codegen error: Could not find function `"
-                  << funct_call->name << "`\n";
+                  << name << "`\n";
         exit(1);
     }
     std::vector<llvm::Value*> args;
-    args.reserve(funct_call->arguments.size());
-    for(auto& arg : funct_call->arguments) {
-        args.push_back(in_expression(arg.get()));
+    args.reserve(arguments.size());
+    for(auto& arg : arguments) {
+        args.push_back(arg->codegen(gen));
     }
-    return m_ir_builder.CreateCall(funct_to_call, args, "call" + funct_call->name);
+    return gen.m_ir_builder.CreateCall(funct_to_call, args, "call" + name);
 }
 
 
@@ -262,7 +230,7 @@ void CodeGenerator::run()
         auto* curr_funct = llvm::Function::Create(funct_type,
                                                   llvm::Function::ExternalLinkage,
                                                   function->name,
-                                                  m_curr_module.get());
+                                                  m_module);
         assert(curr_funct->getParent() != nullptr);
         
         auto param_name_it = parameter_names.begin();
@@ -281,7 +249,7 @@ void CodeGenerator::run()
             switch(statement->type()) {
             case StatementType::Basic: {
                 auto* curr_statement = static_cast<BasicStatement*>(statement);
-                in_expression(curr_statement->expression.get());
+                curr_statement->expression->codegen(*this);
                 break;
             }
             case StatementType::Initialization:
@@ -294,5 +262,5 @@ void CodeGenerator::run()
         }
     }
 
-    m_curr_module->print(llvm::errs(), nullptr);
+    m_module.print(llvm::errs(), nullptr);
 }

@@ -25,6 +25,10 @@
 
 namespace Magnum = Corrade::Containers;
 
+namespace llvm {
+    class Value;
+}
+
 enum class NameType : char {
     LValue, Funct, DeclaredFunct,
     Type, DeclaredType
@@ -97,6 +101,8 @@ struct Expression {
     // called by visiting child nodes
     virtual const Type* type() const = 0;
     virtual void print(std::ostream&) const = 0;
+    // Used in code generation. Definitions/overrides defined in codegenerator.cpp
+    virtual llvm::Value* codegen(class CodeGenerator&) = 0;
 };
 
 // Each type of literal is a nameless instance of data
@@ -106,6 +112,7 @@ struct StringLiteral : public Expression {
     const Type* type() const override { return &LiteralType::String; }
     ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct CharLiteral : public Expression {
@@ -114,6 +121,7 @@ struct CharLiteral : public Expression {
     const Type* type() const override { return &LiteralType::Char; }
     ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct IntLiteral : public Expression {
@@ -125,6 +133,7 @@ struct IntLiteral : public Expression {
     const Type* type() const override { return &LiteralType::Int; }
     ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct FloatLiteral : public Expression {
@@ -133,6 +142,7 @@ struct FloatLiteral : public Expression {
     const Type* type() const override { return &LiteralType::Float; }
     ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression consisting solely of an lvalue
@@ -145,6 +155,7 @@ struct LValueExpression : public Expression {
     ExpressionType expr_type() const override { return ExpressionType::LValue; }
     // Other data should be looked up in the corresponding LValue object
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and an expression
@@ -156,6 +167,7 @@ struct UnaryExpression : public Expression {
     ExpressionType expr_type() const override { return ExpressionType::Unary; }
     const Type* type() const override { return right->type(); }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and two expressions
@@ -168,6 +180,7 @@ struct BinaryExpression : public Expression {
     const Type* type() const override;
     ExpressionType expr_type() const override { return ExpressionType::Binary; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A usage of a function
@@ -180,6 +193,7 @@ struct FunctionCall : public Expression {
     const Type* type() const override { return &Type::Void; }
     ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
     void print(std::ostream&) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A named object that holds a value and can be assigned at least once
