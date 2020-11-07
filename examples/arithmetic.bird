@@ -1,7 +1,10 @@
 function main() is
   let a : Integer = 1 + 2 + 3 + 4;
   let b : Integer = (1 + 2) * 3 + 4;
-  let c : Integer = (1 + 2 + 3) * (3 * 5 + 1);
+  // Right now, Integer's size is 7 bits, so if
+  // c is 64 or greater, we get overflow
+  let c : Integer = 63;
+  let z : Integer = c;
 
   1 + 1;
   1 + 2 * 3;

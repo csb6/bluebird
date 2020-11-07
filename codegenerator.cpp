@@ -95,23 +95,23 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
     }
 }
 
+void set_bit_size(const Type* concrete, Expression* literal)
+{
+    if(literal->expr_type() == ExpressionType::IntLiteral) {
+        static_cast<IntLiteral*>(literal)->bit_size = concrete->bit_size();
+    }
+}
+
 void set_int_literal_bit_size(Expression* l, Expression* r)
 {
     const ExpressionType l_type = l->expr_type();
     const ExpressionType r_type = r->expr_type();
     if(l_type != ExpressionType::IntLiteral && r_type != ExpressionType::IntLiteral) {
         return;
-    } else if(l_type == ExpressionType::IntLiteral) {
-        // literal op non-literal
-        auto* literal = static_cast<IntLiteral*>(l);
-        literal->bit_size = r->type()->bit_size();
-    } else if(r_type == ExpressionType::IntLiteral) {
-        // non-literal op literal
-        auto* literal = static_cast<IntLiteral*>(r);
-        literal->bit_size = l->type()->bit_size();
     } else {
-        // literal op literal (this case should have already been removed)
-        assert(false);
+        // The literal expr (either l or r) will take on the bit size of the non-literal
+        set_bit_size(l->type(), r);
+        set_bit_size(r->type(), l);
     }
 }
 
@@ -195,15 +195,23 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 
 void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
 {
-    auto* init = static_cast<const Initialization*>(statement);
-    llvm::IRBuilder<> builder(&function->getEntryBlock(),
-                              function->getEntryBlock().begin());
-    auto* lvalue = init->lvalue;
+    auto* init = static_cast<Initialization*>(statement);
+    LValue* lvalue = init->lvalue;
 
-    llvm::AllocaInst* alloc = builder.CreateAlloca(
-        llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), 0,
+    auto prev_insert_point = m_ir_builder.saveIP();
+    // All allocas need to be in the entry block
+    m_ir_builder.SetInsertPoint(&function->getEntryBlock());
+
+    llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
+        llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), nullptr,
         lvalue->name.c_str());
     m_lvalues[lvalue] = alloc;
+
+    if(init->expression != nullptr) {
+        set_bit_size(lvalue->type, init->expression.get());
+        m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
+    }
+    m_ir_builder.restoreIP(prev_insert_point);
 }
 
 
@@ -243,7 +251,7 @@ void CodeGenerator::run()
         parameter_names.clear();
 
         // Next, create a block containing the body of the function
-        auto* funct_body = llvm::BasicBlock::Create(m_context, "body", curr_funct);
+        auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
         for(auto *statement : function->statements) {
             switch(statement->type()) {

@@ -226,7 +226,7 @@ struct BasicStatement : public Statement {
 // Statement where a new variable is declared and optionally assigned the
 // value of some expression
 struct Initialization : public Statement {
-    Magnum::Pointer<Expression> expression;
+    Magnum::Pointer<Expression> expression{nullptr};
     LValue* lvalue;
     using Statement::Statement;
     StatementType type() const override { return StatementType::Initialization; }
