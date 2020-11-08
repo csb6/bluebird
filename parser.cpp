@@ -516,24 +516,15 @@ BasicStatement* Parser::in_basic_statement()
 IfBlock* Parser::in_if_block()
 {
     assert_token_is(TokenType::Keyword_If, "keyword if", *token);
-
     ++token;
-    assert_token_is(TokenType::Open_Parentheses, "`(`", *token);
 
-    ++token;
     auto *new_block = m_statements.make<IfBlock>(token->line_num);
-
     m_names_table.open_scope();
 
     // First, parse the if-condition
-    new_block->condition = Magnum::pointer<Expression>(
-        parse_expression(TokenType::Closed_Parentheses));
-
-    assert_token_is(TokenType::Closed_Parentheses,
-                    "`)` to close `if` condition", *token);
-
-    ++token;
-    assert_token_is(TokenType::Keyword_Do, "keyword `do`", *token);
+    new_block->condition = Magnum::pointer<Expression>(parse_expression());
+    assert_token_is(TokenType::Keyword_Do,
+                    "keyword `do` following `if` condition", *token);
 
     // Next, parse the statements inside the if-block
     ++token;

@@ -45,7 +45,7 @@ end
 
 constructor Student(name: String)
 is
-   this.id = Random.choose(Student_Id'Range);
+   this.id = Random.choose(Student_Id);
    this.name = name as Student_Name; // Could throw exception
 end;
 
