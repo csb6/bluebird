@@ -153,7 +153,7 @@ void print_error_expected(std::string_view expected, Token actual)
 {
     std::cerr << "Line " << actual.line_num << ": "
               << "Expected " << expected << ", but instead found token:\n";
-    std::cerr << actual;
+    std::cerr << "  " << actual;
 }
 
 void print_error_expected(unsigned int line_num, std::string_view expected,
@@ -535,12 +535,14 @@ IfBlock* Parser::in_if_block()
         } else {
             // End of block
             m_names_table.close_scope();
-            ++token; // Take the `if` associated with `end`
-            if(token->type != TokenType::Keyword_If) {
-                print_error(token->line_num,
-                            "No closing `end if` for if-block");
-                exit(1);
+            if(std::next(token)->type == TokenType::Keyword_If) {
+                // Optional keyword to show end of if-block
+                ++token;
             }
+            ++token;
+            assert_token_is(TokenType::End_Statement,
+                            "closing `;` or an end label after end of if-block",
+                            *token);
             ++token;
             break;
         }
@@ -611,17 +613,14 @@ void Parser::in_function_definition()
         } else {
             // End of function
             m_names_table.close_scope();
-            ++token; // Take the name associated with `end` (e.g. `main` in `end main`)
-            if(token->type != TokenType::Name && token->text != new_funct.name) {
-                print_error(token->line_num,
-                            "No matching `end " + new_funct.name + "` for"
-                            + " `function` " + new_funct.name);
-                exit(1);
+            if(std::next(token)->type == TokenType::Name
+               && std::next(token)->text == new_funct.name) {
+                // Optional end label for function; comes after `end`
+                ++token;
             }
-
             ++token;
             assert_token_is(TokenType::End_Statement,
-                            "end of statement (a.k.a. `;`)", *token);
+                            "end of statement (a.k.a. `;`) or an end label", *token);
             Function* ptr = m_names_table.add_function(std::move(new_funct));
             m_function_list.push_back(ptr);
             ++token;
