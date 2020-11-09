@@ -43,6 +43,9 @@ class multi_int {
     multi_int& negate();
     multi_int& ones_complement();
     bool is_negative() const;
+    multi_int& operator&= (const multi_int&);
+    multi_int& operator|= (const multi_int&);
+    multi_int& operator^= (const multi_int&);
 
     friend multi_int operator-(const multi_int&);
     /*friend multi_int operator+(const multi_int&, const multi_int&);

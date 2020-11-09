@@ -247,6 +247,16 @@ Expression* fold_constants(Expression* left, Token op, Expression* right)
         case TokenType::Op_Rem:
             l_int->value.rem(r_int->value);
             break;
+        // TODO: Add support for shift operators
+        case TokenType::Op_Bit_And:
+            l_int->value &= r_int->value;
+            break;
+        case TokenType::Op_Bit_Or:
+            l_int->value |= r_int->value;
+            break;
+        case TokenType::Op_Bit_Xor:
+            l_int->value ^= r_int->value;
+            break;
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:
             // Can't do folds here, need to preserve left/right sides for a range
@@ -254,7 +264,6 @@ Expression* fold_constants(Expression* left, Token op, Expression* right)
         default:
             print_error_expected("binary operator that works on integer literals", op);
             exit(1);
-            // TODO: Add support for rest of ops (e.g. bitwise, shifts)
         }
         delete right;
         return left;

@@ -111,6 +111,24 @@ bool multi_int::is_negative() const
     return mpz_sgn(m_number) < 0;
 }
 
+multi_int& multi_int::operator&= (const multi_int& other)
+{
+    mpz_and(m_number, m_number, other.m_number);
+    return *this;
+}
+
+multi_int& multi_int::operator|= (const multi_int& other)
+{
+    mpz_ior(m_number, m_number, other.m_number);
+    return *this;
+}
+
+multi_int& multi_int::operator^= (const multi_int& other)
+{
+    mpz_xor(m_number, m_number, other.m_number);
+    return *this;
+}
+
 multi_int operator-(const multi_int& a)
 {
     multi_int result{a};
