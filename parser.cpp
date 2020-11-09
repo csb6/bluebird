@@ -197,41 +197,38 @@ multi_int evaluate_int_expression(Token token, const Expression* expression)
     }
 }
 
-Expression* fold_constants(TokenType op, Expression* right)
+Expression* fold_constants(Token op, Expression* right)
 {
     if(right->expr_type() != ExpressionType::IntLiteral) {
-        return new UnaryExpression(op, right);
+        return new UnaryExpression(op.type, right);
     } else {
         auto* r_int = static_cast<IntLiteral*>(right);
-        switch(op) {
+        switch(op.type) {
         case TokenType::Op_Minus:
             r_int->value.negate();
             break;
         case TokenType::Op_Bit_Not:
             r_int->value.ones_complement();
             break;
-        case TokenType::Op_Not:
-            print_error("Error: logical NOT operator doesn't work on integer types");
-            exit(1);
-            break;
         default:
-            assert(false);
+            print_error_expected("unary operator that works on integer literals", op);
+            exit(1);
         }
         return r_int;
     }
 }
 
-Expression* fold_constants(Expression* left, TokenType op, Expression* right)
+Expression* fold_constants(Expression* left, Token op, Expression* right)
 {
     if(left->expr_type() != ExpressionType::IntLiteral
        || right->expr_type() != ExpressionType::IntLiteral) {
         // Can't do any folding, need TWO constant operands
-        return new BinaryExpression(left, op, right);
+        return new BinaryExpression(left, op.type, right);
     } else {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
         auto* l_int = static_cast<IntLiteral*>(left);
         auto* r_int = static_cast<IntLiteral*>(right);
-        switch(op) {
+        switch(op.type) {
         case TokenType::Op_Plus:
             l_int->value += r_int->value;
             break;
@@ -253,11 +250,11 @@ Expression* fold_constants(Expression* left, TokenType op, Expression* right)
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:
             // Can't do folds here, need to preserve left/right sides for a range
-            return new BinaryExpression(left, op, right);
+            return new BinaryExpression(left, op.type, right);
         default:
-            // TODO: Add multi_int::operator%=()
+            print_error_expected("binary operator that works on integer literals", op);
+            exit(1);
             // TODO: Add support for rest of ops (e.g. bitwise, shifts)
-            assert(false);
         }
         delete right;
         return left;
@@ -282,14 +279,14 @@ Expression* Parser::parse_expression(TokenType right_token)
     const Precedence right_precedence = precedence_of(right_token);
     Precedence curr_precedence = precedence_of(token->type);
     while(right_precedence < curr_precedence && token->type != TokenType::End_Statement) {
-        TokenType op = token->type;
+        auto op = token;
         if(!is_binary_operator(curr_precedence)) {
             print_error_expected("binary operator", *token);
             exit(1);
         }
         ++token;
-        Expression* right_side = parse_expression(op);
-        left_side = fold_constants(left_side, op, right_side);
+        Expression* right_side = parse_expression(op->type);
+        left_side = fold_constants(left_side, *op, right_side);
         curr_precedence = precedence_of(token->type);
     }
     return left_side;
@@ -351,9 +348,9 @@ Expression* Parser::in_expression()
     case TokenType::Op_Not:
     case TokenType::Op_Bit_Not:
     case TokenType::Op_Minus: {
-        TokenType op = token->type;
+        auto op = token;
         ++token;
-        return fold_constants(op, in_expression());
+        return fold_constants(*op, in_expression());
     }
     default:
         return in_literal();
