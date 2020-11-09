@@ -212,6 +212,7 @@ Expression* fold_constants(TokenType op, Expression* right)
             break;
         case TokenType::Op_Not:
             print_error("Error: logical NOT operator doesn't work on integer types");
+            exit(1);
             break;
         default:
             assert(false);
@@ -371,15 +372,22 @@ Expression* Parser::in_function_call()
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
         new_function_call->function = m_names_table.add_function(token->text);
-    } else if(match.value().name_type != NameType::Funct
-              && match.value().name_type != NameType::DeclaredFunct) {
+        m_names_table.add_unresolved(new_function_call);
+    } else if(match.value().name_type == NameType::DeclaredFunct) {
+        // A temp declaration (one without definition) has been declared, but haven't
+        // resolved its definition yet
+        new_function_call->function = match.value().function;
+        m_names_table.add_unresolved(new_function_call);
+    } else if(match.value().name_type == NameType::Funct) {
+        // Found a function with a full definition
+        new_function_call->function = match.value().function;
+    } else {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a function name, but it is defined as another kind of name");
         exit(1);
     }
 
     new_function_call->name = token->text;
-    // TODO: link FunctionCall object to its corresponding Function
 
     ++token;
     assert_token_is(TokenType::Open_Parentheses,
@@ -813,6 +821,11 @@ Function* SymbolTable::add_function(Function&& function)
 void SymbolTable::add_unresolved(LValue* lvalue)
 {
     m_scopes[m_curr_scope].lvalues_type_unresolved.push_back(lvalue);
+}
+
+void SymbolTable::add_unresolved(FunctionCall* funct)
+{
+    m_scopes[m_curr_scope].unresolved_funct_calls.push_back(funct);
 }
 
 Function* SymbolTable::add_function(const std::string& name)

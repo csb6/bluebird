@@ -70,6 +70,7 @@ public:
     Function* add_function(const std::string& name);
 
     void add_unresolved(LValue*);
+    void add_unresolved(FunctionCall*);
 
     // Checking that no names are declared but not defined (or imported)
     void validate_names();
