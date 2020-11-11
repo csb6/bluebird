@@ -19,8 +19,8 @@
 
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
-      is_signed(lower.is_negative()),
-      bit_size(std::max(lower.bits_needed(), upper.bits_needed()))
+      bit_size(std::max(lower.bits_needed(), upper.bits_needed())),
+      is_signed(lower.is_negative())
 {
     if(is_signed) {
         bit_size *= 2;

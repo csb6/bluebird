@@ -32,8 +32,9 @@ struct SymbolInfo {
         LValue* lvalue = nullptr;
         Function* function;
     };
+
     SymbolInfo() {}
-    SymbolInfo(NameType name) : name_type(name) {}
+    explicit SymbolInfo(NameType name) : name_type(name) {}
     SymbolInfo(NameType name, RangeType* type)
         : name_type(name), range_type(type)
     {}
@@ -62,12 +63,12 @@ public:
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
-    LValue* add_lvalue(const std::string& name);
+    LValue*    add_lvalue(const std::string& name);
     RangeType* add_type(RangeType&&);
     // Add a temporary type that lacks a definition
     RangeType* add_type(const std::string& name);
-    Function* add_function(Function&&);
-    Function* add_function(const std::string& name);
+    Function*  add_function(Function&&);
+    Function*  add_function(const std::string& name);
 
     void add_unresolved(LValue*);
     void add_unresolved(FunctionCall*);
