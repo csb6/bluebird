@@ -97,7 +97,7 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 // of the range type or typed expression whose type it should match
 void set_literal_type_info(const Type* concrete, Expression* literal)
 {
-    if(literal->expr_type() == ExpressionType::IntLiteral
+    if(literal->kind() == ExpressionKind::IntLiteral
        && concrete->category() == TypeCategory::Range) {
         auto* lit = static_cast<IntLiteral*>(literal);
         auto* range_type = static_cast<const RangeType*>(concrete);
@@ -107,9 +107,9 @@ void set_literal_type_info(const Type* concrete, Expression* literal)
 
 void set_literal_type_info(Expression* l, Expression* r)
 {
-    const ExpressionType l_type = l->expr_type();
-    const ExpressionType r_type = r->expr_type();
-    if(l_type != ExpressionType::IntLiteral && r_type != ExpressionType::IntLiteral) {
+    const ExpressionKind l_type = l->kind();
+    const ExpressionKind r_type = r->kind();
+    if(l_type != ExpressionKind::IntLiteral && r_type != ExpressionKind::IntLiteral) {
         return;
     } else {
         // The literal expr (either l or r) will take on the bit size of the non-literal
@@ -270,16 +270,16 @@ void CodeGenerator::run()
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
         for(auto *statement : function->statements) {
-            switch(statement->type()) {
-            case StatementType::Basic: {
+            switch(statement->kind()) {
+            case StatementKind::Basic: {
                 auto* curr_statement = static_cast<BasicStatement*>(statement);
                 curr_statement->expression->codegen(*this);
                 break;
             }
-            case StatementType::Initialization:
+            case StatementKind::Initialization:
                 add_lvalue_init(curr_funct, statement);
                 break;
-            case StatementType::IfBlock:
+            case StatementKind::IfBlock:
                 // TODO: add support for if-blocks
                 break;
             }

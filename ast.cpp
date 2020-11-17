@@ -83,9 +83,9 @@ const Type* BinaryExpression::type() const
     // If a literal and a typed expression of some sort
     // are in this expression, want to return the type of
     // the typed part (literals implicitly convert to that type)
-    switch(left->expr_type()) {
-    case ExpressionType::StringLiteral: case ExpressionType::CharLiteral:
-    case ExpressionType::IntLiteral:    case ExpressionType::FloatLiteral:
+    switch(left->kind()) {
+    case ExpressionKind::StringLiteral: case ExpressionKind::CharLiteral:
+    case ExpressionKind::IntLiteral:    case ExpressionKind::FloatLiteral:
         return right->type();
     default:
         return left->type();

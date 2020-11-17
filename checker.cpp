@@ -25,15 +25,15 @@ Checker::Checker(const std::vector<Function*>& functions,
 
 void Checker::check_types(const Statement* statement) const
 {
-    switch(statement->type()) {
-    case StatementType::Basic: {
+    switch(statement->kind()) {
+    case StatementKind::Basic: {
         auto* actual = static_cast<const BasicStatement*>(statement);
         check_types(statement, actual->expression.get());
         break;
     }
-    case StatementType::Initialization:
+    case StatementKind::Initialization:
         break;
-    case StatementType::IfBlock:
+    case StatementKind::IfBlock:
         break;
     }
 }
@@ -56,8 +56,8 @@ bool type_matches_literal(const Type *left, const Type *right)
 
 void Checker::check_types(const Statement* statement, const Expression* expression) const
 {
-    switch(expression->expr_type()) {
-    case ExpressionType::Binary: {
+    switch(expression->kind()) {
+    case ExpressionKind::Binary: {
         // TODO: check if this binary op is legal for this type
         auto* actual = static_cast<const BinaryExpression*>(expression);
         // Ensure the sub-expressions are correct first
@@ -79,9 +79,9 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
         }
         break;
     }
-    case ExpressionType::FunctionCall:
+    case ExpressionKind::FunctionCall:
         break;
-    case ExpressionType::Unary:
+    case ExpressionKind::Unary:
         // Check that the unary op is legal for this type
         break;
     default:

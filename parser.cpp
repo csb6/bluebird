@@ -175,13 +175,13 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
 
 multi_int evaluate_int_expression(Token token, const Expression* expression)
 {
-    switch(expression->expr_type()) {
-    case ExpressionType::IntLiteral:
+    switch(expression->kind()) {
+    case ExpressionKind::IntLiteral:
         // No negation, so nothing to evaluate
         return static_cast<const IntLiteral*>(expression)->value;
-    case ExpressionType::Unary: {
+    case ExpressionKind::Unary: {
         auto* negate_expr = static_cast<const UnaryExpression*>(expression);
-        if(negate_expr->right->expr_type() == ExpressionType::IntLiteral
+        if(negate_expr->right->kind() == ExpressionKind::IntLiteral
            && negate_expr->op == TokenType::Op_Minus) {
             // Only allowed unary operator is negation (`-`)
             auto* literal_expr = static_cast<const IntLiteral*>(negate_expr->right.get());
@@ -199,7 +199,7 @@ multi_int evaluate_int_expression(Token token, const Expression* expression)
 
 Expression* fold_constants(Token op, Expression* right)
 {
-    if(right->expr_type() != ExpressionType::IntLiteral) {
+    if(right->kind() != ExpressionKind::IntLiteral) {
         return new UnaryExpression(op.type, right);
     } else {
         auto* r_int = static_cast<IntLiteral*>(right);
@@ -220,8 +220,8 @@ Expression* fold_constants(Token op, Expression* right)
 
 Expression* fold_constants(Expression* left, Token op, Expression* right)
 {
-    if(left->expr_type() != ExpressionType::IntLiteral
-       || right->expr_type() != ExpressionType::IntLiteral) {
+    if(left->kind() != ExpressionKind::IntLiteral
+       || right->kind() != ExpressionKind::IntLiteral) {
         // Can't do any folding, need TWO constant operands
         return new BinaryExpression(left, op.type, right);
     } else {
@@ -646,7 +646,7 @@ void Parser::in_function_definition()
 void Parser::in_range_type_definition(const std::string& type_name)
 {
     Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
-    if(expr->expr_type() != ExpressionType::Binary) {
+    if(expr->kind() != ExpressionKind::Binary) {
         print_error_expected("binary expression with operator `thru` or `upto`", *token);
         exit(1);
     }

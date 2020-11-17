@@ -35,12 +35,12 @@ enum class NameType : char {
 };
 
 // Used in place of RTTI for differentiating between actual types of Expression*'s
-enum class ExpressionType : char {
+enum class ExpressionKind : char {
     StringLiteral, CharLiteral, IntLiteral, FloatLiteral,
     LValue, Binary, Unary, FunctionCall
 };
 
-enum class StatementType : char {
+enum class StatementKind : char {
     Basic, Initialization, IfBlock
 };
 
@@ -105,7 +105,7 @@ struct Expression {
     virtual ~Expression() {}
 
     // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
-    virtual ExpressionType expr_type() const = 0;
+    virtual ExpressionKind kind() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
     virtual const Type*    type() const = 0;
@@ -120,7 +120,7 @@ struct StringLiteral : public Expression {
 
     explicit StringLiteral(const std::string& v) : value(v) {}
 
-    ExpressionType expr_type() const override { return ExpressionType::StringLiteral; }
+    ExpressionKind kind() const override { return ExpressionKind::StringLiteral; }
     const Type*    type() const override { return &LiteralType::String; }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -131,7 +131,7 @@ struct CharLiteral : public Expression {
 
     explicit CharLiteral(char v) : value(v) {}
 
-    ExpressionType expr_type() const override { return ExpressionType::CharLiteral; }
+    ExpressionKind kind() const override { return ExpressionKind::CharLiteral; }
     const Type*    type() const override { return &LiteralType::Char; }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -145,7 +145,7 @@ struct IntLiteral : public Expression {
     explicit IntLiteral(const std::string& v);
     explicit IntLiteral(const multi_int& v) : value(v) {}
 
-    ExpressionType expr_type() const override { return ExpressionType::IntLiteral; }
+    ExpressionKind kind() const override { return ExpressionKind::IntLiteral; }
     const Type*    type() const override { return &LiteralType::Int; }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -156,7 +156,7 @@ struct FloatLiteral : public Expression {
 
     explicit FloatLiteral(int v) : value(v) {}
 
-    ExpressionType expr_type() const override { return ExpressionType::FloatLiteral; }
+    ExpressionKind kind() const override { return ExpressionKind::FloatLiteral; }
     const Type*    type() const override { return &LiteralType::Float; }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -170,7 +170,7 @@ struct LValueExpression : public Expression {
     LValueExpression(const std::string &n, const LValue *v)
         : name(n), lvalue(v) {}
 
-    ExpressionType expr_type() const override { return ExpressionType::LValue; }
+    ExpressionKind kind() const override { return ExpressionKind::LValue; }
     const Type*    type() const override;
     // Other data should be looked up in the corresponding LValue object
     void           print(std::ostream&) const override;
@@ -184,7 +184,7 @@ struct UnaryExpression : public Expression {
 
     UnaryExpression(TokenType, Expression*);
 
-    ExpressionType expr_type() const override { return ExpressionType::Unary; }
+    ExpressionKind kind() const override { return ExpressionKind::Unary; }
     const Type*    type() const override { return right->type(); }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -198,7 +198,7 @@ struct BinaryExpression : public Expression {
 
     BinaryExpression(Expression* l, TokenType oper, Expression* r);
 
-    ExpressionType expr_type() const override { return ExpressionType::Binary; }
+    ExpressionKind kind() const override { return ExpressionKind::Binary; }
     const Type*    type() const override;
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -211,7 +211,7 @@ struct FunctionCall : public Expression {
     struct Function* function;
 
     // TODO: have this be the return type
-    ExpressionType expr_type() const override { return ExpressionType::FunctionCall; }
+    ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override { return &Type::Void; }
     void           print(std::ostream&) const override;
     llvm::Value*   codegen(CodeGenerator&) override;
@@ -235,7 +235,7 @@ struct Statement {
     explicit Statement(unsigned int line) : line_num(line) {}
     virtual ~Statement() {}
 
-    virtual StatementType type() const = 0;
+    virtual StatementKind kind() const = 0;
     virtual void          print(std::ostream&) const = 0;
 };
 
@@ -244,7 +244,7 @@ struct BasicStatement : public Statement {
     Magnum::Pointer<Expression> expression;
 
     using Statement::Statement;
-    StatementType type() const override { return StatementType::Basic; }
+    StatementKind kind() const override { return StatementKind::Basic; }
     void          print(std::ostream&) const override;
 };
 
@@ -255,7 +255,7 @@ struct Initialization : public Statement {
     LValue* lvalue;
 
     using Statement::Statement;
-    StatementType type() const override { return StatementType::Initialization; }
+    StatementKind kind() const override { return StatementKind::Initialization; }
     void          print(std::ostream& output) const override;
 };
 
@@ -265,7 +265,7 @@ struct IfBlock : public Statement {
 
     explicit IfBlock(unsigned int line) : Statement(line) {}
 
-    StatementType type() const override { return StatementType::IfBlock; }
+    StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
 };
 
