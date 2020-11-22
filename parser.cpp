@@ -194,7 +194,7 @@ Expression* fold_constants(Token op, Expression* right)
     }
 }
 
-Expression* fold_constants(Expression* left, Token op, Expression* right)
+Expression* fold_constants(Expression* left, const Token& op, Expression* right)
 {
     if(left->kind() != ExpressionKind::IntLiteral
        || right->kind() != ExpressionKind::IntLiteral) {
@@ -629,12 +629,12 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
     if(range_expr->left->kind() != ExpressionKind::IntLiteral) {
         print_error_expected(token->line_num,
-                             "constant expression as the range's lower bound",
+                             "integer constant expression as the range's lower bound",
                              range_expr->left.get());
         exit(1);
     } else if(range_expr->right->kind() != ExpressionKind::IntLiteral) {
         print_error_expected(token->line_num,
-                             "constant expression as the range's upper bound",
+                             "integer constant expression as the range's upper bound",
                              range_expr->right.get());
         exit(1);
     }
@@ -697,7 +697,6 @@ void Parser::run()
     while(token != m_input_end) {
         switch(token->type) {
         case TokenType::Keyword_Funct:
-            // Found start of a function definition
             in_function_definition();
             break;
         case TokenType::Keyword_Type:

@@ -231,7 +231,7 @@ struct LValue {
 struct Statement {
     unsigned int line_num;
 
-    Statement() {}
+    Statement() : line_num(0) {}
     explicit Statement(unsigned int line) : line_num(line) {}
     virtual ~Statement() {}
 

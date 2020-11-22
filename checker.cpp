@@ -44,10 +44,10 @@ bool type_matches_literal(const Type *left, const Type *right)
     const TypeCategory right_cat = right->category();
     // TODO: check that the literal is in the range of the non-literal type
     if((left_cat == TypeCategory::Literal)
-       & (right_cat != TypeCategory::Literal)) {
+       && (right_cat != TypeCategory::Literal)) {
         return left == &LiteralType::Int && right_cat == TypeCategory::Range;
     } else if((left_cat != TypeCategory::Literal)
-              & (right_cat == TypeCategory::Literal)) {
+              && (right_cat == TypeCategory::Literal)) {
         return right == &LiteralType::Int && left_cat == TypeCategory::Range;
     } else {
         return false;
@@ -90,7 +90,7 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
     }
 }
 
-void Checker::run()
+void Checker::run() const
 {
     for(const auto *function : m_functions) {
         for(const auto &statement : function->statements) {

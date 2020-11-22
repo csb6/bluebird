@@ -26,6 +26,6 @@ private:
     void check_types(const Statement*, const struct Expression*) const;
 public:
     Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&);
-    void run();
+    void run() const;
 };
 #endif

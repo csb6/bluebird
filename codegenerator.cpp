@@ -230,7 +230,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_ir_builder.restoreIP(prev_insert_point);
 }
 
-void CodeGenerator::init_functions()
+void CodeGenerator::declare_function_headers()
 {
     // Reused between iterations to reduce allocations
     std::vector<llvm::Type*> parameter_types;
@@ -255,7 +255,7 @@ void CodeGenerator::init_functions()
                                                   function->name,
                                                   m_module);
         assert(curr_funct->getParent() != nullptr);
-        
+
         auto param_name_it = parameter_names.begin();
         for(auto& param : curr_funct->args()) {
             param.setName(*param_name_it);
@@ -269,7 +269,7 @@ void CodeGenerator::init_functions()
 
 void CodeGenerator::run()
 {
-    init_functions();
+    declare_function_headers();
 
     for(const Function *function : m_functions) {
         llvm::Function* curr_funct = m_module.getFunction(function->name);
