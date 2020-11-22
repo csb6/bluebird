@@ -6,7 +6,7 @@ Todo:
 [X] Consider simplifying how each type's bit_size is obtained
 [X] Add support for signed vs. unsigned within int types
 [X] Have codegen use LLVM's signed and unsigned operations on int types
-[ ] Add support for automatically forward declaring functions in the same way it currently works for types
+[X] Add support for automatically forward declaring functions in the same way it currently works for types
 [ ] Run the generated IR through LLVM's verifier after codegen is complete
 [ ] Work on the various TODOs throughout the codebase
 [ ] Think more about the potential for proving code, possibly using z3

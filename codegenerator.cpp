@@ -230,8 +230,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_ir_builder.restoreIP(prev_insert_point);
 }
 
-
-void CodeGenerator::run()
+void CodeGenerator::init_functions()
 {
     // Reused between iterations to reduce allocations
     std::vector<llvm::Type*> parameter_types;
@@ -265,7 +264,15 @@ void CodeGenerator::run()
 
         parameter_types.clear();
         parameter_names.clear();
+    }
+}
 
+void CodeGenerator::run()
+{
+    init_functions();
+
+    for(const Function *function : m_functions) {
+        llvm::Function* curr_funct = m_module.getFunction(function->name);
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);

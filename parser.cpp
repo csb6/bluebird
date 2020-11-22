@@ -373,6 +373,7 @@ Expression* Parser::in_function_call()
     assert_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
+    new_function_call->name = token->text;
     const auto match = m_names_table.find(token->text);
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
@@ -392,8 +393,6 @@ Expression* Parser::in_function_call()
                     + "` to be a function name, but it is defined as another kind of name");
         exit(1);
     }
-
-    new_function_call->name = token->text;
 
     ++token;
     assert_token_is(TokenType::Open_Parentheses,
@@ -824,6 +823,13 @@ Function* SymbolTable::add_function(Function&& function)
     return ptr;
 }
 
+Function* SymbolTable::add_function(const std::string& name)
+{
+    Function* ptr = m_functions.make<Function>(name);
+    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredFunct, ptr};
+    return ptr;
+}
+
 void SymbolTable::add_unresolved(LValue* lvalue)
 {
     m_scopes[m_curr_scope].lvalues_type_unresolved.push_back(lvalue);
@@ -832,13 +838,6 @@ void SymbolTable::add_unresolved(LValue* lvalue)
 void SymbolTable::add_unresolved(FunctionCall* funct)
 {
     m_scopes[m_curr_scope].unresolved_funct_calls.push_back(funct);
-}
-
-Function* SymbolTable::add_function(const std::string& name)
-{
-    Function* ptr = m_functions.make<Function>();
-    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredFunct, ptr};
-    return ptr;
 }
 
 void SymbolTable::validate_names()

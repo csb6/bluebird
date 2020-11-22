@@ -275,6 +275,9 @@ struct Function {
     std::vector<LValue*> parameters;
     std::vector<Statement*> statements;
 
+    Function() {}
+    explicit Function(const std::string& n) : name(n) {}
+
     friend std::ostream& operator<<(std::ostream&, const Function&);
 };
 #endif
