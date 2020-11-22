@@ -110,12 +110,15 @@ struct Expression {
     // called by visiting child nodes
     virtual const Type*    type() const = 0;
     virtual void           print(std::ostream&) const = 0;
+
+    // Used in typechecking. Definitions/overrides defined in checker.cpp
+    virtual void         check_types(const struct Statement*) const = 0;
     // Used in code generation. Definitions/overrides defined in codegenerator.cpp
-    virtual llvm::Value*   codegen(class CodeGenerator&) = 0;
+    virtual llvm::Value* codegen(class CodeGenerator&) = 0;
 };
 
 // Each type of literal is a nameless instance of data
-struct StringLiteral : public Expression {
+struct StringLiteral final : public Expression {
     std::string value;
 
     explicit StringLiteral(const std::string& v) : value(v) {}
@@ -123,10 +126,12 @@ struct StringLiteral : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::StringLiteral; }
     const Type*    type() const override { return &LiteralType::String; }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override {}
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
-struct CharLiteral : public Expression {
+struct CharLiteral final : public Expression {
     char value;
 
     explicit CharLiteral(char v) : value(v) {}
@@ -134,10 +139,12 @@ struct CharLiteral : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::CharLiteral; }
     const Type*    type() const override { return &LiteralType::Char; }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override {}
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
-struct IntLiteral : public Expression {
+struct IntLiteral final : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
     unsigned short bit_size = 0;
@@ -148,10 +155,12 @@ struct IntLiteral : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::IntLiteral; }
     const Type*    type() const override { return &LiteralType::Int; }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override {}
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
-struct FloatLiteral : public Expression {
+struct FloatLiteral final : public Expression {
     double value;
 
     explicit FloatLiteral(int v) : value(v) {}
@@ -159,11 +168,13 @@ struct FloatLiteral : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::FloatLiteral; }
     const Type*    type() const override { return &LiteralType::Float; }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override {}
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression consisting solely of an lvalue
-struct LValueExpression : public Expression {
+struct LValueExpression final : public Expression {
     std::string name;
     const struct LValue *lvalue;
 
@@ -174,11 +185,13 @@ struct LValueExpression : public Expression {
     const Type*    type() const override;
     // Other data should be looked up in the corresponding LValue object
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override {}
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and an expression
-struct UnaryExpression : public Expression {
+struct UnaryExpression final : public Expression {
     TokenType op;
     Magnum::Pointer<Expression> right;
 
@@ -187,11 +200,13 @@ struct UnaryExpression : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::Unary; }
     const Type*    type() const override { return right->type(); }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and two expressions
-struct BinaryExpression : public Expression {
+struct BinaryExpression final : public Expression {
     Magnum::Pointer<Expression> left;
     TokenType op;
     Magnum::Pointer<Expression> right;
@@ -201,11 +216,13 @@ struct BinaryExpression : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::Binary; }
     const Type*    type() const override;
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A usage of a function
-struct FunctionCall : public Expression {
+struct FunctionCall final : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
     struct Function* function;
@@ -214,7 +231,9 @@ struct FunctionCall : public Expression {
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override { return &Type::Void; }
     void           print(std::ostream&) const override;
-    llvm::Value*   codegen(CodeGenerator&) override;
+
+    void         check_types(const Statement*) const override;
+    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A named object that holds a value and can be assigned at least once
@@ -240,7 +259,7 @@ struct Statement {
 };
 
 // A brief, usually one-line statement that holds a single expression
-struct BasicStatement : public Statement {
+struct BasicStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
     using Statement::Statement;
@@ -250,7 +269,7 @@ struct BasicStatement : public Statement {
 
 // Statement where a new variable is declared and optionally assigned the
 // value of some expression
-struct Initialization : public Statement {
+struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
     LValue* lvalue;
 
@@ -259,7 +278,7 @@ struct Initialization : public Statement {
     void          print(std::ostream& output) const override;
 };
 
-struct IfBlock : public Statement {
+struct IfBlock final : public Statement {
     Magnum::Pointer<Expression> condition;
     std::vector<Statement*> statements;
 

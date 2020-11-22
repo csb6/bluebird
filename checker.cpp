@@ -28,7 +28,7 @@ void Checker::check_types(const Statement* statement) const
     switch(statement->kind()) {
     case StatementKind::Basic: {
         auto* actual = static_cast<const BasicStatement*>(statement);
-        check_types(statement, actual->expression.get());
+        actual->expression->check_types(statement);
         break;
     }
     case StatementKind::Initialization:
@@ -54,79 +54,72 @@ bool type_matches_literal(const Type *left, const Type *right)
     }
 }
 
-void Checker::check_types(const Statement* statement, const Expression* expression) const
+// No need to typecheck for literal/lvalue expressions since they aren't composite,
+// so each of their check_types() member functions are empty, defined in header
+
+// TODO: check that unary operators are valid for their values
+void UnaryExpression::check_types(const Statement*) const
+{}
+
+// TODO: check if this binary op is legal for this type
+void BinaryExpression::check_types(const Statement* statement) const
 {
-    switch(expression->kind()) {
-    case ExpressionKind::Binary: {
-        // TODO: check if this binary op is legal for this type
-        auto* actual = static_cast<const BinaryExpression*>(expression);
-        // Ensure the sub-expressions are correct first
-        check_types(statement, actual->left.get());
-        check_types(statement, actual->right.get());
-        // Check that the types of both sides of the operator match
-        if(actual->left->type() != actual->right->type()
-           && !type_matches_literal(actual->left->type(), actual->right->type())) {
+    // Ensure the sub-expressions are correct first
+    left->check_types(statement);
+    right->check_types(statement);
+    // Check that the types of both sides of the operator match
+    if(left->type() != right->type() && !type_matches_literal(left->type(), right->type())) {
+        std::cerr << "In statement starting at line " << statement->line_num
+                  << ":\n Types don't match:\n  Left: ";
+        left->print(std::cerr);
+        std::cerr << '\t';
+        left->type()->print(std::cerr);
+        std::cerr << "  Operator: " << op << "\n  Right: ";
+        right->print(std::cerr);
+        std::cerr << '\t';
+        right->type()->print(std::cerr);
+        exit(1);
+    }
+}
+
+void FunctionCall::check_types(const Statement* statement) const
+{
+    if(arguments.size() != function->parameters.size()) {
+        std::cerr << "In statement starting at line " << statement->line_num
+                  << ":\n Function `" << name << "` expects "
+                  << function->parameters.size() << " arguments, but "
+                  << arguments.size() << " were provided\n";
+        exit(1);
+    }
+    const size_t arg_count = arguments.size();
+    for(size_t i = 0; i < arg_count; ++i) {
+        const Expression* arg = arguments[i].get();
+        // Ensure each argument expression is internally typed correctly
+        arg->check_types(statement);
+        // Make sure each arg type matches corresponding parameter type
+        const LValue* param = function->parameters[i];
+        if(arg->type() != param->type
+           && !type_matches_literal(arg->type(), param->type)) {
             std::cerr << "In statement starting at line " << statement->line_num
-                      << ":\n Types don't match:\n  Left: ";
-            actual->left->print(std::cerr);
+                      << ":\n Argument type doesn't match expected type:\n"
+                         "  Argument: ";
+            arg->print(std::cerr);
             std::cerr << '\t';
-            actual->left->type()->print(std::cerr);
-            std::cerr << "  Operator: " << actual->op << "\n  Right: ";
-            actual->right->print(std::cerr);
+            arg->type()->print(std::cerr);
+            std::cerr << "  Expected: ";
+            param->print(std::cerr);
             std::cerr << '\t';
-            actual->right->type()->print(std::cerr);
+            param->type->print(std::cerr);
             exit(1);
         }
-        break;
-    }
-    case ExpressionKind::FunctionCall: {
-        auto* call = static_cast<const FunctionCall*>(expression);
-        if(call->arguments.size() != call->function->parameters.size()) {
-             std::cerr << "In statement starting at line " << statement->line_num
-                       << ":\n Function `" << call->name << "` expects "
-                       << call->function->parameters.size() << " arguments, but "
-                       << call->arguments.size() << " were provided\n";
-             exit(1);
-        }
-        const size_t arg_count = call->arguments.size();
-        for(size_t i = 0; i < arg_count; ++i) {
-            const Expression* arg = call->arguments[i].get();
-            // Ensure each argument expression is internally typed correctly
-            check_types(statement, arg);
-            // Make sure each arg type matches corresponding parameter type
-            const LValue* param = call->function->parameters[i];
-            if(arg->type() != param->type
-               && !type_matches_literal(arg->type(), param->type)) {
-                std::cerr << "In statement starting at line " << statement->line_num
-                          << ":\n Argument type doesn't match expected type:\n"
-                             "  Argument: ";
-                arg->print(std::cerr);
-                std::cerr << '\t';
-                arg->type()->print(std::cerr);
-                std::cerr << "  Expected: ";
-                param->print(std::cerr);
-                std::cerr << '\t';
-                param->type->print(std::cerr);
-                exit(1);
-            }
-        }
-        break;
-    }
-    case ExpressionKind::Unary:
-        // Check that the unary op is legal for this type
-        break;
-    default:
-        // For terminal nodes, no need to typecheck, since not composite
-        break;
     }
 }
 
 void Checker::run() const
 {
     for(const auto *function : m_functions) {
-        for(const auto &statement : function->statements) {
+        for(const auto *statement : function->statements) {
             check_types(statement);
-            // TODO: add more checks for this statement here
         }
     }
 }

@@ -42,7 +42,7 @@ private:
     const std::vector<struct Function*>& m_functions;
     std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
 
-    // For the codegen virtual functions attached to each Expression subclass.
+    // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp
     friend struct StringLiteral;
     friend struct CharLiteral;
