@@ -67,7 +67,7 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
         if(actual->left->type() != actual->right->type()
            && !type_matches_literal(actual->left->type(), actual->right->type())) {
             std::cerr << "In statement starting at line " << statement->line_num
-                      << ": \nTypes don't match:\n  Left: ";
+                      << ":\n Types don't match:\n  Left: ";
             actual->left->print(std::cerr);
             std::cerr << '\t';
             actual->left->type()->print(std::cerr);
@@ -79,8 +79,39 @@ void Checker::check_types(const Statement* statement, const Expression* expressi
         }
         break;
     }
-    case ExpressionKind::FunctionCall:
+    case ExpressionKind::FunctionCall: {
+        auto* call = static_cast<const FunctionCall*>(expression);
+        if(call->arguments.size() != call->function->parameters.size()) {
+             std::cerr << "In statement starting at line " << statement->line_num
+                       << ":\n Function `" << call->name << "` expects "
+                       << call->function->parameters.size() << " arguments, but "
+                       << call->arguments.size() << " were provided\n";
+             exit(1);
+        }
+        const size_t arg_count = call->arguments.size();
+        for(size_t i = 0; i < arg_count; ++i) {
+            const Expression* arg = call->arguments[i].get();
+            // Ensure each argument expression is internally typed correctly
+            check_types(statement, arg);
+            // Make sure each arg type matches corresponding parameter type
+            const LValue* param = call->function->parameters[i];
+            if(arg->type() != param->type
+               && !type_matches_literal(arg->type(), param->type)) {
+                std::cerr << "In statement starting at line " << statement->line_num
+                          << ":\n Argument type doesn't match expected type:\n"
+                             "  Argument: ";
+                arg->print(std::cerr);
+                std::cerr << '\t';
+                arg->type()->print(std::cerr);
+                std::cerr << "  Expected: ";
+                param->print(std::cerr);
+                std::cerr << '\t';
+                param->type->print(std::cerr);
+                exit(1);
+            }
+        }
         break;
+    }
     case ExpressionKind::Unary:
         // Check that the unary op is legal for this type
         break;

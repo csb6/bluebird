@@ -157,7 +157,7 @@ void LValue::print(std::ostream& output) const
         output << "Constant: ";
     }
 
-    output << name << '\n';
+    output << name;
 }
 
 std::ostream& operator<<(std::ostream& output, const Function& function)
@@ -166,6 +166,7 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
     output << "Parameters:\n";
     for(const auto *param : function.parameters) {
         param->print(output);
+        output << '\n';
     }
     output << "Statements:\n";
 
