@@ -173,30 +173,6 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-multi_int evaluate_int_expression(Token token, const Expression* expression)
-{
-    switch(expression->kind()) {
-    case ExpressionKind::IntLiteral:
-        // No negation, so nothing to evaluate
-        return static_cast<const IntLiteral*>(expression)->value;
-    case ExpressionKind::Unary: {
-        auto* negate_expr = static_cast<const UnaryExpression*>(expression);
-        if(negate_expr->right->kind() == ExpressionKind::IntLiteral
-           && negate_expr->op == TokenType::Op_Minus) {
-            // Only allowed unary operator is negation (`-`)
-            auto* literal_expr = static_cast<const IntLiteral*>(negate_expr->right.get());
-            return -literal_expr->value;
-        } else {
-            print_error_expected(token.line_num, "integer literal", expression);
-            exit(1);
-        }
-    }
-    default:
-        print_error_expected(token.line_num, "integer literal", expression);
-        exit(1);
-    }
-}
-
 Expression* fold_constants(Token op, Expression* right)
 {
     if(right->kind() != ExpressionKind::IntLiteral) {
@@ -275,11 +251,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
       m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
       m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64),
       m_names_table(m_range_types, m_lvalues, m_functions)
-{
-    // Built-in functions/names (eventually, the standard library)
-    m_names_table.add_function("print");
-    m_names_table.add_function("max");
-}
+{}
 
 // Pratt parser
 Expression* Parser::parse_expression(TokenType right_token)
@@ -655,11 +627,24 @@ void Parser::in_range_type_definition(const std::string& type_name)
         exit(1);
     }
 
-    // TODO: Fully compile-time eval both sides of the range operator, with support
-    //  for arbitrary expressions made of arithmetic operators/parentheses/negations/
-    //  bitwise operators
-    multi_int lower_limit{evaluate_int_expression(*token, range_expr->left.get())};
-    multi_int upper_limit{evaluate_int_expression(*token, range_expr->right.get())};
+    if(range_expr->left->kind() != ExpressionKind::IntLiteral) {
+        print_error_expected(token->line_num,
+                             "constant expression as the range's lower bound",
+                             range_expr->left.get());
+        exit(1);
+    } else if(range_expr->right->kind() != ExpressionKind::IntLiteral) {
+        print_error_expected(token->line_num,
+                             "constant expression as the range's upper bound",
+                             range_expr->right.get());
+        exit(1);
+    }
+    auto* left_expr = static_cast<const IntLiteral*>(range_expr->left.get());
+    auto* right_expr = static_cast<const IntLiteral*>(range_expr->right.get());
+
+    // TODO: Support arbitrary expressions made of arithmetic
+    //  operators/parentheses/negations/bitwise operators
+    multi_int lower_limit{left_expr->value};
+    multi_int upper_limit{right_expr->value};
 
     if(upper_limit < lower_limit) {
         print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
