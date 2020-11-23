@@ -1,11 +1,13 @@
+.POSIX:
 # Files that depend on LLVM
 llvm_linked_files := main.o codegenerator.o
 # All other files
 object_files := lexer.o parser.o token.o ast.o checker.o multiprecision.o
 c_files = third_party/mini-gmp/mini-gmp.o
-VPATH = third_party/mini-gmp
 
 exe_name := bluebird
+# Need some version of clang++/clang as the compilers
+# Point to path of clang++/clang version you want to use
 compiler := clang++
 c_compiler := clang
 llvm_linker_flags := `llvm-config --ldflags --system-libs --libs all`
@@ -29,16 +31,13 @@ release: $(exe_name)
 
 # Build
 $(llvm_linked_files): %.o: %.cpp
-	$(compiler) -c $(llvm_compiler_flags) $(flags) $*.cpp -o $*.o
-	$(compiler) -MM $(llvm_compiler_flags) $(flags) $*.cpp > $*.d
+	$(compiler) -c -MD -MF$*.d $(llvm_compiler_flags) $(flags) $*.cpp -o $*.o
 
 $(object_files): %.o: %.cpp
-	$(compiler) -c $(flags) $*.cpp -o $*.o
-	$(compiler) -MM $(flags) $*.cpp > $*.d
+	$(compiler) -c -MD -MF$*.d $(flags) $*.cpp -o $*.o
 
 $(c_files): %.o: %.c
-	$(c_compiler) -c $(c_flags) $*.c -o $*.o
-	$(c_compiler) -MM $(c_flags) $*.c > $*.d
+	$(c_compiler) -c -MD -MF$*.d $(c_flags) $*.c -o $*.o
 
 clean:
 	-rm $(exe_name)
