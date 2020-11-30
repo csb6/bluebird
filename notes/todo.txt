@@ -7,16 +7,24 @@ Todo:
 [X] Add support for signed vs. unsigned within int types
 [X] Have codegen use LLVM's signed and unsigned operations on int types
 [X] Add support for automatically forward declaring functions in the same way it currently works for types
-[ ] Run the generated IR through LLVM's verifier after codegen is complete
-[ ] Work on the various TODOs throughout the codebase
-[ ] Think more about the potential for proving code, possibly using z3
+[X] Run the generated IR through LLVM's verifier after codegen is complete
 [X] Figure out why IRBuilder isn't keeping some arithmetic expressions, and
     creating weird constant folding outcomes in other cases
 [X] Create some helper functions for printing out lexer errors (with line num)
-[ ] Consider reading characters on-demand from an iostream in the lexer instead
-    of reading everything into a big string at the start
 [X] Consider rewriting lexer to be array-based and making better use
     of constexpr (this isn't practical without C++20, and even there, causes more complexity)
+[ ] Add support for if-statements
+[ ] Add typechecking/boolean checking in if-conditions
+[ ] Add support for else-statements
+[ ] Add support for else-if statements
+[ ] Add support for module-global variables
+[ ] Generate an object file from the LLVM IR
+[ ] Generate an executable from LLVM IR, possibly integrating simple C library
+    functions (e.g. printf() or puts()) to have some output
+[ ] Work on the various TODOs throughout the codebase
+[ ] Consider reading characters on-demand from an iostream in the lexer instead
+    of reading everything into a big string at the start
+[ ] Use property-based testing to test lexer
 [ ] Consider rewriting frontend/part of frontend in Ada (this is unlikely
     to be practical but would be interesting to experiment with)
-[ ] Use property-based testing to test lexer 
+[ ] Think more about the potential for proving code, possibly using z3
