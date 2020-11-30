@@ -309,7 +309,11 @@ void CodeGenerator::run()
                 break;
             }
         }
+        // All blocks must end in a ret instruction of some kind
+        m_ir_builder.CreateRetVoid();
+        llvm::verifyFunction(*curr_funct, &llvm::errs());
     }
 
+    llvm::verifyModule(m_module, &llvm::errs());
     m_module.print(llvm::errs(), nullptr);
 }
