@@ -476,6 +476,30 @@ Initialization* Parser::in_initialization()
     return new_statement;
 }
 
+Assignment* Parser::in_assignment()
+{
+    auto lval_match = m_names_table.find(token->text);
+    if(!lval_match) {
+        print_error(token->line_num,
+                    "Error: `" + token->text
+                    + "` is not a variable name and so cannot be assigned to");
+        exit(1);
+    } else if(lval_match->name_type != NameType::LValue) {
+        print_error(token->line_num, "Error: Expected `" + token->text
+                    + "` to be a variable, but it is defined as another kind of name");
+        exit(1);
+    } else if(!lval_match->lvalue->is_mutable) {
+        print_error(token->line_num,
+                    "Error: cannot assign to constant `" + token->text + "`");
+        exit(1);
+    }
+
+    std::advance(token, 2); // skip varname and `=` operator
+    Expression* expr = parse_expression();
+    ++token;
+    return m_statements.make<Assignment>(expr, lval_match->lvalue);
+}
+
 Statement* Parser::in_statement()
 {
     switch(token->type) {
@@ -484,7 +508,11 @@ Statement* Parser::in_statement()
     case TokenType::Keyword_Let:
         return in_initialization();
     default:
-        return in_basic_statement();
+        if(std::next(token)->type == TokenType::Op_Assign) {
+            return in_assignment();
+        } else {
+            return in_basic_statement();
+        }
     };
 }
 

@@ -9,21 +9,12 @@ type One_Number is range 89 thru 89;
 function foo(a : Natural, b : Integer) is
    let n : constant Number = 45;
    let x : Number = 23;
+   x = 4 + 1;
+   x = n;
    let p : Integer;
    n - x + (n / 4);
    4 + 5 + (9 - 6);
    let j : Number;
-   not 23 and 54;
-   34 or 67 and not 5 and 67;
-   34 or 67 and not (5 and 67);
-   
-   ~23 and 54;
-   34 or 67 and ~5 and 67;
-   34 or 67 and ~(5 and 67);
-
-   -23 and 54;
-   34 or 67 and -5 and 67;
-   34 or 67 and -(5 and 67);
 end foo;
 
 type Number is range 5 upto 42;
@@ -37,7 +28,6 @@ function main() is
     1 + 1;
     // More comments
     2 * 10 + 4;
-    print("hello", 1);
     2 * 2 + 4 / 5;
     1 * 1 * (4 + 6);
 end main;

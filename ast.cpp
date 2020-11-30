@@ -124,9 +124,9 @@ void BasicStatement::print(std::ostream& output) const
 
 void Initialization::print(std::ostream& output) const
 {
-    output << "Initialization of ";
+    output << "Initialize ";
     lvalue->print(output);
-    output << " to ";
+    output << " = ";
     if(expression) {
         output << "Expression: ";
         expression->print(output);
@@ -134,6 +134,15 @@ void Initialization::print(std::ostream& output) const
     } else {
         output << "Empty Statement\n";
     }
+}
+
+void Assignment::print(std::ostream& output) const
+{
+    output << "Assign ";
+    lvalue->print(output);
+    output << " = ";
+    expression->print(output);
+    output << '\n';
 }
 
 void IfBlock::print(std::ostream& output) const

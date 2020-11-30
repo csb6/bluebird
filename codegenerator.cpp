@@ -216,6 +216,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
 
     auto prev_insert_point = m_ir_builder.saveIP();
     // All allocas need to be in the entry block
+    // Allocas will be appended to the end of this block
     m_ir_builder.SetInsertPoint(&function->getEntryBlock());
 
     llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
@@ -228,6 +229,20 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
     m_ir_builder.restoreIP(prev_insert_point);
+}
+
+void CodeGenerator::in_assignment(Assignment* assgn)
+{
+    LValue* lvalue = assgn->lvalue;
+    if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
+        llvm::AllocaInst* alloc = match->second;
+        set_literal_type_info(lvalue->type, assgn->expression.get());
+        m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
+    } else {
+        std::cerr << "Codegen error: Could not find lvalue `"
+                  << assgn->lvalue->name << "` in lvalue table\n";
+        exit(1);
+    }
 }
 
 void CodeGenerator::declare_function_headers()
@@ -285,6 +300,9 @@ void CodeGenerator::run()
             }
             case StatementKind::Initialization:
                 add_lvalue_init(curr_funct, statement);
+                break;
+            case StatementKind::Assignment:
+                in_assignment(static_cast<Assignment*>(statement));
                 break;
             case StatementKind::IfBlock:
                 // TODO: add support for if-blocks

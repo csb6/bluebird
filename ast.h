@@ -41,7 +41,7 @@ enum class ExpressionKind : char {
 };
 
 enum class StatementKind : char {
-    Basic, Initialization, IfBlock
+    Basic, Initialization, Assignment, IfBlock
 };
 
 enum class TypeCategory : char {
@@ -275,6 +275,15 @@ struct Initialization final : public Statement {
 
     using Statement::Statement;
     StatementKind kind() const override { return StatementKind::Initialization; }
+    void          print(std::ostream& output) const override;
+};
+
+struct Assignment final : public Statement {
+    Magnum::Pointer<Expression> expression;
+    LValue* lvalue;
+
+    explicit Assignment(Expression* expr, LValue* lv) : expression(expr), lvalue(lv) {}
+    StatementKind kind() const override { return StatementKind::Assignment; }
     void          print(std::ostream& output) const override;
 };
 

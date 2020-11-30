@@ -123,6 +123,7 @@ private:
     Statement* in_statement();
     BasicStatement* in_basic_statement();
     Initialization* in_initialization();
+    Assignment* in_assignment();
     IfBlock* in_if_block();
     // Handle each function definition
     void in_function_definition();

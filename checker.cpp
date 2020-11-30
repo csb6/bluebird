@@ -33,6 +33,8 @@ void Checker::check_types(const Statement* statement) const
     }
     case StatementKind::Initialization:
         break;
+    case StatementKind::Assignment:
+        break;
     case StatementKind::IfBlock:
         break;
     }

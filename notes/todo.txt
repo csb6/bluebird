@@ -1,6 +1,6 @@
 Todo:
 
-[ ] Implement rest of codegen code for working with mutable variables (see Kaleidoscope example)
+[X] Implement rest of codegen code for working with mutable variables (see Kaleidoscope example)
 [X] Review the multiprecision int code and consider switching to mini-gmp
 [X] Fix bug where bit_size of types is off by 1 bit
 [X] Consider simplifying how each type's bit_size is obtained
