@@ -205,7 +205,11 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     for(auto& arg : arguments) {
         args.push_back(arg->codegen(gen));
     }
-    return gen.m_ir_builder.CreateCall(funct_to_call, args, "call" + name);
+    llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
+    // void function calls can't have a name (they don't return anything)
+    if(type() != &Type::Void)
+        call_instr->setName("call" + name);
+    return call_instr;
 }
 
 
