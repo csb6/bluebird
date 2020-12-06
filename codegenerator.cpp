@@ -216,19 +216,22 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
 
     auto prev_insert_point = m_ir_builder.saveIP();
     // All allocas need to be in the entry block
-    // Allocas will be appended to the end of this block
-    m_ir_builder.SetInsertPoint(&function->getEntryBlock());
+    // Allocas will be prepended to the entry block (so they all occur
+    // before any are assigned values. This prevents LLVM passes from
+    // creating new basic blocks and splitting up the allocas into different blocks)
+    llvm::BasicBlock* entry = &function->getEntryBlock();
+    m_ir_builder.SetInsertPoint(entry, entry->begin());
 
     llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
         llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), nullptr,
         lvalue->name.c_str());
     m_lvalues[lvalue] = alloc;
+    m_ir_builder.restoreIP(prev_insert_point);
 
     if(init->expression != nullptr) {
         set_literal_type_info(lvalue->type, init->expression.get());
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
-    m_ir_builder.restoreIP(prev_insert_point);
 }
 
 void CodeGenerator::in_assignment(Assignment* assgn)
