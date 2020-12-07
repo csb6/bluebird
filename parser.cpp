@@ -140,18 +140,18 @@ constexpr bool is_binary_operator(const Precedence p)
 
 void print_error(unsigned int line_num, std::string_view message)
 {
-    std::cerr << "Line " << line_num << ": "
+    std::cerr << "ERROR: Line " << line_num << ": "
               << message << "\n";
 }
 
 void print_error(std::string_view message)
 {
-    std::cerr << message << "\n";
+    std::cerr << "ERROR: " << message << "\n";
 }
 
 void print_error_expected(std::string_view expected, Token actual)
 {
-    std::cerr << "Line " << actual.line_num << ": "
+    std::cerr << "ERROR: Line " << actual.line_num << ": "
               << "Expected " << expected << ", but instead found token:\n";
     std::cerr << "  " << actual;
 }
@@ -159,7 +159,7 @@ void print_error_expected(std::string_view expected, Token actual)
 void print_error_expected(unsigned int line_num, std::string_view expected,
                           const Expression* actual)
 {
-    std::cerr << "Line " << line_num << ": "
+    std::cerr << "ERROR: Line " << line_num << ": "
               << "Expected " << expected << ", but instead found expression:\n";
     actual->print(std::cerr);
     std::cerr << '\n';
@@ -409,7 +409,8 @@ LValue* Parser::in_lvalue_declaration()
 {
     assert_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
-        print_error(token->line_num, "`" + token->text + "` cannot be used as an lvalue name. It is already defined as a name");
+        print_error(token->line_num, "`" + token->text
+                    + "` cannot be used as an lvalue name. It is already defined as a name");
         exit(1);
     }
     LValue* new_lvalue = m_names_table.add_lvalue(token->text);
@@ -480,17 +481,15 @@ Assignment* Parser::in_assignment()
 {
     auto lval_match = m_names_table.find(token->text);
     if(!lval_match) {
-        print_error(token->line_num,
-                    "Error: `" + token->text
+        print_error(token->line_num, "`" + token->text
                     + "` is not a variable name and so cannot be assigned to");
         exit(1);
     } else if(lval_match->name_type != NameType::LValue) {
-        print_error(token->line_num, "Error: Expected `" + token->text
+        print_error(token->line_num, "Expected `" + token->text
                     + "` to be a variable, but it is defined as another kind of name");
         exit(1);
     } else if(!lval_match->lvalue->is_mutable) {
-        print_error(token->line_num,
-                    "Error: cannot assign to constant `" + token->text + "`");
+        print_error(token->line_num, "cannot assign to constant `" + token->text + "`");
         exit(1);
     }
 
@@ -578,7 +577,7 @@ void Parser::in_function_definition()
         new_funct.name = token->text;
     } else {
         print_error(token->line_num, "Name `" + token->text + "` is"
-                    + " already in use");
+                    " already in use");
         exit(1);
     }
 
@@ -675,10 +674,10 @@ void Parser::in_range_type_definition(const std::string& type_name)
     multi_int upper_limit{right_expr->value};
 
     if(upper_limit < lower_limit) {
-        print_error(token->line_num, "Error: Upper limit of range is lower than the lower limit");
+        print_error(token->line_num, "Upper limit of range is lower than the lower limit");
         exit(1);
     } else if(range_expr->op == TokenType::Op_Upto && upper_limit == lower_limit) {
-        print_error(token->line_num, "Error: In `upto` range, lower limit cannot be same as upper limit");
+        print_error(token->line_num, "In `upto` range, lower limit cannot be same as upper limit");
         exit(1);
     }
 
@@ -864,8 +863,8 @@ void SymbolTable::validate_names()
             std::optional<SymbolInfo> match
                 = search_for_definition(lvalue->type->name, NameType::Type);
             if(!match) {
-                std::cerr << "Error: Type `" << lvalue->type->name
-                          << "` is used but has no definition\n";
+                print_error("Type `" + lvalue->type->name
+                            + "` is used but has no definition");
                 exit(1);
             } else {
                 // Update to the newly-defined type (replacing the temp type)
@@ -879,8 +878,8 @@ void SymbolTable::validate_names()
             std::optional<SymbolInfo> match
                 = search_for_definition(funct_call->name, NameType::Funct);
             if(!match) {
-                std::cerr << "Error: Function `" << funct_call->name
-                          << "` is used but has no definition\n";
+                print_error("Function `" + funct_call->name
+                            + "` is used but has no definition");
                 exit(1);
             } else {
                 // Update call to point to the actual function
