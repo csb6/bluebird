@@ -238,6 +238,26 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     }
 }
 
+void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
+{
+    switch(statement->kind()) {
+    case StatementKind::Basic: {
+        auto* curr_statement = static_cast<BasicStatement*>(statement);
+        curr_statement->expression->codegen(*this);
+        break;
+    }
+    case StatementKind::Initialization:
+        add_lvalue_init(curr_funct, statement);
+        break;
+    case StatementKind::Assignment:
+        in_assignment(static_cast<Assignment*>(statement));
+        break;
+    case StatementKind::IfBlock:
+        in_if_block(curr_funct, static_cast<IfBlock*>(statement));
+        break;
+    }
+}
+
 void CodeGenerator::in_assignment(Assignment* assgn)
 {
     LValue* lvalue = assgn->lvalue;
@@ -250,6 +270,21 @@ void CodeGenerator::in_assignment(Assignment* assgn)
                   << assgn->lvalue->name << "` in lvalue table\n";
         exit(1);
     }
+}
+
+void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock)
+{
+    llvm::Value* condition = ifblock->condition->codegen(*this);
+    auto* if_true = llvm::BasicBlock::Create(m_context, "iftrue", curr_funct);
+    auto* succ_block = llvm::BasicBlock::Create(m_context, "succblock", curr_funct);
+    m_ir_builder.CreateCondBr(condition, if_true, succ_block);
+
+    m_ir_builder.SetInsertPoint(if_true);
+    for(Statement* stmt : ifblock->statements) {
+        in_statement(curr_funct, stmt);
+    }
+    m_ir_builder.CreateBr(succ_block);
+    m_ir_builder.SetInsertPoint(succ_block);
 }
 
 void CodeGenerator::declare_function_headers()
@@ -299,22 +334,7 @@ void CodeGenerator::run()
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
         for(auto *statement : function->statements) {
-            switch(statement->kind()) {
-            case StatementKind::Basic: {
-                auto* curr_statement = static_cast<BasicStatement*>(statement);
-                curr_statement->expression->codegen(*this);
-                break;
-            }
-            case StatementKind::Initialization:
-                add_lvalue_init(curr_funct, statement);
-                break;
-            case StatementKind::Assignment:
-                in_assignment(static_cast<Assignment*>(statement));
-                break;
-            case StatementKind::IfBlock:
-                // TODO: add support for if-blocks
-                break;
-            }
+            in_statement(curr_funct, statement);
         }
         // All blocks must end in a ret instruction of some kind
         m_ir_builder.CreateRetVoid();

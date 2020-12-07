@@ -56,7 +56,9 @@ private:
     void declare_function_headers();
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
+    void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
+    void in_if_block(llvm::Function*, struct IfBlock*);
 public:
     explicit CodeGenerator(const std::vector<Function*>&);
     void run();

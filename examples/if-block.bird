@@ -1,0 +1,9 @@
+function main() is
+  let n: Integer = 71;
+  if n < 50 do
+    let j: Integer = 4;
+    n = n + 10;
+  end if;
+end;
+
+type Integer is range 0 upto 100;
