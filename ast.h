@@ -227,6 +227,8 @@ struct FunctionCall final : public Expression {
     std::vector<Magnum::Pointer<Expression>> arguments;
     struct Function* function;
 
+    explicit FunctionCall(const std::string& name) : name(name) {}
+
     // TODO: have this be the return type
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override { return &Type::Void; }
@@ -250,7 +252,6 @@ struct LValue {
 struct Statement {
     unsigned int line_num;
 
-    Statement() : line_num(0) {}
     explicit Statement(unsigned int line) : line_num(line) {}
     virtual ~Statement() {}
 
@@ -262,7 +263,9 @@ struct Statement {
 struct BasicStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
-    using Statement::Statement;
+    BasicStatement(unsigned int line, Expression* expr)
+        : Statement(line), expression(expr) {}
+
     StatementKind kind() const override { return StatementKind::Basic; }
     void          print(std::ostream&) const override;
 };
@@ -273,7 +276,9 @@ struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
     LValue* lvalue;
 
-    using Statement::Statement;
+    Initialization(unsigned int line, LValue* lval)
+        : Statement(line), lvalue(lval) {}
+
     StatementKind kind() const override { return StatementKind::Initialization; }
     void          print(std::ostream& output) const override;
 };
@@ -282,7 +287,8 @@ struct Assignment final : public Statement {
     Magnum::Pointer<Expression> expression;
     LValue* lvalue;
 
-    explicit Assignment(Expression* expr, LValue* lv) : expression(expr), lvalue(lv) {}
+    Assignment(unsigned line, Expression* expr, LValue* lv)
+        : Statement(line), expression(expr), lvalue(lv) {}
     StatementKind kind() const override { return StatementKind::Assignment; }
     void          print(std::ostream& output) const override;
 };
@@ -291,7 +297,8 @@ struct IfBlock final : public Statement {
     Magnum::Pointer<Expression> condition;
     std::vector<Statement*> statements;
 
-    explicit IfBlock(unsigned int line) : Statement(line) {}
+    IfBlock(unsigned int line, Expression* cond)
+        : Statement(line), condition(cond) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
@@ -303,7 +310,6 @@ struct Function {
     std::vector<LValue*> parameters;
     std::vector<Statement*> statements;
 
-    Function() {}
     explicit Function(const std::string& n) : name(n) {}
 
     friend std::ostream& operator<<(std::ostream&, const Function&);

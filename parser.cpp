@@ -340,12 +340,10 @@ Expression* Parser::in_expression()
 
 Expression* Parser::in_function_call()
 {
-    auto* new_function_call = new FunctionCall();
-
     assert_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
-    new_function_call->name = token->text;
+    auto* new_function_call = new FunctionCall(token->text);
     const auto match = m_names_table.find(token->text);
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
@@ -451,12 +449,12 @@ LValue* Parser::in_lvalue_declaration()
 Initialization* Parser::in_initialization()
 {
     assert_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
-
-    auto *new_statement = m_statements.make<Initialization>(token->line_num);
+    unsigned int line_num = token->line_num;
 
     // Add this new lvalue to list of tracked names
     ++token;
-    new_statement->lvalue = in_lvalue_declaration();
+    auto *new_statement =
+        m_statements.make<Initialization>(line_num, in_lvalue_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -466,15 +464,14 @@ Initialization* Parser::in_initialization()
     } else if(token->type != TokenType::Op_Assign) {
         print_error_expected("assignment operator or ';'", *token);
         exit(1);
+    } else {
+        ++token;
+        // Set the expression after the assignment operator to be the subexpression
+        // in the statement
+        new_statement->expression = Magnum::pointer<Expression>(parse_expression());
+        ++token;
+        return new_statement;
     }
-
-    ++token;
-    // Set the expression after the assignment operator to be the subexpression
-    // in the statement
-    new_statement->expression = Magnum::pointer<Expression>(parse_expression());
-
-    ++token;
-    return new_statement;
 }
 
 Assignment* Parser::in_assignment()
@@ -493,10 +490,11 @@ Assignment* Parser::in_assignment()
         exit(1);
     }
 
+    unsigned int line_num = token->line_num;
     std::advance(token, 2); // skip varname and `=` operator
     Expression* expr = parse_expression();
     ++token;
-    return m_statements.make<Assignment>(expr, lval_match->lvalue);
+    return m_statements.make<Assignment>(line_num, expr, lval_match->lvalue);
 }
 
 Statement* Parser::in_statement()
@@ -517,8 +515,8 @@ Statement* Parser::in_statement()
 
 BasicStatement* Parser::in_basic_statement()
 {
-    auto *new_statement = m_statements.make<BasicStatement>(token->line_num);
-    new_statement->expression = Magnum::pointer<Expression>(parse_expression());
+    auto *new_statement =
+        m_statements.make<BasicStatement>(token->line_num, parse_expression());
 
     assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
@@ -530,11 +528,10 @@ IfBlock* Parser::in_if_block()
     assert_token_is(TokenType::Keyword_If, "keyword if", *token);
     ++token;
 
-    auto *new_block = m_statements.make<IfBlock>(token->line_num);
     m_names_table.open_scope();
-
+    unsigned int line_num = token->line_num;
     // First, parse the if-condition
-    new_block->condition = Magnum::pointer<Expression>(parse_expression());
+    auto *new_block = m_statements.make<IfBlock>(line_num, parse_expression());
     assert_token_is(TokenType::Keyword_Do,
                     "keyword `do` following `if` condition", *token);
 
@@ -565,21 +562,18 @@ IfBlock* Parser::in_if_block()
 
 void Parser::in_function_definition()
 {
-    Function new_funct;
-
-    // First, set the function's name, making sure it isn't being used for
-    // anything else
     ++token;
     assert_token_is(TokenType::Name, "name to follow `function keyword`", *token);
 
+    // First, set the function's name, making sure it isn't being used for
+    // anything else
     const auto match = m_names_table.find(token->text);
-    if(!match || match.value().name_type == NameType::DeclaredFunct) {
-        new_funct.name = token->text;
-    } else {
+    if(match && match.value().name_type != NameType::DeclaredFunct) {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
         exit(1);
     }
+    Function new_funct{token->text};
 
     ++token;
     assert_token_is(TokenType::Open_Parentheses,
