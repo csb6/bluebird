@@ -2,10 +2,13 @@
 
 Bluebird is a work-in-progess imperative programming language modeled after C++ and Ada.
 
-The goal is to create a language that supports generic programming with strong typing and syntax somewhere between Ada's
-verbose but unambiguous syntax and C++'s more concise syntax.
+The goal is to create a language that supports generic programming with
+very strong typing.
 
-It is still in the early stages, but right now it has a lexer and a parser implementing many basic features. Code generation and semantic analysis are in development, but aren't currently usable.
+It is still in the early stages, but right now it has a lexer, a parser, and
+a semantic analyzer. Code generation currently only generates to LLVM IR
+instructions, not actual executables. All stages of the compiler are still
+a work-in-progress.
 
 ## Goals
 
@@ -62,7 +65,7 @@ function main is
   // let locker2 : Locker_Number = -1; // Will not compile; out-of-range
   let foo : constant Locker_Number = 7 + 90 + 89 * (67 - 90 + 87);
 
-  if (current_locker > 5 or current_locker == 0) do
+  if current_locker > 5 or current_locker == 0 do
      let id : Student_Id_Number = 45 | ~78;
   end if
 
