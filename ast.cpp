@@ -27,10 +27,6 @@ Range::Range(const multi_int& lower, const multi_int& upper)
     }
 }
 
-IntLiteral::IntLiteral(const std::string& v)
-    : value(v), bit_size(value.bits_needed())
-{}
-
 const Type* LValueExpression::type() const
 {
     return lvalue->type;
@@ -53,6 +49,18 @@ void StringLiteral::print(std::ostream& output) const
 void CharLiteral::print(std::ostream& output) const
 {
     print_unescape(value, output);
+}
+
+const Type* IntLiteral::type() const
+{
+    switch(context_kind) {
+    case ContextKind::Expression:
+        return context_expr->type();
+    case ContextKind::LValue:
+        return context_lvalue->type;
+    case ContextKind::None:
+        return &LiteralType::Int;
+    }
 }
 
 void IntLiteral::print(std::ostream& output) const

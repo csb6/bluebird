@@ -59,7 +59,9 @@ llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 {
-    return llvm::ConstantInt::get(gen.m_context, llvm::APInt(bit_size, value.str(), 10));
+    return llvm::ConstantInt::get(gen.m_context,
+                                  llvm::APInt(type()->bit_size(),
+                                              value.str(), 10));
 }
 
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
@@ -93,34 +95,8 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
     }
 }
 
-// For IntLiterals, sets the literal's bit size, etc to match that
-// of the range type or typed expression whose type it should match
-void set_literal_type_info(const Type* concrete, Expression* literal)
-{
-    if(literal->kind() == ExpressionKind::IntLiteral
-       && concrete->category() == TypeCategory::Range) {
-        auto* lit = static_cast<IntLiteral*>(literal);
-        auto* range_type = static_cast<const RangeType*>(concrete);
-        lit->bit_size = range_type->bit_size();
-    }
-}
-
-void set_literal_type_info(Expression* l, Expression* r)
-{
-    const ExpressionKind l_type = l->kind();
-    const ExpressionKind r_type = r->kind();
-    if(l_type != ExpressionKind::IntLiteral && r_type != ExpressionKind::IntLiteral) {
-        return;
-    } else {
-        // The literal expr (either l or r) will take on the bit size of the non-literal
-        set_literal_type_info(l->type(), r);
-        set_literal_type_info(r->type(), l);
-    }
-}
-
 llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
-    set_literal_type_info(left.get(), right.get());
     bool type_is_signed;
     if(left->type()->category() == TypeCategory::Range) {
         type_is_signed = static_cast<const RangeType*>(left->type())->is_signed();
@@ -233,7 +209,6 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_ir_builder.restoreIP(prev_insert_point);
 
     if(init->expression != nullptr) {
-        set_literal_type_info(lvalue->type, init->expression.get());
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
 }
@@ -263,7 +238,6 @@ void CodeGenerator::in_assignment(Assignment* assgn)
     LValue* lvalue = assgn->lvalue;
     if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
         llvm::AllocaInst* alloc = match->second;
-        set_literal_type_info(lvalue->type, assgn->expression.get());
         m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
     } else {
         std::cerr << "Codegen error: Could not find lvalue `"

@@ -48,6 +48,10 @@ enum class TypeCategory : char {
     Range, Normal, Literal
 };
 
+enum class ContextKind : char {
+    None, Expression, LValue
+};
+
 // A lazily-evaluated sequence
 // Upper/lower bounds are inclusive
 struct Range {
@@ -147,13 +151,18 @@ struct CharLiteral final : public Expression {
 struct IntLiteral final : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
-    unsigned short bit_size = 0;
+    ContextKind context_kind = ContextKind::None;
+    union {
+        // The expression that determines the type of this literal
+        Expression* context_expr = nullptr;
+        struct LValue* context_lvalue;
+    };
 
-    explicit IntLiteral(const std::string& v);
+    explicit IntLiteral(const std::string& v) : value(v) {}
     explicit IntLiteral(const multi_int& v) : value(v) {}
 
     ExpressionKind kind() const override { return ExpressionKind::IntLiteral; }
-    const Type*    type() const override { return &LiteralType::Int; }
+    const Type*    type() const override;
     void           print(std::ostream&) const override;
 
     void         check_types(const Statement*) const override {}

@@ -1,6 +1,7 @@
 function main() is
    let n2 : Positive = 456;
    use_n(n2);
+   use_n(560_000);
    (n2 + 5) * 8 + 90 - 8;
 end main;
 

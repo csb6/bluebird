@@ -40,22 +40,6 @@ void Checker::check_types(const Statement* statement) const
     }
 }
 
-bool type_matches_literal(const Type *left, const Type *right)
-{
-    const TypeCategory left_cat = left->category();
-    const TypeCategory right_cat = right->category();
-    // TODO: check that the literal is in the range of the non-literal type
-    if((left_cat == TypeCategory::Literal)
-       && (right_cat != TypeCategory::Literal)) {
-        return left == &LiteralType::Int && right_cat == TypeCategory::Range;
-    } else if((left_cat != TypeCategory::Literal)
-              && (right_cat == TypeCategory::Literal)) {
-        return right == &LiteralType::Int && left_cat == TypeCategory::Range;
-    } else {
-        return false;
-    }
-}
-
 // No need to typecheck for literal/lvalue expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
@@ -70,7 +54,7 @@ void BinaryExpression::check_types(const Statement* statement) const
     left->check_types(statement);
     right->check_types(statement);
     // Check that the types of both sides of the operator match
-    if(left->type() != right->type() && !type_matches_literal(left->type(), right->type())) {
+    if(left->type() != right->type()) {
         std::cerr << "In statement starting at line " << statement->line_num
                   << ":\n Types don't match:\n  Left: ";
         left->print(std::cerr);
@@ -100,8 +84,7 @@ void FunctionCall::check_types(const Statement* statement) const
         arg->check_types(statement);
         // Make sure each arg type matches corresponding parameter type
         const LValue* param = function->parameters[i];
-        if(arg->type() != param->type
-           && !type_matches_literal(arg->type(), param->type)) {
+        if(arg->type() != param->type) {
             std::cerr << "In statement starting at line " << statement->line_num
                       << ":\n Argument type doesn't match expected type:\n"
                          "  Argument: ";
