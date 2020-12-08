@@ -48,7 +48,7 @@ struct SymbolInfo {
 
 struct Scope {
     using symbol_iterator = std::unordered_map<std::string, SymbolInfo>::iterator;
-    short parent_index;
+    int parent_index;
     std::unordered_map<std::string, SymbolInfo> symbols{};
     std::vector<LValue*> lvalues_type_unresolved{};
     std::vector<FunctionCall*> unresolved_funct_calls{};
@@ -78,7 +78,7 @@ public:
 private:
     // Scope tree
     std::vector<Scope> m_scopes;
-    short m_curr_scope;
+    int m_curr_scope;
 
     // AST entities
     MemoryPool &m_range_types;

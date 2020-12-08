@@ -766,7 +766,7 @@ void SymbolTable::close_scope()
 
 std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
 {
-    short scope_index = m_curr_scope;
+    int scope_index = m_curr_scope;
     while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
@@ -783,7 +783,7 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
 std::optional<SymbolInfo>
 SymbolTable::search_for_definition(const std::string& name, NameType kind) const
 {
-    short scope_index = m_curr_scope;
+    int scope_index = m_curr_scope;
     while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
@@ -851,7 +851,10 @@ void SymbolTable::validate_names()
     // If they don't, try to find one/fix-up the symbol table
 
     // TODO: Have mechanism where types/functions in other modules are resolved
-    for(auto& scope : m_scopes) {
+    int old_curr_scope = m_curr_scope;
+    for(int scope_index = 0; scope_index < m_scopes.size(); ++scope_index) {
+        m_curr_scope = scope_index;
+        Scope& scope = m_scopes[scope_index];
         // Try and resolve the types of lvalues whose types were not declared beforehand
         for(LValue* lvalue : scope.lvalues_type_unresolved) {
             std::optional<SymbolInfo> match
@@ -882,4 +885,6 @@ void SymbolTable::validate_names()
         }
         scope.unresolved_funct_calls.clear();
     }
+    // Restore original
+    m_curr_scope = old_curr_scope;
 }
