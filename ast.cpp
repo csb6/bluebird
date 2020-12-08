@@ -59,7 +59,7 @@ const Type* IntLiteral::type() const
     case ContextKind::LValue:
         return context_lvalue->type;
     case ContextKind::None:
-        return &LiteralType::Int;
+        return &Type::Int;
     }
 }
 
@@ -194,10 +194,10 @@ std::ostream& operator<<(std::ostream& output, const Function& function)
 }
 
 const Type Type::Void{"VoidType"};
-const LiteralType LiteralType::String{"StringLiteral", 8};
-const LiteralType LiteralType::Char{"CharLiteral", 8};
-const LiteralType LiteralType::Int{"IntLiteral", 32};
-const LiteralType LiteralType::Float{"FloatLiteral", 32};
+const Type Type::String{"StringLiteral"};
+const Type Type::Char{"CharLiteral"};
+const Type Type::Int{"IntLiteral"};
+const Type Type::Float{"FloatLiteral"};
 
 void Type::print(std::ostream& output) const
 {

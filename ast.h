@@ -66,7 +66,7 @@ struct Range {
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type Void;
+    static const Type Void, String, Char, Int, Float;
     std::string name;
 
     Type() {}
@@ -76,20 +76,6 @@ struct Type {
     virtual unsigned short bit_size() const { return 0; }
     virtual TypeCategory   category() const { return TypeCategory::Normal; }
     virtual void           print(std::ostream&) const;
-};
-
-// "Typeless" literals (have no bounds, match with type of typed values
-// within the same expression)
-struct LiteralType : public Type {
-    static const LiteralType String, Char, Int, Float;
-    const unsigned short bits_amt;
-
-    using Type::Type;
-    LiteralType(const std::string& n, unsigned short bit_num)
-        : Type(n), bits_amt(bit_num) {}
-
-    unsigned short       bit_size() const override { return bits_amt; }
-    virtual TypeCategory category() const override { return TypeCategory::Literal; }
 };
 
 // Type with integer bounds
@@ -128,7 +114,7 @@ struct StringLiteral final : public Expression {
     explicit StringLiteral(const std::string& v) : value(v) {}
 
     ExpressionKind kind() const override { return ExpressionKind::StringLiteral; }
-    const Type*    type() const override { return &LiteralType::String; }
+    const Type*    type() const override { return &Type::String; }
     void           print(std::ostream&) const override;
 
     void         check_types(const Statement*) const override {}
@@ -141,7 +127,7 @@ struct CharLiteral final : public Expression {
     explicit CharLiteral(char v) : value(v) {}
 
     ExpressionKind kind() const override { return ExpressionKind::CharLiteral; }
-    const Type*    type() const override { return &LiteralType::Char; }
+    const Type*    type() const override { return &Type::Char; }
     void           print(std::ostream&) const override;
 
     void         check_types(const Statement*) const override {}
@@ -172,10 +158,10 @@ struct IntLiteral final : public Expression {
 struct FloatLiteral final : public Expression {
     double value;
 
-    explicit FloatLiteral(int v) : value(v) {}
+    explicit FloatLiteral(double v) : value(v) {}
 
     ExpressionKind kind() const override { return ExpressionKind::FloatLiteral; }
-    const Type*    type() const override { return &LiteralType::Float; }
+    const Type*    type() const override { return &Type::Float; }
     void           print(std::ostream&) const override;
 
     void         check_types(const Statement*) const override {}
