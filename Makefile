@@ -10,7 +10,7 @@ exe_name := bluebird
 # Point to path of clang++/clang version you want to use
 compiler := clang++
 c_compiler := clang
-llvm_linker_flags := `llvm-config --ldflags --system-libs --libs all`
+llvm_linker_flags := `llvm-config --ldflags --system-libs --libs core native`
 llvm_compiler_flags := `llvm-config --cxxflags`
 flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
 c_flags := -std=c99 -Ithird_party
@@ -40,5 +40,4 @@ $(c_files): %.o: %.c
 	$(c_compiler) -c -MD -MF$*.d $(c_flags) $*.c -o $*.o
 
 clean:
-	-rm $(exe_name)
-	-rm *.o *.d
+	rm -f $(exe_name) *.o *.d

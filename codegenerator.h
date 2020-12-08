@@ -31,6 +31,7 @@
 
 namespace llvm {
     class AllocaInst;
+    class raw_fd_ostream;
 };
 
 class CodeGenerator {
@@ -59,6 +60,8 @@ private:
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
     void in_if_block(llvm::Function*, struct IfBlock*);
+
+    void emit_object_file(llvm::raw_fd_ostream& object_file);
 public:
     explicit CodeGenerator(const std::vector<Function*>&);
     void run();
