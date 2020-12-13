@@ -30,7 +30,6 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Target/TargetMachine.h>
-#include <llvm/MC/SubtargetFeature.h>
 #include <llvm/IR/LegacyPassManager.h>
 #pragma GCC diagnostic pop
 
@@ -310,15 +309,6 @@ void CodeGenerator::emit_object_file(llvm::raw_fd_ostream& object_file)
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
     const std::string target_triple{llvm::sys::getDefaultTargetTriple()};
-    m_module.setTargetTriple(target_triple);
-
-    llvm::SubtargetFeatures subtarget_features;
-    llvm::StringMap<bool> host_features;
-    if(llvm::sys::getHostCPUFeatures(host_features)) {
-        for(auto& each_feat : host_features) {
-            subtarget_features.AddFeature(each_feat.first(), each_feat.second);
-        }
-    }
 
     std::string error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
@@ -326,15 +316,17 @@ void CodeGenerator::emit_object_file(llvm::raw_fd_ostream& object_file)
         std::cerr << "Object file emit error: " << error << "\n";
         exit(1);
     }
-    llvm::TargetOptions options;
+    const llvm::TargetOptions options;
     auto* target_machine = target->createTargetMachine(
         target_triple,
-        llvm::sys::getHostCPUName(),
-        subtarget_features.getString(),
+        "generic",
+        "",
         options,
         llvm::Reloc::PIC_,
         {}, {});
+
     m_module.setDataLayout(target_machine->createDataLayout());
+    m_module.setTargetTriple(target_triple);
 
     // We need this for some reason? Not really sure how to get around using it
     llvm::legacy::PassManager pass_manager;
