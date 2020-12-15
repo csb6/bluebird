@@ -22,19 +22,6 @@ class Checker {
 private:
     const std::vector<struct Function*>& m_functions;
     const std::vector<struct RangeType*>& m_types;
-
-    // For typechecking, virtual functions attached to each Expression subclass.
-    // These functions are defined in checker.cpp
-    friend struct StringLiteral;
-    friend struct CharLiteral;
-    friend struct IntLiteral;
-    friend struct FloatLiteral;
-    friend struct LValueExpression;
-    friend struct UnaryExpression;
-    friend struct BinaryExpression;
-    friend struct FunctionCall;
-
-    void check_types(const struct Statement*) const;
 public:
     Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&);
     void run() const;

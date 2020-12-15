@@ -23,23 +23,6 @@ Checker::Checker(const std::vector<Function*>& functions,
     : m_functions(functions), m_types(types)
 {}
 
-void Checker::check_types(const Statement* statement) const
-{
-    switch(statement->kind()) {
-    case StatementKind::Basic: {
-        auto* actual = static_cast<const BasicStatement*>(statement);
-        actual->expression->check_types(statement);
-        break;
-    }
-    case StatementKind::Initialization:
-        break;
-    case StatementKind::Assignment:
-        break;
-    case StatementKind::IfBlock:
-        break;
-    }
-}
-
 // No need to typecheck for literal/lvalue expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
@@ -69,11 +52,9 @@ static void check_literal_types(const IntLiteral* literal, const Other* other,
         }
     } else {
         std::cerr << "In statement starting at line " << stmt->line_num
-                  << ":\n Types don't match:\n  Literal: ";
+                  << ":\n Types don't match:\n  IntLiteral: ";
         literal->print(std::cerr);
-        std::cerr << '\t';
-        literal->type()->print(std::cerr);
-        std::cerr << "  Used with: ";
+        std::cerr << "\n  Used with: ";
         other->print(std::cerr);
         std::cerr << '\t';
         other_type->print(std::cerr);
@@ -143,11 +124,36 @@ void FunctionCall::check_types(const Statement* statement) const
     }
 }
 
+void BasicStatement::check_types() const
+{
+    expression->check_types(this);
+}
+
+void Initialization::check_types() const
+{
+    if(expression == nullptr)
+        return;
+    expression->check_types(this);
+}
+
+void Assignment::check_types() const
+{
+    expression->check_types(this);
+}
+
+void IfBlock::check_types() const
+{
+    condition->check_types(this);
+    for(auto* stmt : statements) {
+        stmt->check_types();
+    }
+}
+
 void Checker::run() const
 {
     for(const auto *function : m_functions) {
         for(const auto *statement : function->statements) {
-            check_types(statement);
+            statement->check_types();
         }
     }
 }

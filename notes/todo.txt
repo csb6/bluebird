@@ -17,14 +17,16 @@ Todo:
 [ ] Add typechecking/boolean checking in if-conditions
 [ ] Add support for else-statements
 [ ] Add support for else-if statements
+[ ] Fix bug where in an initialization expression, the variable being initialized can appear
 [ ] Add support for module-global variables
 [X] Generate an object file from the LLVM IR
 [ ] Generate an executable from LLVM IR, possibly integrating simple C library
     functions (e.g. printf() or puts()) to have some output
-[ ] Add typechecking for int literals and expressions (ensuring that int literals
+[X] Add typechecking for int literals and expressions (ensuring that int literals
     are only used with expressions that evaluate to range types)
-[ ] Add check so that int literals are always within the range of the type they
+[X] Add check so that int literals are always within the range of the type they
     are being used with
+[X] Add above two items for assignments/initialization statements
 [ ] Consider adding a viceversa keyword to be used with binary expressions
 [ ] Work on the various TODOs throughout the codebase
 [ ] Consider reading characters on-demand from an iostream in the lexer instead

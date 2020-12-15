@@ -254,6 +254,7 @@ struct Statement {
 
     virtual StatementKind kind() const = 0;
     virtual void          print(std::ostream&) const = 0;
+    virtual void          check_types() const = 0;
 };
 
 // A brief, usually one-line statement that holds a single expression
@@ -265,6 +266,7 @@ struct BasicStatement final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Basic; }
     void          print(std::ostream&) const override;
+    void          check_types() const override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -278,6 +280,7 @@ struct Initialization final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Initialization; }
     void          print(std::ostream& output) const override;
+    void          check_types() const override;
 };
 
 struct Assignment final : public Statement {
@@ -288,6 +291,7 @@ struct Assignment final : public Statement {
         : Statement(line), expression(expr), lvalue(lv) {}
     StatementKind kind() const override { return StatementKind::Assignment; }
     void          print(std::ostream& output) const override;
+    void          check_types() const override;
 };
 
 struct IfBlock final : public Statement {
@@ -299,6 +303,7 @@ struct IfBlock final : public Statement {
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
+    void          check_types() const override;
 };
 
 // A procedure containing statements and optionally inputs/outputs
