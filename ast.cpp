@@ -27,6 +27,11 @@ Range::Range(const multi_int& lower, const multi_int& upper)
     }
 }
 
+bool Range::contains(const multi_int& value) const
+{
+    return value >= lower_bound && value <= upper_bound;
+}
+
 const Type* LValueExpression::type() const
 {
     return lvalue->type;

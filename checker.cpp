@@ -47,6 +47,40 @@ void Checker::check_types(const Statement* statement) const
 void UnaryExpression::check_types(const Statement*) const
 {}
 
+template<typename Other>
+static void check_literal_types(const IntLiteral* literal, const Other* other,
+                                const Type* other_type, const Statement* stmt)
+{
+    if(other_type->category() == TypeCategory::Range) {
+        auto* range_type = static_cast<const RangeType*>(other_type);
+        const Range& range = range_type->range;
+        if(!range.contains(literal->value)) {
+            std::cerr << "In statement starting at line " << stmt->line_num
+                      << ":\n Integer literal `";
+            literal->print(std::cerr);
+            std::cerr << "` is not in the range of:\n  ";
+            range_type->print(std::cerr);
+            std::cerr << " so it cannot be used with:\n  ";
+            other->print(std::cerr);
+            std::cerr << "\n Which has type:\n  ";
+            range_type->print(std::cerr);
+            std::cerr << "\n";
+            exit(1);
+        }
+    } else {
+        std::cerr << "In statement starting at line " << stmt->line_num
+                  << ":\n Types don't match:\n  Literal: ";
+        literal->print(std::cerr);
+        std::cerr << '\t';
+        literal->type()->print(std::cerr);
+        std::cerr << "  Used with: ";
+        other->print(std::cerr);
+        std::cerr << '\t';
+        other_type->print(std::cerr);
+        exit(1);
+    }
+}
+
 // TODO: check if this binary op is legal for this type
 void BinaryExpression::check_types(const Statement* statement) const
 {
@@ -65,6 +99,12 @@ void BinaryExpression::check_types(const Statement* statement) const
         std::cerr << '\t';
         right->type()->print(std::cerr);
         exit(1);
+    } else if(right->kind() == ExpressionKind::IntLiteral) {
+        check_literal_types(static_cast<const IntLiteral*>(right.get()), left.get(),
+                            left->type(), statement);
+    } else if(left->kind() == ExpressionKind::IntLiteral) {
+        check_literal_types(static_cast<const IntLiteral*>(left.get()), right.get(),
+                            right->type(), statement);
     }
 }
 
@@ -96,6 +136,9 @@ void FunctionCall::check_types(const Statement* statement) const
             std::cerr << '\t';
             param->type->print(std::cerr);
             exit(1);
+        } else if(arg->kind() == ExpressionKind::IntLiteral) {
+            check_literal_types(static_cast<const IntLiteral*>(arg), param,
+                                param->type, statement);
         }
     }
 }

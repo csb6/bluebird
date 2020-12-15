@@ -61,6 +61,8 @@ struct Range {
 
     Range() : bit_size(0), is_signed(true) {}
     Range(const multi_int& lower, const multi_int& upper);
+
+    bool contains(const multi_int&) const;
 };
 
 // A kind of object

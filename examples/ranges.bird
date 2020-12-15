@@ -1,0 +1,9 @@
+function main() is
+   let a: Positive = 90;
+   //foo(100);
+   //a * a + 100;
+end;
+
+function foo(a: Positive) is end;
+
+type Positive is range 1 upto 100;
