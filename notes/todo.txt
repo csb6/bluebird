@@ -13,14 +13,19 @@ Todo:
 [X] Create some helper functions for printing out lexer errors (with line num)
 [X] Consider rewriting lexer to be array-based and making better use
     of constexpr (this isn't practical without C++20, and even there, causes more complexity)
-[ ] Add support for if-statements
+[X] Add support for if-statements
 [ ] Add typechecking/boolean checking in if-conditions
 [ ] Add support for else-statements
 [ ] Add support for else-if statements
 [ ] Add support for module-global variables
-[ ] Generate an object file from the LLVM IR
+[X] Generate an object file from the LLVM IR
 [ ] Generate an executable from LLVM IR, possibly integrating simple C library
     functions (e.g. printf() or puts()) to have some output
+[ ] Add typechecking for int literals and expressions (ensuring that int literals
+    are only used with expressions that evaluate to range types)
+[ ] Add check so that int literals are always within the range of the type they
+    are being used with
+[ ] Consider adding a viceversa keyword to be used with binary expressions
 [ ] Work on the various TODOs throughout the codebase
 [ ] Consider reading characters on-demand from an iostream in the lexer instead
     of reading everything into a big string at the start
