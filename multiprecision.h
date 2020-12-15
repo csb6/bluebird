@@ -36,6 +36,7 @@ class multi_int {
 
     multi_int& operator+=(const multi_int&);
     multi_int& operator-=(const multi_int&);
+    multi_int& operator-=(unsigned int);
     multi_int& operator*=(const multi_int&);
     multi_int& operator/=(const multi_int&);
     multi_int& mod(const multi_int&);

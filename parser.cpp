@@ -698,12 +698,12 @@ void Parser::in_range_type_definition(const std::string& type_name)
     //  operators/parentheses/negations/bitwise operators
     multi_int lower_limit{left_expr->value};
     multi_int upper_limit{right_expr->value};
+    if(range_expr->op == TokenType::Op_Upto) {
+        upper_limit -= 1;
+    }
 
     if(upper_limit < lower_limit) {
         print_error(token->line_num, "Upper limit of range is lower than the lower limit");
-        exit(1);
-    } else if(range_expr->op == TokenType::Op_Upto && upper_limit == lower_limit) {
-        print_error(token->line_num, "In `upto` range, lower limit cannot be same as upper limit");
         exit(1);
     }
 
