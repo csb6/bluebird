@@ -31,6 +31,7 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Attributes.h>
 #pragma GCC diagnostic pop
 
 #include "ast.h"
@@ -291,6 +292,7 @@ void CodeGenerator::declare_function_headers()
                                                   function->name,
                                                   m_module);
         assert(curr_funct->getParent() != nullptr);
+        curr_funct->addFnAttr(llvm::Attribute::NoUnwind);
 
         auto param_name_it = parameter_names.begin();
         for(auto& param : curr_funct->args()) {
@@ -321,9 +323,7 @@ void CodeGenerator::emit_object_file(llvm::raw_fd_ostream& object_file)
         target_triple,
         "generic",
         "",
-        options,
-        llvm::Reloc::PIC_,
-        {}, {});
+        options, llvm::Reloc::PIC_, {}, {});
 
     m_module.setDataLayout(target_machine->createDataLayout());
     m_module.setTargetTriple(target_triple);
