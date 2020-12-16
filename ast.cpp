@@ -93,15 +93,19 @@ BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
 
 const Type* BinaryExpression::type() const
 {
-    // If a literal and a typed expression of some sort
-    // are in this expression, want to return the type of
-    // the typed part (literals implicitly convert to that type)
-    switch(left->kind()) {
-    case ExpressionKind::StringLiteral: case ExpressionKind::CharLiteral:
-    case ExpressionKind::IntLiteral:    case ExpressionKind::FloatLiteral:
-        return right->type();
-    default:
-        return left->type();
+    if(is_bool_op(op)) {
+        return &Type::Bool;
+    } else {
+        // If a literal and a typed expression of some sort
+        // are in this expression, want to return the type of
+        // the typed part (literals implicitly convert to that type)
+        switch(left->kind()) {
+        case ExpressionKind::StringLiteral: case ExpressionKind::CharLiteral:
+        case ExpressionKind::IntLiteral:    case ExpressionKind::FloatLiteral:
+            return right->type();
+        default:
+            return left->type();
+        }
     }
 }
 
@@ -203,6 +207,7 @@ const Type Type::String{"StringLiteral"};
 const Type Type::Char{"CharLiteral"};
 const Type Type::Int{"IntLiteral"};
 const Type Type::Float{"FloatLiteral"};
+const Type Type::Bool{"Boolean"};
 
 void Type::print(std::ostream& output) const
 {

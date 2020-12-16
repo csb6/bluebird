@@ -19,7 +19,7 @@
 #include <string>
 #include <iosfwd>
 
-enum class TokenType : char {
+enum class TokenType : unsigned char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
     Keyword_End, Keyword_If, Keyword_Else, Keyword_Range,
@@ -30,9 +30,9 @@ enum class TokenType : char {
     //  Arithmetic
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod, Op_Rem,
     //  Logical
-    Op_And, Op_Or, Op_Not,
+    /*bool_op_start is Op_And*/ Op_And, Op_Or, Op_Not,
     //  Comparison
-    Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge,
+    Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge, /*bool_op_end is Op_Ge*/
     //  Bitwise
     Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor, Op_Bit_Not,
     //  Range
@@ -63,4 +63,5 @@ std::ostream& operator<<(std::ostream&, const TokenType);
 char escape_sequence(char);
 void print_unescape(char source, std::ostream&);
 void print_unescape(const std::string& source, std::ostream&);
+bool is_bool_op(const TokenType);
 #endif

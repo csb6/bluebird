@@ -68,7 +68,7 @@ struct Range {
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type Void, String, Char, Int, Float;
+    static const Type Void, String, Char, Int, Float, Bool;
     std::string name;
 
     Type() {}

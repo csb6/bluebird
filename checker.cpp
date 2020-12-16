@@ -144,6 +144,15 @@ void Assignment::check_types() const
 void IfBlock::check_types() const
 {
     condition->check_types(this);
+    if(condition->type() != &Type::Bool) {
+        std::cerr << "In statement starting at line " << line_num
+                  << ":\n Expected boolean condition for this if-statement,"
+                     " but instead found:\n  Expression: ";
+        condition->print(std::cerr);
+        std::cerr << '\t';
+        condition->type()->print(std::cerr);
+        exit(1);
+    }
     for(auto* stmt : statements) {
         stmt->check_types();
     }

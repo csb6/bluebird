@@ -14,7 +14,7 @@ Todo:
 [X] Consider rewriting lexer to be array-based and making better use
     of constexpr (this isn't practical without C++20, and even there, causes more complexity)
 [X] Add support for if-statements
-[ ] Add typechecking/boolean checking in if-conditions
+[X] Add typechecking/boolean checking in if-conditions
 [ ] Add support for else-statements
 [ ] Add support for else-if statements
 [ ] Fix bug where in an initialization expression, the variable being initialized can appear

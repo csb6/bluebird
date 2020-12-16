@@ -6,7 +6,7 @@ function main() is
   let c : Integer = 60;
   let z : Integer = c + 2;
   let g : Negative = -10;
-  let h : Negative = g / 8;
+  let h : Negative = g;
 
   1 + 1;
   1 + 2 * 3;

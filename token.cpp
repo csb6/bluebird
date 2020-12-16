@@ -224,3 +224,8 @@ void print_unescape(const std::string& source, std::ostream& output)
         print_unescape(letter, output);
     }
 }
+
+bool is_bool_op(const TokenType token)
+{
+    return token >= TokenType::Op_And && token <= TokenType::Op_Ge;
+}

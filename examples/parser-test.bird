@@ -12,7 +12,7 @@ function foo(a : Natural, b : Integer) is
    x = 4 + 1;
    x = n;
    let p : Integer;
-   n - x + (n / 4);
+   n - x + (n / 6);
    4 + 5 + (9 - 6);
    let j : Number;
 end foo;
