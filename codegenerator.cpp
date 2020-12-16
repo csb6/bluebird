@@ -123,15 +123,14 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     case TokenType::Op_Minus:
         return gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
     case TokenType::Op_Div:
-        // Separate instructions for signed/unsigned ints
         if(type_is_signed)
             return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
         else
             return gen.m_ir_builder.CreateUDiv(left_ir, right_ir, "udivtmp");
     case TokenType::Op_Mult:
         return gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
+    // TODO: Figure out IR instructions/usage of Op_Rem vs. Op_Mod
     case TokenType::Op_Mod:
-        // Separate instructions for signed/unsigned ints
         if(type_is_signed)
             return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "smodtmp");
         else
@@ -148,20 +147,30 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateICmpEQ(left_ir, right_ir, "eqtmp");
     case TokenType::Op_Ne:
         return gen.m_ir_builder.CreateICmpNE(left_ir, right_ir, "netmp");
-    // TODO: vary compare function if signed or not
-    // For now, assume signed
     case TokenType::Op_Lt:
-        return gen.m_ir_builder.CreateICmpSLT(left_ir, right_ir, "lttmp");
+        if(type_is_signed)
+            return gen.m_ir_builder.CreateICmpSLT(left_ir, right_ir, "lttmp");
+        else
+            return gen.m_ir_builder.CreateICmpULT(left_ir, right_ir, "ulttmp");
     case TokenType::Op_Gt:
-        return gen.m_ir_builder.CreateICmpSGT(left_ir, right_ir, "gttmp");
+        if(type_is_signed)
+            return gen.m_ir_builder.CreateICmpSGT(left_ir, right_ir, "gttmp");
+        else
+            return gen.m_ir_builder.CreateICmpUGT(left_ir, right_ir, "ugttmp");
     case TokenType::Op_Le:
-        return gen.m_ir_builder.CreateICmpSLE(left_ir, right_ir, "letmp");
+        if(type_is_signed)
+            return gen.m_ir_builder.CreateICmpSLE(left_ir, right_ir, "letmp");
+        else
+            return gen.m_ir_builder.CreateICmpULE(left_ir, right_ir, "uletmp");
     case TokenType::Op_Ge:
-        return gen.m_ir_builder.CreateICmpSGE(left_ir, right_ir, "getmp");
+        if(type_is_signed)
+            return gen.m_ir_builder.CreateICmpSGE(left_ir, right_ir, "getmp");
+        else
+            return gen.m_ir_builder.CreateICmpUGE(left_ir, right_ir, "ugetmp");
     case TokenType::Op_Left_Shift:
         return gen.m_ir_builder.CreateShl(left_ir, right_ir, "sltmp");
     case TokenType::Op_Right_Shift:
-        // Fills in opened bits with zeros
+        // Fills in new bits with zeros
         return gen.m_ir_builder.CreateLShr(left_ir, right_ir, "srtmp");
     case TokenType::Op_Bit_And:
         return gen.m_ir_builder.CreateAnd(left_ir, right_ir, "bitandtmp");

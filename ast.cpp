@@ -23,7 +23,7 @@ Range::Range(const multi_int& lower, const multi_int& upper)
       is_signed(lower.is_negative())
 {
     if(is_signed) {
-        bit_size *= 2;
+        bit_size *= 2; // TODO: add better sizing algorithm
     }
 }
 
@@ -211,5 +211,5 @@ const Type Type::Bool{"Boolean"};
 
 void Type::print(std::ostream& output) const
 {
-    output << "Type: " << name << " bit_size: " << bit_size() << '\n';
+    output << "Type: " << name << '\n';
 }
