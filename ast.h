@@ -41,7 +41,7 @@ enum class ExpressionKind : char {
 };
 
 enum class StatementKind : char {
-    Basic, Initialization, Assignment, IfBlock
+    Basic, Initialization, Assignment, IfBlock, Block
 };
 
 enum class TypeCategory : char {
@@ -283,23 +283,37 @@ struct Initialization final : public Statement {
     void          check_types() const override;
 };
 
+// Statement where an existing variable is given a value
 struct Assignment final : public Statement {
     Magnum::Pointer<Expression> expression;
     LValue* lvalue;
 
     Assignment(unsigned line, Expression* expr, LValue* lv)
         : Statement(line), expression(expr), lvalue(lv) {}
+
     StatementKind kind() const override { return StatementKind::Assignment; }
     void          print(std::ostream& output) const override;
     void          check_types() const override;
 };
 
-struct IfBlock final : public Statement {
-    Magnum::Pointer<Expression> condition;
+// A group of statements contained in a scope
+struct Block : public Statement {
     std::vector<Statement*> statements;
 
+    explicit Block(unsigned int line) : Statement(line) {}
+
+    StatementKind kind() const override { return StatementKind::Block; }
+    void          print(std::ostream&) const override;
+    void          check_types() const override;
+};
+
+// A block that is executed only when its boolean condition is true
+struct IfBlock final : public Block {
+    Magnum::Pointer<Expression> condition;
+    Block* else_or_else_if = nullptr;
+
     IfBlock(unsigned int line, Expression* cond)
-        : Statement(line), condition(cond) {}
+        : Block(line), condition(cond) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;

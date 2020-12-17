@@ -162,17 +162,23 @@ void Assignment::print(std::ostream& output) const
     output << '\n';
 }
 
+void Block::print(std::ostream& output) const
+{
+    output << "Block:\n";
+    output << "Block Statements:\n";
+    for(const auto& each : statements) {
+        each->print(output);
+    }
+    output << '\n';
+}
+
 void IfBlock::print(std::ostream& output) const
 {
     output << "If Block:\n";
     output << "Condition: ";
     condition->print(output);
     output << '\n';
-    output << "Block Statements:\n";
-    for(const auto& each : statements) {
-        each->print(output);
-    }
-    output << '\n';
+    Block::print(output);
 }
 
 void LValue::print(std::ostream& output) const

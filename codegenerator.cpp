@@ -245,6 +245,8 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     case StatementKind::IfBlock:
         in_if_block(curr_funct, static_cast<IfBlock*>(statement));
         break;
+    case StatementKind::Block:
+        break;
     }
 }
 

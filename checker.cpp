@@ -170,6 +170,11 @@ void IfBlock::check_types() const
         condition->type()->print(std::cerr);
         exit(1);
     }
+    Block::check_types();
+}
+
+void Block::check_types() const
+{
     for(auto* stmt : statements) {
         stmt->check_types();
     }
