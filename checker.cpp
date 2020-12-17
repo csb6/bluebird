@@ -92,17 +92,19 @@ void BinaryExpression::check_types(const Statement* statement) const
     // Ensure the sub-expressions are correct first
     left->check_types(statement);
     right->check_types(statement);
+    const Type* left_type = left->type();
+    const Type* right_type = right->type();
     // Check that the types of both sides of the operator match
-    if(left->type() != right->type()) {
-        print_type_mismatch(statement->line_num, left.get(), right.get(), right->type(),
+    if(left_type != right_type) {
+        print_type_mismatch(statement->line_num, left.get(), right.get(), right_type,
                             "Right", "Left", &op);
         exit(1);
     } else if(right->kind() == ExpressionKind::IntLiteral) {
         check_literal_types(static_cast<const IntLiteral*>(right.get()), left.get(),
-                            left->type(), statement);
+                            left_type, statement);
     } else if(left->kind() == ExpressionKind::IntLiteral) {
         check_literal_types(static_cast<const IntLiteral*>(left.get()), right.get(),
-                            right->type(), statement);
+                            right_type, statement);
     }
 }
 
