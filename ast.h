@@ -64,6 +64,7 @@ struct Range {
 
     bool contains(const multi_int&) const;
 };
+std::ostream& operator<<(std::ostream& output, const Range&);
 
 // A kind of object
 struct Type {
@@ -85,10 +86,14 @@ struct RangeType : public Type {
     Range range;
 
     using Type::Type;
-    RangeType(const std::string &n, Range &&r) : Type(n), range(r) {}
+    RangeType(const std::string &n,
+              const multi_int& lower_limit,
+              const multi_int& upper_limit)
+        : Type(n), range(lower_limit, upper_limit) {}
 
     unsigned short bit_size() const override { return range.bit_size; }
     TypeCategory   category() const override { return TypeCategory::Range; }
+    void           print(std::ostream&) const override;
     bool           is_signed() const { return range.is_signed; }
 };
 

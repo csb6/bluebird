@@ -713,8 +713,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
         exit(1);
     }
 
-    RangeType* ptr = m_names_table.add_type(RangeType{{type_name},
-                                                      Range{lower_limit, upper_limit}});
+    RangeType* ptr = m_names_table.add_type(type_name, lower_limit, upper_limit);
     m_range_type_list.push_back(ptr);
 }
 
@@ -842,10 +841,12 @@ LValue* SymbolTable::add_lvalue(const std::string& name)
     return ptr;
 }
 
-RangeType* SymbolTable::add_type(RangeType&& type)
+RangeType* SymbolTable::add_type(const std::string& name,
+                                 const multi_int& lower_limit,
+                                 const multi_int& upper_limit)
 {
-    RangeType* ptr = m_range_types.make<RangeType>(type);
-    m_scopes[m_curr_scope].symbols[type.name]
+    RangeType* ptr = m_range_types.make<RangeType>(name, lower_limit, upper_limit);
+    m_scopes[m_curr_scope].symbols[name]
         = SymbolInfo{NameType::Type, ptr};
     return ptr;
 }

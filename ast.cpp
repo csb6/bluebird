@@ -17,6 +17,16 @@
 #include "ast.h"
 #include <iomanip> // for setprecision()
 
+void Type::print(std::ostream& output) const
+{
+    output << "Type: " << name << '\n';
+}
+
+void RangeType::print(std::ostream& output) const
+{
+    output << "Type: " << name << " Range: " << range << '\n';
+}
+
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       bit_size(std::max(lower.bits_needed(), upper.bits_needed())),
@@ -30,6 +40,12 @@ Range::Range(const multi_int& lower, const multi_int& upper)
 bool Range::contains(const multi_int& value) const
 {
     return value >= lower_bound && value <= upper_bound;
+}
+
+std::ostream& operator<<(std::ostream& output, const Range& range)
+{
+    output << '(' << range.lower_bound << ", " << range.upper_bound << ')';
+    return output;
 }
 
 const Type* LValueExpression::type() const
@@ -222,8 +238,3 @@ const Type Type::Char{"CharLiteral"};
 const Type Type::Int{"IntLiteral"};
 const Type Type::Float{"FloatLiteral"};
 const Type Type::Bool{"Boolean"};
-
-void Type::print(std::ostream& output) const
-{
-    output << "Type: " << name << '\n';
-}

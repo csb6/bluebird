@@ -204,7 +204,7 @@ std::ostream& operator<<(std::ostream& output, const multi_int& n)
 {
     char* str = nullptr;
     str = mpz_get_str(str, 10, n.m_number);
-    output << str;
+    output << str << std::flush;
     free(str);
     return output;
 }
