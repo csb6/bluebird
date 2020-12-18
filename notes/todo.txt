@@ -18,6 +18,10 @@ Todo:
 [ ] Add support for else-statements
 [ ] Add support for else-if statements
 [ ] Fix bug where in an initialization expression, the variable being initialized can appear
+[ ] Fix bug where sometimes (~1 out of every 10 runs) the typechecker incorrectly checks
+    the range of a literal (run if-block.bird example to see the error)
+    I have confirmed that this bug (with varying frequency) recurs at least as far back
+    as commit 23088af. It is probably very old (since it is appears so rarely)
 [ ] Add support for module-global variables
 [X] Generate an object file from the LLVM IR
 [ ] Generate an executable from LLVM IR, possibly integrating simple C library

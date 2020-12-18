@@ -563,17 +563,14 @@ IfBlock* Parser::in_if_block()
     m_names_table.open_scope();
     unsigned int line_num = token->line_num;
     // First, parse the if-condition
-    auto *new_block = m_statements.make<IfBlock>(line_num, parse_expression());
+    auto *new_if_block = m_statements.make<IfBlock>(line_num, parse_expression());
     assert_token_is(TokenType::Keyword_Do,
                     "keyword `do` following `if` condition", *token);
 
     // Next, parse the statements inside the if-block
     ++token;
     while(token != m_input_end) {
-        if(token->type != TokenType::Keyword_End) {
-            // Found a statement, parse it
-            new_block->statements.push_back(in_statement());
-        } else {
+        if(token->type == TokenType::Keyword_End) {
             // End of block
             m_names_table.close_scope();
             if(std::next(token)->type == TokenType::Keyword_If) {
@@ -586,10 +583,19 @@ IfBlock* Parser::in_if_block()
                             *token);
             ++token;
             break;
+        } else if(token->type == TokenType::Keyword_Else) {
+            // End of if-block, start of else-if block
+            // TODO: add support for else block
+            m_names_table.close_scope();
+            ++token;
+            new_if_block->else_or_else_if = in_if_block();
+            break;
+        } else {
+            new_if_block->statements.push_back(in_statement());
         }
     }
 
-    return new_block;
+    return new_if_block;
 }
 
 void Parser::in_function_definition()

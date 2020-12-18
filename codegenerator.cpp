@@ -276,6 +276,11 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock)
     }
     m_ir_builder.CreateBr(succ_block);
     m_ir_builder.SetInsertPoint(succ_block);
+    if(ifblock->else_or_else_if == nullptr) {
+        return;
+    } else if(ifblock->else_or_else_if->kind() == StatementKind::IfBlock) {
+        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if));
+    }
 }
 
 void CodeGenerator::declare_function_headers()

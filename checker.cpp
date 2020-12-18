@@ -173,6 +173,9 @@ void IfBlock::check_types() const
         exit(1);
     }
     Block::check_types();
+    if(else_or_else_if != nullptr) {
+        else_or_else_if->check_types();
+    }
 }
 
 void Block::check_types() const

@@ -48,7 +48,9 @@ UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
 
 void StringLiteral::print(std::ostream& output) const
 {
+    output << '"';
     print_unescape(value, output);
+    output << '"';
 }
 
 void CharLiteral::print(std::ostream& output) const
@@ -179,6 +181,12 @@ void IfBlock::print(std::ostream& output) const
     condition->print(output);
     output << '\n';
     Block::print(output);
+    if(else_or_else_if == nullptr) {
+        return;
+    } else if(else_or_else_if->kind() == StatementKind::IfBlock) {
+        output << "Else ";
+    }
+    else_or_else_if->print(output);
 }
 
 void LValue::print(std::ostream& output) const

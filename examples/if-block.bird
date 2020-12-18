@@ -3,6 +3,10 @@ function main() is
   if n < 50 do
     let j: Integer = 4;
     n = n + 10;
+  else if n == 90 do
+    let h: Integer = 89 + 0;
+  else if n != 89 do
+    let h: Integer = 9;
   end if;
 end;
 

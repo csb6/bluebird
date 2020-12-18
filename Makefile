@@ -40,4 +40,4 @@ $(c_files): %.o: %.c
 	$(c_compiler) -c -MD -MF$*.d $(c_flags) $*.c -o $*.o
 
 clean:
-	rm -f $(exe_name) *.o *.d
+	rm -f $(exe_name) *.o *.d third_party/mini-gmp/*.o third_party/mini-gmp/*.d
