@@ -62,7 +62,6 @@ static void check_literal_types(const IntLiteral* literal, const Other* other,
     if(other_type->category() == TypeCategory::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const Range& range = range_type->range;
-        std::cerr << range << '\n';
         if(!range.contains(literal->value)) {
             std::cerr << "In statement starting at line " << stmt->line_num
                       << ":\n Integer literal `";
