@@ -199,7 +199,7 @@ void IfBlock::print(std::ostream& output) const
     Block::print(output);
     if(else_or_else_if == nullptr) {
         return;
-    } else if(else_or_else_if->kind() == StatementKind::IfBlock) {
+    } else {
         output << "Else ";
     }
     else_or_else_if->print(output);

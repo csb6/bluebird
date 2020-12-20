@@ -557,11 +557,11 @@ BasicStatement* Parser::in_basic_statement()
 
 IfBlock* Parser::in_if_block()
 {
-    assert_token_is(TokenType::Keyword_If, "keyword if", *token);
+    assert_token_is(TokenType::Keyword_If, "keyword `if`", *token);
+    const unsigned int line_num = token->line_num;
     ++token;
 
     m_names_table.open_scope();
-    unsigned int line_num = token->line_num;
     // First, parse the if-condition
     auto *new_if_block = m_statements.make<IfBlock>(line_num, parse_expression());
     assert_token_is(TokenType::Keyword_Do,
@@ -582,20 +582,54 @@ IfBlock* Parser::in_if_block()
                             "closing `;` or an end label after end of if-block",
                             *token);
             ++token;
-            break;
+            return new_if_block;
         } else if(token->type == TokenType::Keyword_Else) {
-            // End of if-block, start of else-if block
-            // TODO: add support for else block
+            // End of if-block, start of else-if or else block
             m_names_table.close_scope();
-            ++token;
-            new_if_block->else_or_else_if = in_if_block();
-            break;
+            if(std::next(token)->type == TokenType::Keyword_If) {
+                // Else-if block
+                ++token;
+                new_if_block->else_or_else_if = in_if_block();
+            } else {
+                // Else block
+                new_if_block->else_or_else_if = in_else_block();
+            }
+            return new_if_block;
         } else {
             new_if_block->statements.push_back(in_statement());
         }
     }
+    print_error(token->line_num, "Incomplete if-block");
+    exit(1);
+}
 
-    return new_if_block;
+Block* Parser::in_else_block()
+{
+    assert_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
+    m_names_table.open_scope();
+    auto* new_else_block = m_statements.make<Block>(token->line_num);
+    ++token;
+
+    while(token != m_input_end) {
+        if(token->type == TokenType::Keyword_End) {
+            // End of block
+            m_names_table.close_scope();
+            if(std::next(token)->type == TokenType::Keyword_If) {
+                // Optional keyword to show end of if-block
+                ++token;
+            }
+            ++token;
+            assert_token_is(TokenType::End_Statement,
+                            "closing `;` or an end label after end of else-block",
+                            *token);
+            ++token;
+            return new_else_block;
+        } else {
+            new_else_block->statements.push_back(in_statement());
+        }
+    }
+    print_error(token->line_num, "Incomplete else-block");
+    exit(1);
 }
 
 void Parser::in_function_definition()

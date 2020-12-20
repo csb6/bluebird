@@ -263,24 +263,56 @@ void CodeGenerator::in_assignment(Assignment* assgn)
     }
 }
 
-void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock)
+void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
+                                llvm::BasicBlock* successor)
 {
     llvm::Value* condition = ifblock->condition->codegen(*this);
-    auto* if_true = llvm::BasicBlock::Create(m_context, "iftrue", curr_funct);
-    auto* succ_block = llvm::BasicBlock::Create(m_context, "succblock", curr_funct);
-    m_ir_builder.CreateCondBr(condition, if_true, succ_block);
+    const auto cond_br_point = m_ir_builder.saveIP();
 
+    // The if-block (jumped-to when condition is true)
+    auto* if_true = llvm::BasicBlock::Create(m_context, "iftrue", curr_funct);
     m_ir_builder.SetInsertPoint(if_true);
     for(Statement* stmt : ifblock->statements) {
         in_statement(curr_funct, stmt);
     }
-    m_ir_builder.CreateBr(succ_block);
-    m_ir_builder.SetInsertPoint(succ_block);
-    if(ifblock->else_or_else_if == nullptr) {
-        return;
-    } else if(ifblock->else_or_else_if->kind() == StatementKind::IfBlock) {
-        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if));
+    if(successor == nullptr) {
+        successor = llvm::BasicBlock::Create(m_context, "successor", curr_funct);
     }
+    m_ir_builder.CreateBr(successor);
+
+    // The linked block (i.e. else or else-if block); jumped to when false
+    llvm::BasicBlock* if_false = successor;
+    if(ifblock->else_or_else_if == nullptr) {
+        // No more else-if or else-blocks; do nothing
+    } else if(ifblock->else_or_else_if->kind() == StatementKind::IfBlock) {
+        // Else-if block
+        if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
+        m_ir_builder.SetInsertPoint(if_false);
+        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if),
+                    successor);
+    } else if(ifblock->else_or_else_if->kind() == StatementKind::Block) {
+        // Else block
+        if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
+        m_ir_builder.SetInsertPoint(if_false);
+        in_block(curr_funct, static_cast<Block*>(ifblock->else_or_else_if),
+                 successor);
+    }
+    // Finally, insert the branch instruction right before the two branching blocks
+    m_ir_builder.restoreIP(cond_br_point);
+    m_ir_builder.CreateCondBr(condition, if_true, if_false);
+    m_ir_builder.SetInsertPoint(successor);
+}
+
+// Currently used to generate else-blocks, but should work for anonymous blocks
+// if they are added in the future
+void CodeGenerator::in_block(llvm::Function* curr_funct,
+                             Block* block, llvm::BasicBlock* successor)
+{
+    for(Statement* stmt : block->statements) {
+        in_statement(curr_funct, stmt);
+    }
+    m_ir_builder.CreateBr(successor);
+    m_ir_builder.SetInsertPoint(successor);
 }
 
 void CodeGenerator::declare_function_headers()

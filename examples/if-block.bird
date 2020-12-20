@@ -7,6 +7,8 @@ function main() is
     let h: Integer = 89 + 0;
   else if n != 89 do
     let h: Integer = 9;
+  else
+    n = n + 9;
   end if;
 end;
 

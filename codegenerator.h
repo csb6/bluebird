@@ -59,7 +59,12 @@ private:
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
-    void in_if_block(llvm::Function*, struct IfBlock*);
+    // successor is nullptr -> if-block
+    // sucessor isn't nullptr -> else-if-block
+    void in_if_block(llvm::Function*, struct IfBlock*,
+                     llvm::BasicBlock* successor = nullptr);
+    void in_block(llvm::Function*, struct Block*,
+                  llvm::BasicBlock* successor);
 
     void emit_object_file(llvm::raw_fd_ostream& object_file);
 public:
