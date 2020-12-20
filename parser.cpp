@@ -422,6 +422,7 @@ Expression* Parser::in_parentheses()
     return result;
 }
 
+// Creates LValue, but does not add to symbol table 
 LValue* Parser::in_lvalue_declaration()
 {
     assert_token_is(TokenType::Name, "the name of an lvalue", *token);
@@ -468,9 +469,8 @@ LValue* Parser::in_lvalue_declaration()
 Initialization* Parser::in_initialization()
 {
     assert_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
-    unsigned int line_num = token->line_num;
+    const unsigned int line_num = token->line_num;
 
-    // Add this new lvalue to list of tracked names
     ++token;
     auto *new_statement =
         m_statements.make<Initialization>(line_num, in_lvalue_declaration());
@@ -487,6 +487,7 @@ Initialization* Parser::in_initialization()
     } else {
         ++token;
         Expression* init_val = parse_expression();
+        ++token;
         if(init_val->kind() == ExpressionKind::IntLiteral) {
             // Resolve int literal's type based on the type of the lvalue
             // it is being assigned to
@@ -495,10 +496,9 @@ Initialization* Parser::in_initialization()
             init_lit->context_lvalue = new_statement->lvalue;
         }
         new_statement->expression = Magnum::pointer<Expression>(init_val);
-        m_names_table.add_lvalue(new_statement->lvalue);
-        ++token;
-        return new_statement;
     }
+    m_names_table.add_lvalue(new_statement->lvalue);
+    return new_statement;
 }
 
 Assignment* Parser::in_assignment()
@@ -517,7 +517,7 @@ Assignment* Parser::in_assignment()
         exit(1);
     }
 
-    unsigned int line_num = token->line_num;
+    const unsigned int line_num = token->line_num;
     std::advance(token, 2); // skip varname and `=` operator
     Expression* expr = parse_expression();
     if(expr->kind() == ExpressionKind::IntLiteral) {
@@ -925,7 +925,7 @@ void SymbolTable::validate_names()
 
     // TODO: Have mechanism where types/functions in other modules are resolved
     int old_curr_scope = m_curr_scope;
-    for(int scope_index = 0; scope_index < m_scopes.size(); ++scope_index) {
+    for(size_t scope_index = 0; scope_index < m_scopes.size(); ++scope_index) {
         m_curr_scope = scope_index;
         Scope& scope = m_scopes[scope_index];
         // Try and resolve the types of lvalues whose types were not declared beforehand

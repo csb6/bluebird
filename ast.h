@@ -145,8 +145,8 @@ struct IntLiteral final : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
     ContextKind context_kind = ContextKind::None;
+    // An expression OR lvalue that determines the type of this literal
     union {
-        // The expression that determines the type of this literal
         Expression* context_expr = nullptr;
         struct LValue* context_lvalue;
     };
@@ -245,6 +245,9 @@ struct LValue {
     std::string name;
     RangeType* type;
     bool is_mutable = true;
+
+    explicit LValue(const std::string& n) : name(n) {}
+    LValue(const std::string& n, RangeType* t) : name(n), type(t) {}
 
     void print(std::ostream&) const;
 };
