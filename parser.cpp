@@ -358,19 +358,24 @@ Expression* Parser::in_function_call()
         // to be filled in (hopefully) later
         new_function_call->function = m_names_table.add_function(token->text);
         m_names_table.add_unresolved(new_function_call);
-    } else if(match.value().name_type == NameType::DeclaredFunct) {
-        // A temp declaration (one without definition) has been declared, but haven't
-        // resolved its definition yet
-        new_function_call->function = match.value().function;
-        m_names_table.add_unresolved(new_function_call);
-    } else if(match.value().name_type == NameType::Funct) {
-        // Found a function with a full definition
-        new_function_call->function = match.value().function;
-        is_resolved = true;
     } else {
-        print_error(token->line_num, "Expected `" + token->text
-                    + "` to be a function name, but it is defined as another kind of name");
-        exit(1);
+        switch(match.value().name_type) {
+        case NameType::DeclaredFunct:
+            // A temp declaration (one without definition) has been declared, but haven't
+            // resolved its definition yet
+            new_function_call->function = match.value().function;
+            m_names_table.add_unresolved(new_function_call);
+            break;
+        case NameType::Funct:
+            // Found a function with a full definition
+            new_function_call->function = match.value().function;
+            is_resolved = true;
+            break;
+        default:
+            print_error(token->line_num, "Expected `" + token->text
+                        + "` to be a function name, but it is defined as another kind of name");
+            exit(1);
+        }
     }
 
     ++token;
@@ -450,17 +455,22 @@ LValue* Parser::in_lvalue_declaration()
         // to be filled in (hopefully) later
         new_lvalue->type = m_names_table.add_type(token->text);
         m_names_table.add_unresolved(new_lvalue);
-    } else if(match.value().name_type == NameType::DeclaredType) {
-        // A temp type (one that lacks a definition) has already been declared, but
-        // the actual definition of it hasn't been resolved yet
-        new_lvalue->type = match.value().range_type;
-        m_names_table.add_unresolved(new_lvalue);
-    } else if(match.value().name_type == NameType::Type) {
-        new_lvalue->type = match.value().range_type;
     } else {
-        print_error(token->line_num, "Expected `" + token->text
-                    + "` to be a typename, but it is defined as another kind of name");
-        exit(1);
+        switch(match.value().name_type) {
+        case NameType::DeclaredType:
+            // A temp type (one that lacks a definition) has already been declared, but
+            // the actual definition of it hasn't been resolved yet
+            new_lvalue->type = match.value().range_type;
+            m_names_table.add_unresolved(new_lvalue);
+            break;
+        case NameType::Type:
+            new_lvalue->type = match.value().range_type;
+            break;
+        default:
+            print_error(token->line_num, "Expected `" + token->text
+                        + "` to be a typename, but it is defined as another kind of name");
+            exit(1);
+        }
     }
 
     return new_lvalue;
@@ -479,8 +489,6 @@ Initialization* Parser::in_initialization()
     if(token->type == TokenType::End_Statement) {
         // Declaration is valid, just no initial value was set
         ++token;
-        m_names_table.add_lvalue(new_statement->lvalue);
-        return new_statement;
     } else if(token->type != TokenType::Op_Assign) {
         print_error_expected("assignment operator or ';'", *token);
         exit(1);

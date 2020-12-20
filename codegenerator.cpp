@@ -436,7 +436,6 @@ void CodeGenerator::run()
     object_file = object_file.filename();
     emit(object_file);
 
-    std::filesystem::path exe_file{object_file};
-    exe_file.replace_extension("");
+    std::filesystem::path exe_file{"a.out"};
     link(object_file, exe_file);
 }
