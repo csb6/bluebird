@@ -28,10 +28,12 @@
 
 #include <vector>
 #include <unordered_map>
+#include <filesystem>
 
 namespace llvm {
     class AllocaInst;
     class raw_fd_ostream;
+    class TargetMachine;
 };
 
 class CodeGenerator {
@@ -39,6 +41,7 @@ private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
     llvm::Module m_module;
+    llvm::TargetMachine* m_target_machine;
 
     const std::vector<struct Function*>& m_functions;
     std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
@@ -66,9 +69,11 @@ private:
     void in_block(llvm::Function*, struct Block*,
                   llvm::BasicBlock* successor);
 
-    void emit_object_file(llvm::raw_fd_ostream& object_file);
+    void emit(const std::filesystem::path& object_file);
+    void link(const std::filesystem::path& object_file,
+              const std::filesystem::path& exe_file);
 public:
-    explicit CodeGenerator(const std::vector<Function*>&);
+    explicit CodeGenerator(const char* source_filename, const std::vector<Function*>&);
     void run();
 };
 #endif

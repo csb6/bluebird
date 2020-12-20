@@ -45,10 +45,33 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 }
 
 
-CodeGenerator::CodeGenerator(const std::vector<Function*>& functions)
-    : m_ir_builder(m_context), m_module("main module", m_context),
+CodeGenerator::CodeGenerator(const char* source_filename,
+                             const std::vector<Function*>& functions)
+    : m_ir_builder(m_context), m_module(source_filename, m_context),
       m_functions(functions)
-{}
+{
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    const std::string target_triple{llvm::sys::getDefaultTargetTriple()};
+
+    std::string error;
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+    if(!error.empty()) {
+        std::cerr << "Codegen error: " << error << "\n";
+        exit(1);
+    }
+    const llvm::TargetOptions options;
+
+    m_target_machine = target->createTargetMachine(
+        target_triple,
+        "generic",
+        "",
+        options, llvm::Reloc::PIC_, {}, {});
+
+    m_module.setDataLayout(m_target_machine->createDataLayout());
+    m_module.setTargetTriple(target_triple);
+}
 
 llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
 {
@@ -353,36 +376,39 @@ void CodeGenerator::declare_function_headers()
     }
 }
 
-void CodeGenerator::emit_object_file(llvm::raw_fd_ostream& object_file)
+void CodeGenerator::emit(const std::filesystem::path& object_file)
 {
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-    const std::string target_triple{llvm::sys::getDefaultTargetTriple()};
-
-    std::string error;
-    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-    if(!error.empty()) {
-        std::cerr << "Object file emit error: " << error << "\n";
-        exit(1);
+    std::error_code file_error;
+    llvm::raw_fd_ostream output{object_file.string(), file_error};
+    if(file_error) {
+        std::cerr << "Codegen error: " << file_error.message() << "\n";
+        return;
     }
-    const llvm::TargetOptions options;
-    auto* target_machine = target->createTargetMachine(
-        target_triple,
-        "generic",
-        "",
-        options, llvm::Reloc::PIC_, {}, {});
-
-    m_module.setDataLayout(target_machine->createDataLayout());
-    m_module.setTargetTriple(target_triple);
 
     // We need this for some reason? Not really sure how to get around using it
     llvm::legacy::PassManager pass_manager;
     // TODO: add optimization passes
-    target_machine->addPassesToEmitFile(pass_manager, object_file, nullptr,
-                                        llvm::CodeGenFileType::CGFT_ObjectFile);
+    m_target_machine->addPassesToEmitFile(pass_manager, output, nullptr,
+                                          llvm::CodeGenFileType::CGFT_ObjectFile);
     pass_manager.run(m_module);
-    object_file.flush();
+    output.flush();
+}
+
+void CodeGenerator::link(const std::filesystem::path& object_file,
+                         const std::filesystem::path& exe_file)
+{
+#ifndef __APPLE__
+    int status = system(("ld " + object_file.string()
+                         + " -o " + exe_file.string() + " -lSystem").c_str());
+    if(status != 0) {
+        std::cerr << "Linker error: status code: " << status << '\n';
+        exit(1);
+    }
+#else
+    std::cerr << "Note: linking not implemented for this platform, so"
+        " no executable will be produced. Manually use linker to turn emitted"
+        " object file into an executable\n";
+#endif
 }
 
 void CodeGenerator::run()
@@ -403,12 +429,14 @@ void CodeGenerator::run()
     }
 
     llvm::verifyModule(m_module, &llvm::errs());
-    //m_module.print(llvm::errs(), nullptr);
-    std::error_code file_error;
-    llvm::raw_fd_ostream output_file{"output.o", file_error};
-    if(file_error) {
-        std::cerr << file_error.message() << "\n";
-        return;
-    }
-    emit_object_file(output_file);
+    m_module.print(llvm::errs(), nullptr);
+
+    std::filesystem::path object_file{m_module.getSourceFileName()};
+    object_file.replace_extension(".o");
+    object_file = object_file.filename();
+    emit(object_file);
+
+    std::filesystem::path exe_file{object_file};
+    exe_file.replace_extension("");
+    link(object_file, exe_file);
 }
