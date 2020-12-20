@@ -397,7 +397,7 @@ void CodeGenerator::emit(const std::filesystem::path& object_file)
 void CodeGenerator::link(const std::filesystem::path& object_file,
                          const std::filesystem::path& exe_file)
 {
-#ifndef __APPLE__
+#ifdef __APPLE__
     int status = system(("ld " + object_file.string()
                          + " -o " + exe_file.string() + " -lSystem").c_str());
     if(status != 0) {
