@@ -15,9 +15,9 @@ Todo:
     of constexpr (this isn't practical without C++20, and even there, causes more complexity)
 [X] Add support for if-statements
 [X] Add typechecking/boolean checking in if-conditions
-[ ] Add support for else-statements
-[ ] Add support for else-if statements
-[ ] Fix bug where in an initialization expression, the variable being initialized can appear
+[X] Add support for else-statements
+[X] Add support for else-if statements
+[X] Fix bug where in an initialization expression, the variable being initialized can appear
 [X] Fix bug where sometimes (~1 out of every 10 runs) the typechecker incorrectly checks
     the range of a literal (run if-block.bird example to see the error)
     - I have confirmed that this bug (with varying frequency) recurs at least as far back

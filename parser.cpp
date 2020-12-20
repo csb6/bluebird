@@ -430,7 +430,7 @@ LValue* Parser::in_lvalue_declaration()
                     + "` cannot be used as an lvalue name. It is already defined as a name");
         exit(1);
     }
-    LValue* new_lvalue = m_names_table.add_lvalue(token->text);
+    LValue* new_lvalue = m_lvalues.make<LValue>(token->text);
 
     ++token;
     assert_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
@@ -479,6 +479,7 @@ Initialization* Parser::in_initialization()
     if(token->type == TokenType::End_Statement) {
         // Declaration is valid, just no initial value was set
         ++token;
+        m_names_table.add_lvalue(new_statement->lvalue);
         return new_statement;
     } else if(token->type != TokenType::Op_Assign) {
         print_error_expected("assignment operator or ';'", *token);
@@ -494,6 +495,7 @@ Initialization* Parser::in_initialization()
             init_lit->context_lvalue = new_statement->lvalue;
         }
         new_statement->expression = Magnum::pointer<Expression>(init_val);
+        m_names_table.add_lvalue(new_statement->lvalue);
         ++token;
         return new_statement;
     }
@@ -868,11 +870,9 @@ SymbolTable::search_for_definition(const std::string& name, NameType kind) const
     return {};
 }
 
-LValue* SymbolTable::add_lvalue(const std::string& name)
+void SymbolTable::add_lvalue(LValue* lval)
 {
-    LValue* ptr = m_lvalues.make<LValue>(name);
-    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::LValue, ptr};
-    return ptr;
+    m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
 }
 
 RangeType* SymbolTable::add_type(const std::string& name,

@@ -63,7 +63,7 @@ public:
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
-    LValue*    add_lvalue(const std::string& name);
+    void       add_lvalue(LValue*);
     RangeType* add_type(const std::string& name,
                         const multi_int& lower_limit, const multi_int& upper_limit);
     // Add a temporary type that lacks a definition
