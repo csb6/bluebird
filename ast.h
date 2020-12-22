@@ -78,7 +78,7 @@ struct Type {
 
     Type() {}
     explicit Type(const std::string &n) : name(n) {}
-    virtual ~Type() {}
+    virtual ~Type() noexcept {}
 
     virtual unsigned short bit_size() const { return 0; }
     virtual TypeCategory   category() const { return TypeCategory::Normal; }
@@ -103,7 +103,7 @@ struct RangeType : public Type {
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
-    virtual ~Expression() {}
+    virtual ~Expression() noexcept {};
 
     // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
     virtual ExpressionKind kind() const = 0;
@@ -278,7 +278,7 @@ struct LValue {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
-    virtual ~Statement() {}
+    virtual ~Statement() noexcept {}
 
     virtual StatementKind kind() const = 0;
     virtual void          print(std::ostream&) const = 0;
@@ -348,7 +348,11 @@ struct Function {
     std::vector<LValue*> parameters;
 
     explicit Function(const std::string& n) : name(n) {}
-    ~Function() {}
+    Function(const Function&) = default;
+    Function(Function&&) = default;
+    Function& operator=(const Function&) = default;
+    Function& operator=(Function&&) = default;
+    virtual ~Function() noexcept = default;
 
     virtual void         print(std::ostream&) const = 0;
     virtual FunctionKind kind() const = 0;
@@ -356,7 +360,7 @@ struct Function {
 
 // A procedure written in Bluebird containing statements and
 // optionally inputs/outputs
-struct BBFunction : public Function {
+struct BBFunction final : public Function {
     std::vector<Statement*> statements;
 
     explicit BBFunction(const std::string& n) : Function(n) {}
@@ -367,7 +371,7 @@ struct BBFunction : public Function {
 
 // A function with no body (written in Bluebird, that is); forward
 // declares some function (likely in C) of some other library/object file
-struct BuiltinFunction : public Function {
+struct BuiltinFunction final : public Function {
     explicit BuiltinFunction(const std::string& n) : Function(n) {}
 
     void         print(std::ostream&) const override;

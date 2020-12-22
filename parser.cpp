@@ -138,25 +138,25 @@ constexpr bool is_binary_operator(const Precedence p)
 }
 
 
-void print_error(unsigned int line_num, std::string_view message)
+static void print_error(unsigned int line_num, std::string_view message)
 {
     std::cerr << "ERROR: Line " << line_num << ": "
               << message << "\n";
 }
 
-void print_error(std::string_view message)
+static void print_error(std::string_view message)
 {
     std::cerr << "ERROR: " << message << "\n";
 }
 
-void print_error_expected(std::string_view expected, Token actual)
+static void print_error_expected(std::string_view expected, Token actual)
 {
     std::cerr << "ERROR: Line " << actual.line_num << ": "
               << "Expected " << expected << ", but instead found token:\n";
     std::cerr << "  " << actual;
 }
 
-void print_error_expected(std::string_view expected, const Expression* actual)
+static void print_error_expected(std::string_view expected, const Expression* actual)
 {
     std::cerr << "ERROR: Line " << actual->line_num() << ": "
               << "Expected " << expected << ", but instead found expression:\n";
@@ -164,7 +164,7 @@ void print_error_expected(std::string_view expected, const Expression* actual)
     std::cerr << '\n';
 }
 
-void assert_token_is(TokenType type, std::string_view description, Token token)
+static void assert_token_is(TokenType type, std::string_view description, Token token)
 {
     if(token.type != type) {
         print_error_expected(description, token);
@@ -172,7 +172,7 @@ void assert_token_is(TokenType type, std::string_view description, Token token)
     }
 }
 
-Expression* fold_constants(Token op, Expression* right)
+static Expression* fold_constants(Token op, Expression* right)
 {
     if(right->kind() != ExpressionKind::IntLiteral) {
         return new UnaryExpression(op.type, right);
@@ -193,7 +193,7 @@ Expression* fold_constants(Token op, Expression* right)
     }
 }
 
-Expression* fold_constants(Expression* left, const Token& op, Expression* right)
+static Expression* fold_constants(Expression* left, const Token& op, Expression* right)
 {
     bool left_is_literal = left->kind() == ExpressionKind::IntLiteral;
     bool right_is_literal = right->kind() == ExpressionKind::IntLiteral;

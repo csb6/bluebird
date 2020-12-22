@@ -12,7 +12,7 @@ compiler := clang++
 c_compiler := clang
 llvm_linker_flags := `llvm-config --ldflags --system-libs --libs core native`
 llvm_compiler_flags := `llvm-config --cxxflags`
-flags := -std=c++17 -Wall -Wextra -pedantic-errors -Ithird_party
+flags := -std=c++17 -Wall -Wextra -pedantic-errors -Wdeprecated -Ithird_party
 c_flags := -std=c99 -Ithird_party
 
 # Link (default rule)
