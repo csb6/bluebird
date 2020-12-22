@@ -188,8 +188,11 @@ void Block::check_types() const
 void Checker::run() const
 {
     for(const auto *function : m_functions) {
-        for(const auto *statement : function->statements) {
-            statement->check_types();
+        if(function->kind() == FunctionKind::Normal) {
+            for(const auto *statement
+                    : static_cast<const BBFunction*>(function)->statements) {
+                statement->check_types();
+            }
         }
     }
 }

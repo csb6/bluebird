@@ -216,20 +216,23 @@ void LValue::print(std::ostream& output) const
     output << name;
 }
 
-std::ostream& operator<<(std::ostream& output, const Function& function)
+void BBFunction::print(std::ostream& output) const
 {
-    output << "Function: " << function.name << '\n';
-    output << "Parameters:\n";
-    for(const auto *param : function.parameters) {
+    output << "Function: " << name << "\nParameters:\n";
+    for(const auto *param : parameters) {
         param->print(output);
         output << '\n';
     }
     output << "Statements:\n";
 
-    for(const auto& statement : function.statements) {
+    for(const auto& statement : statements) {
         statement->print(output);
     }
-    return output;
+}
+
+void BuiltinFunction::print(std::ostream& output) const
+{
+    output << "Built-In Function: " << name << '\n';
 }
 
 const Type Type::Void{"VoidType"};

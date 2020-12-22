@@ -52,6 +52,10 @@ enum class ContextKind : char {
     None, Expression, LValue
 };
 
+enum class FunctionKind : char {
+    Normal, Builtin
+};
+
 // A lazily-evaluated sequence
 // Upper/lower bounds are inclusive
 struct Range {
@@ -328,14 +332,35 @@ struct IfBlock final : public Block {
     void          check_types() const override;
 };
 
-// A procedure containing statements and optionally inputs/outputs
+// A callable procedure that optionally takes inputs
 struct Function {
     std::string name;
     std::vector<LValue*> parameters;
-    std::vector<Statement*> statements;
 
     explicit Function(const std::string& n) : name(n) {}
+    ~Function() {}
 
-    friend std::ostream& operator<<(std::ostream&, const Function&);
+    virtual void         print(std::ostream&) const = 0;
+    virtual FunctionKind kind() const = 0;
+};
+
+// A procedure written in Bluebird containing statements and
+// optionally inputs/outputs
+struct BBFunction : public Function {
+    std::vector<Statement*> statements;
+
+    explicit BBFunction(const std::string& n) : Function(n) {}
+
+    void         print(std::ostream&) const override;
+    FunctionKind kind() const override { return FunctionKind::Normal; }
+};
+
+// A function with no body (written in Bluebird, that is); forward
+// declares some function (likely in C) of some other library/object file
+struct BuiltinFunction : public Function {
+    BuiltinFunction(const std::string& n) : Function(n) {}
+
+    void         print(std::ostream&) const override;
+    FunctionKind kind() const override { return FunctionKind::Builtin; }
 };
 #endif

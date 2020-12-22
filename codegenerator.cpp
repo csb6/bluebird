@@ -415,7 +415,11 @@ void CodeGenerator::run()
 {
     declare_function_headers();
 
-    for(const Function *function : m_functions) {
+    for(const Function *fcn : m_functions) {
+        if(fcn->kind() != FunctionKind::Normal)
+            // Builtin functions have no body
+            continue;
+        auto* function = static_cast<const BBFunction*>(fcn);
         llvm::Function* curr_funct = m_module.getFunction(function->name);
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);

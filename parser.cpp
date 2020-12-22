@@ -655,7 +655,7 @@ void Parser::in_function_definition()
                     " already in use");
         exit(1);
     }
-    Function new_funct{token->text};
+    BBFunction new_funct{token->text};
 
     ++token;
     assert_token_is(TokenType::Open_Parentheses,
@@ -818,7 +818,8 @@ void Parser::run()
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {
     for(const auto *function_definition : parser.m_function_list) {
-         output << *function_definition << '\n';
+        function_definition->print(output);
+        output << '\n';
     }
     return output;
 }
@@ -902,16 +903,16 @@ RangeType* SymbolTable::add_type(const std::string& name)
     return ptr;
 }
 
-Function* SymbolTable::add_function(Function&& function)
+Function* SymbolTable::add_function(BBFunction&& function)
 {
-    Function* ptr = m_functions.make<Function>(function);
+    Function* ptr = m_functions.make<BBFunction>(function);
     m_scopes[m_curr_scope].symbols[function.name] = SymbolInfo{NameType::Funct, ptr};
     return ptr;
 }
 
 Function* SymbolTable::add_function(const std::string& name)
 {
-    Function* ptr = m_functions.make<Function>(name);
+    Function* ptr = m_functions.make<BBFunction>(name);
     m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredFunct, ptr};
     return ptr;
 }
