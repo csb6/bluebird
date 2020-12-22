@@ -24,13 +24,13 @@ Checker::Checker(const std::vector<Function*>& functions,
 {}
 
 template<typename Other>
-static void print_type_mismatch(unsigned int line_num, const Expression* expr,
+static void print_type_mismatch(const Expression* expr,
                                 const Other* other, const Type* other_type,
                                 const char* other_label = "",
                                 const char* expr_label = "Expression",
                                 const TokenType* op = nullptr)
 {
-    std::cerr << "In statement starting at line " << line_num
+    std::cerr << "ERROR: In expression starting at line " << expr->line_num()
               << ":\n Types don't match:\n  ";
 
     // Left
@@ -57,13 +57,13 @@ static void print_type_mismatch(unsigned int line_num, const Expression* expr,
 
 template<typename Other>
 static void check_literal_types(const IntLiteral* literal, const Other* other,
-                                const Type* other_type, const Statement* stmt)
+                                const Type* other_type)
 {
     if(other_type->category() == TypeCategory::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const Range& range = range_type->range;
         if(!range.contains(literal->value)) {
-            std::cerr << "In statement starting at line " << stmt->line_num
+            std::cerr << "ERROR: In expression starting at line " << literal->line
                       << ":\n Integer literal `";
             literal->print(std::cerr);
             std::cerr << "` is not in the range of:\n  ";
@@ -76,42 +76,40 @@ static void check_literal_types(const IntLiteral* literal, const Other* other,
             exit(1);
         }
     } else {
-        print_type_mismatch(stmt->line_num, literal,
-                            other, other_type, "Used with", "IntLiteral");
+        print_type_mismatch(literal, other, other_type, "Used with", "IntLiteral");
         exit(1);
     }
 }
 
 // TODO: check that unary operators are valid for their values
-void UnaryExpression::check_types(const Statement*) const
+void UnaryExpression::check_types() const
 {}
 
 // TODO: check if this binary op is legal for this type
-void BinaryExpression::check_types(const Statement* statement) const
+void BinaryExpression::check_types() const
 {
     // Ensure the sub-expressions are correct first
-    left->check_types(statement);
-    right->check_types(statement);
+    left->check_types();
+    right->check_types();
     const Type* left_type = left->type();
     const Type* right_type = right->type();
     // Check that the types of both sides of the operator match
     if(left_type != right_type) {
-        print_type_mismatch(statement->line_num, left.get(), right.get(), right_type,
-                            "Right", "Left", &op);
+        print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
         exit(1);
     } else if(right->kind() == ExpressionKind::IntLiteral) {
         check_literal_types(static_cast<const IntLiteral*>(right.get()), left.get(),
-                            left_type, statement);
+                            left_type);
     } else if(left->kind() == ExpressionKind::IntLiteral) {
         check_literal_types(static_cast<const IntLiteral*>(left.get()), right.get(),
-                            right_type, statement);
+                            right_type);
     }
 }
 
-void FunctionCall::check_types(const Statement* statement) const
+void FunctionCall::check_types() const
 {
     if(arguments.size() != function->parameters.size()) {
-        std::cerr << "In statement starting at line " << statement->line_num
+        std::cerr << "ERROR: In expression starting at line " << line
                   << ":\n Function `" << name << "` expects "
                   << function->parameters.size() << " arguments, but "
                   << arguments.size() << " were provided\n";
@@ -121,50 +119,50 @@ void FunctionCall::check_types(const Statement* statement) const
     for(size_t i = 0; i < arg_count; ++i) {
         const Expression* arg = arguments[i].get();
         // Ensure each argument expression is internally typed correctly
-        arg->check_types(statement);
+        arg->check_types();
         // Make sure each arg type matches corresponding parameter type
         const LValue* param = function->parameters[i];
         if(arg->type() != param->type) {
-            print_type_mismatch(statement->line_num, arg, param, param->type,
+            print_type_mismatch(arg, param, param->type,
                                 "Expected function parameter", "Actual function argument");
             exit(1);
         } else if(arg->kind() == ExpressionKind::IntLiteral) {
             check_literal_types(static_cast<const IntLiteral*>(arg), param,
-                                param->type, statement);
+                                param->type);
         }
     }
 }
 
 void BasicStatement::check_types() const
 {
-    expression->check_types(this);
+    expression->check_types();
 }
 
 void Initialization::check_types() const
 {
     if(expression == nullptr)
         return;
-    expression->check_types(this);
+    expression->check_types();
     if(expression->type() != lvalue->type) {
-        print_type_mismatch(line_num, expression.get(), lvalue, lvalue->type);
+        print_type_mismatch(expression.get(), lvalue, lvalue->type);
         exit(1);
     }
 }
 
 void Assignment::check_types() const
 {
-    expression->check_types(this);
+    expression->check_types();
     if(expression->type() != lvalue->type) {
-        print_type_mismatch(line_num, expression.get(), lvalue, lvalue->type);
+        print_type_mismatch(expression.get(), lvalue, lvalue->type);
         exit(1);
     }
 }
 
 void IfBlock::check_types() const
 {
-    condition->check_types(this);
+    condition->check_types();
     if(condition->type() != &Type::Bool) {
-        std::cerr << "In statement starting at line " << line_num
+        std::cerr << "ERROR: In statement starting at line " << condition->line_num()
                   << ":\n Expected boolean condition for this if-statement,"
                      " but instead found:\n  Expression: ";
         condition->print(std::cerr);

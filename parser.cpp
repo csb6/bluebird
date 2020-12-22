@@ -156,10 +156,9 @@ void print_error_expected(std::string_view expected, Token actual)
     std::cerr << "  " << actual;
 }
 
-void print_error_expected(unsigned int line_num, std::string_view expected,
-                          const Expression* actual)
+void print_error_expected(std::string_view expected, const Expression* actual)
 {
-    std::cerr << "ERROR: Line " << line_num << ": "
+    std::cerr << "ERROR: Line " << actual->line_num() << ": "
               << "Expected " << expected << ", but instead found expression:\n";
     actual->print(std::cerr);
     std::cerr << '\n';
@@ -286,13 +285,13 @@ Expression* Parser::in_literal()
 
     switch(current->type) {
     case TokenType::String_Literal:
-        return new StringLiteral(current->text);
+        return new StringLiteral(current->line_num, current->text);
     case TokenType::Char_Literal:
-        return new CharLiteral(current->text[0]);
+        return new CharLiteral(current->line_num, current->text[0]);
     case TokenType::Int_Literal:
-        return new IntLiteral(current->text);
+        return new IntLiteral(current->line_num, current->text);
     case TokenType::Float_Literal:
-        return new FloatLiteral(std::stod(current->text));
+        return new FloatLiteral(current->line_num, std::stod(current->text));
     default:
         print_error_expected("literal", *current);
         exit(1);
@@ -315,7 +314,8 @@ Expression* Parser::in_lvalue_expression()
                     + current->text + "` is already being used as a name");
         exit(1);
     } else {
-        auto *new_lvalue_expr = new LValueExpression(current->text, match.value().lvalue);
+        auto* new_lvalue_expr =
+            new LValueExpression(current->line_num, current->text, match.value().lvalue);
         new_lvalue_expr->name = current->text;
         return new_lvalue_expr;
     }
@@ -350,7 +350,7 @@ Expression* Parser::in_function_call()
     assert_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
-    auto* new_function_call = new FunctionCall(token->text);
+    auto* new_function_call = new FunctionCall(token->line_num, token->text);
     const auto match = m_names_table.find(token->text);
     bool is_resolved = false;
     if(!match) {
@@ -479,11 +479,9 @@ LValue* Parser::in_lvalue_declaration()
 Initialization* Parser::in_initialization()
 {
     assert_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
-    const unsigned int line_num = token->line_num;
-
     ++token;
     auto *new_statement =
-        m_statements.make<Initialization>(line_num, in_lvalue_declaration());
+        m_statements.make<Initialization>(in_lvalue_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -525,7 +523,6 @@ Assignment* Parser::in_assignment()
         exit(1);
     }
 
-    const unsigned int line_num = token->line_num;
     std::advance(token, 2); // skip varname and `=` operator
     Expression* expr = parse_expression();
     if(expr->kind() == ExpressionKind::IntLiteral) {
@@ -536,7 +533,7 @@ Assignment* Parser::in_assignment()
         lit->context_lvalue = lval_match->lvalue;
     }
     ++token;
-    return m_statements.make<Assignment>(line_num, expr, lval_match->lvalue);
+    return m_statements.make<Assignment>(expr, lval_match->lvalue);
 }
 
 Statement* Parser::in_statement()
@@ -557,8 +554,7 @@ Statement* Parser::in_statement()
 
 BasicStatement* Parser::in_basic_statement()
 {
-    auto *new_statement =
-        m_statements.make<BasicStatement>(token->line_num, parse_expression());
+    auto *new_statement = m_statements.make<BasicStatement>(parse_expression());
 
     assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
@@ -568,12 +564,11 @@ BasicStatement* Parser::in_basic_statement()
 IfBlock* Parser::in_if_block()
 {
     assert_token_is(TokenType::Keyword_If, "keyword `if`", *token);
-    const unsigned int line_num = token->line_num;
     ++token;
 
     m_names_table.open_scope();
     // First, parse the if-condition
-    auto *new_if_block = m_statements.make<IfBlock>(line_num, parse_expression());
+    auto *new_if_block = m_statements.make<IfBlock>(parse_expression());
     assert_token_is(TokenType::Keyword_Do,
                     "keyword `do` following `if` condition", *token);
 
@@ -617,7 +612,7 @@ Block* Parser::in_else_block()
 {
     assert_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
     m_names_table.open_scope();
-    auto* new_else_block = m_statements.make<Block>(token->line_num);
+    auto* new_else_block = m_statements.make<Block>();
     ++token;
 
     while(token != m_input_end) {
@@ -731,13 +726,11 @@ void Parser::in_range_type_definition(const std::string& type_name)
     }
 
     if(range_expr->left->kind() != ExpressionKind::IntLiteral) {
-        print_error_expected(token->line_num,
-                             "integer constant expression as the range's lower bound",
+        print_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());
         exit(1);
     } else if(range_expr->right->kind() != ExpressionKind::IntLiteral) {
-        print_error_expected(token->line_num,
-                             "integer constant expression as the range's upper bound",
+        print_error_expected("integer constant expression as the range's upper bound",
                              range_expr->right.get());
         exit(1);
     }
