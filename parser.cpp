@@ -257,7 +257,9 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
       m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
       m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64),
       m_names_table(m_range_types, m_lvalues, m_functions)
-{}
+{
+    m_names_table.add_builtin_type(RangeType::Integer);
+}
 
 // Pratt parser
 Expression* Parser::parse_expression(TokenType right_token)
@@ -875,6 +877,11 @@ SymbolTable::search_for_definition(const std::string& name, NameType kind) const
 void SymbolTable::add_lvalue(LValue* lval)
 {
     m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
+}
+
+void SymbolTable::add_builtin_type(RangeType& type)
+{
+    m_scopes[m_curr_scope].symbols[type.name] = SymbolInfo{NameType::Type, &type};
 }
 
 RangeType* SymbolTable::add_type(const std::string& name,

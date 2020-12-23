@@ -241,3 +241,6 @@ const Type Type::Char{"CharLiteral"};
 const Type Type::Int{"IntLiteral"};
 const Type Type::Float{"FloatLiteral"};
 const Type Type::Bool{"Boolean"};
+
+// -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
+RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};

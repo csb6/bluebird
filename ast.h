@@ -86,7 +86,9 @@ struct Type {
 };
 
 // Type with integer bounds
-struct RangeType : public Type {
+struct RangeType final : public Type {
+    // Some more default types that don't have to be declared
+    static RangeType Integer;
     Range range;
 
     using Type::Type;

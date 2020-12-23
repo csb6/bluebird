@@ -11,5 +11,3 @@ function main() is
     n = n + 9;
   end if;
 end;
-
-type Integer is range 0 upto 100;

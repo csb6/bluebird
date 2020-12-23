@@ -1,4 +1,3 @@
-type Integer is range -1_000_000 thru 1_000_000;
 type Positive is range 0 thru 1_000_000;
 type Natural is range 1 thru 1_000_000;
 type One_Number is range 89 thru 89;
