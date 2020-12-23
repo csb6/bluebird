@@ -71,6 +71,7 @@ public:
     RangeType* add_type(const std::string& name);
     Function*  add_function(const BBFunction&);
     Function*  add_function(const std::string& name);
+    void       add_builtin_function(BuiltinFunction&);
 
     void add_unresolved(LValue*);
     void add_unresolved(FunctionCall*);

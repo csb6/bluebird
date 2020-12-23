@@ -39,6 +39,8 @@
 #include <iostream>
 #include <string>
 
+BuiltinFunction BuiltinFunction::Print{"print"};
+
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
@@ -337,6 +339,21 @@ void CodeGenerator::in_block(llvm::Function* curr_funct,
     }
     m_ir_builder.CreateBr(successor);
     m_ir_builder.SetInsertPoint(successor);
+}
+
+void CodeGenerator::declare_builtin_functions()
+{
+    // int printf(const char*, ...);
+    auto* StdInt = llvm::IntegerType::get(m_context, RangeType::Integer.bit_size());
+    auto* CharPtr = llvm::PointerType::get(llvm::IntegerType::get(m_context, 8), 0);
+    llvm::Type* params[] = { CharPtr };
+    auto* printf_type = llvm::FunctionType::get(StdInt, params, true);
+    auto* printf_funct = llvm::Function::Create(printf_type,
+                                                llvm::GlobalValue::ExternalLinkage,
+                                                "printf",
+                                                m_module);
+    printf_funct->setCallingConv(llvm::CallingConv::C);
+    printf_funct->addFnAttr(llvm::Attribute::NoUnwind);
 }
 
 void CodeGenerator::declare_function_headers()

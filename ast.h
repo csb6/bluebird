@@ -374,6 +374,8 @@ struct BBFunction final : public Function {
 // A function with no body (written in Bluebird, that is); forward
 // declares some function (likely in C) of some other library/object file
 struct BuiltinFunction final : public Function {
+    // Print is defined/initialized in codegenerator.cpp
+    static BuiltinFunction Print;
     explicit BuiltinFunction(const std::string& n) : Function(n) {}
 
     void         print(std::ostream&) const override;

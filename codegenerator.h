@@ -58,6 +58,7 @@ private:
     friend struct BinaryExpression;
     friend struct FunctionCall;
 
+    void declare_builtin_functions();
     void declare_function_headers();
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);

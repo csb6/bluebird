@@ -917,6 +917,12 @@ Function* SymbolTable::add_function(const std::string& name)
     return ptr;
 }
 
+void SymbolTable::add_builtin_function(BuiltinFunction& function)
+{
+    m_scopes[m_curr_scope].symbols[function.name] =
+        SymbolInfo{NameType::Funct, &function};
+}
+
 void SymbolTable::add_unresolved(LValue* lvalue)
 {
     m_scopes[m_curr_scope].lvalues_type_unresolved.push_back(lvalue);
