@@ -31,11 +31,7 @@ Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       bit_size(std::max(lower.bits_needed(), upper.bits_needed())),
       is_signed(lower.is_negative())
-{
-    if(is_signed) {
-        bit_size *= 2; // TODO: add better sizing algorithm
-    }
-}
+{}
 
 bool Range::contains(const multi_int& value) const
 {
