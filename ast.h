@@ -76,9 +76,9 @@ struct Type {
     static const Type Void, String, Char, Int, Float, Bool;
     std::string name;
 
-    Type() {}
+    Type() = default;
     explicit Type(const std::string &n) : name(n) {}
-    virtual ~Type() noexcept {}
+    virtual ~Type() noexcept = default;
 
     virtual unsigned short bit_size() const { return 0; }
     virtual TypeCategory   category() const { return TypeCategory::Normal; }
@@ -103,7 +103,7 @@ struct RangeType : public Type {
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
-    virtual ~Expression() noexcept {};
+    virtual ~Expression() noexcept = default;
 
     // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
     virtual ExpressionKind kind() const = 0;
@@ -278,7 +278,7 @@ struct LValue {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
-    virtual ~Statement() noexcept {}
+    virtual ~Statement() noexcept = default;
 
     virtual StatementKind kind() const = 0;
     virtual void          print(std::ostream&) const = 0;

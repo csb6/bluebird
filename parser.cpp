@@ -704,7 +704,7 @@ void Parser::in_function_definition()
             ++token;
             assert_token_is(TokenType::End_Statement,
                             "end of statement (a.k.a. `;`) or an end label", *token);
-            Function* ptr = m_names_table.add_function(std::move(new_funct));
+            Function* ptr = m_names_table.add_function(new_funct);
             m_function_list.push_back(ptr);
             ++token;
             return;
@@ -896,7 +896,7 @@ RangeType* SymbolTable::add_type(const std::string& name)
     return ptr;
 }
 
-Function* SymbolTable::add_function(BBFunction&& function)
+Function* SymbolTable::add_function(const BBFunction& function)
 {
     Function* ptr = m_functions.make<BBFunction>(function);
     m_scopes[m_curr_scope].symbols[function.name] = SymbolInfo{NameType::Funct, ptr};
