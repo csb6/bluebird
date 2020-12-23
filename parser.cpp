@@ -24,6 +24,9 @@ constexpr Precedence Invalid_Binary_Operator = -2;
 constexpr Precedence Operand = 100;
 
 constexpr Precedence operator_precedence_table[] = {
+    // Lexer states (won't be used in parser)
+    Invalid_Binary_Operator, Invalid_Binary_Operator, Invalid_Binary_Operator,
+    Invalid_Binary_Operator, Invalid_Binary_Operator, Invalid_Binary_Operator,
     // Keywords
     //  Keyword_Funct:
          Invalid_Binary_Operator,
@@ -108,6 +111,9 @@ constexpr Precedence operator_precedence_table[] = {
           13,
     //   Op_Upto:
           13,
+    //  Other
+    //   Dot
+         Invalid_Binary_Operator,
     // Pseudo-Operators
     //  Op_Assign:
          Invalid_Binary_Operator,

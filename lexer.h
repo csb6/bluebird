@@ -33,8 +33,8 @@ private:
 public:
     explicit Lexer(std::string::const_iterator input_begin,
                    std::string::const_iterator input_end);
+    void process(std::istream&);
     void run();
-    void print_tokens();
     // Iterators for accessing the tokens
     auto begin() { return m_tokens.begin(); }
     auto end() { return m_tokens.end(); }

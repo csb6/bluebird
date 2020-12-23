@@ -44,9 +44,12 @@ int main(int argc, char **argv)
     const std::string source_file{load_source_file(argv[1])};
 
     Lexer lexer{source_file.begin(), source_file.end()};
-    lexer.run();
+    std::ifstream input_file{argv[1]};
+    lexer.process(input_file);
+    std::cerr << lexer << "\n";
+    //lexer.run();
 
-    Parser parser{lexer.begin(), lexer.end()};
+    /*Parser parser{lexer.begin(), lexer.end()};
     parser.run();
 
     Checker checker{parser.functions(), parser.types()};
@@ -55,7 +58,7 @@ int main(int argc, char **argv)
     CodeGenerator codegen{argv[1], parser.functions()};
     codegen.run();
 
-    std::cout << parser << '\n';
+    std::cout << parser << '\n';*/
 
     return 0;
 }

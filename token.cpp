@@ -20,6 +20,24 @@
 std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {
+    case TokenType::None:
+        output << "Token: None";
+        break;
+    case TokenType::Invalid:
+        output << "Token: Invalid";
+        break;
+    case TokenType::End_Token:
+        output << "Token: End_Token";
+        break;
+    case TokenType::Comment:
+        output << "Token: Comment";
+        break;
+    case TokenType::Identifier:
+        output << "Token: Identifier";
+        break;
+    case TokenType::Underscore:
+        output << "Token: _";
+        break;
     case TokenType::Keyword_Funct:
         output << "Keyword `function`";
         break;
@@ -133,6 +151,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         break;
     case TokenType::Op_Upto:
         output << "upto";
+        break;
+    case TokenType::Dot:
+        output << "Dot marker";
         break;
     case TokenType::Comma:
         output << "Comma marker";

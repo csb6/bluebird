@@ -20,9 +20,11 @@
 #include <iosfwd>
 
 enum class TokenType : unsigned char {
+    // Some lexer-specific states (won't be used outside of lexer)
+    None, Invalid, End_Token, Comment, Identifier, Underscore,
     // Keywords
-    Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
-    Keyword_End, Keyword_If, Keyword_Else, Keyword_Range,
+    /*First token:*/Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const,
+    Keyword_Type, Keyword_End, Keyword_If, Keyword_Else, Keyword_Range,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma,
@@ -37,12 +39,16 @@ enum class TokenType : unsigned char {
     Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor, Op_Bit_Not,
     //  Range
     Op_Thru, Op_Upto,
+    //  Other
+    Dot,
     // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt
     //  parser code and not subject to precedence rules/table)
     Op_Assign,
     // Operands
     String_Literal, Char_Literal, Int_Literal, Float_Literal, /*End marker:*/ Name
 };
+
+constexpr unsigned int TokenCount = (unsigned int)TokenType::Name;
 
 struct Token {
     unsigned int line_num;

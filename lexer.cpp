@@ -17,6 +17,8 @@
 #include "lexer.h"
 #include <iostream>
 #include <ostream>
+#include <array>
+#include <limits>
 
 enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
@@ -47,15 +49,168 @@ Lexer::Lexer(std::string::const_iterator input_begin,
       }
 {}
 
-void print_error(unsigned int line_num, const char *text, char token)
+static void print_error(unsigned int line_num, const char *text, char token)
 {
     std::cerr << "Line " << line_num << ": " << text << token << '\n';
 }
 
-void print_error(unsigned int line_num, const char *text,
-                 const std::string &token = "")
+static void print_error(unsigned int line_num, const char *text,
+                        const std::string &token = "")
 {
     std::cerr << "Line " << line_num << ": " << text << token << '\n';
+}
+
+constexpr auto state_table = []()
+{
+    std::array<TokenType, std::numeric_limits<unsigned char>::max()> state_table{};
+    for(auto& each : state_table)
+        each = TokenType::Invalid;
+    constexpr char whitespace[] = " \f\n\r\t\v";
+    for(unsigned char c : whitespace) {
+        state_table[c] = TokenType::None;
+    }
+
+    // Identifiers
+    for(unsigned char i = 'a'; i <= 'z'; ++i)
+        state_table[i] = TokenType::Identifier;
+    for(unsigned char i = 'A'; i <= 'Z'; ++i)
+        state_table[i] = TokenType::Identifier;
+    // Numbers
+    for(unsigned char i = '0'; i <= '9'; ++i)
+        state_table[i] = TokenType::Int_Literal;
+    // Misc
+    state_table['('] = TokenType::Open_Parentheses;
+    state_table[')'] = TokenType::Closed_Parentheses;
+    state_table[';'] = TokenType::End_Statement;
+    state_table[':'] = TokenType::Type_Indicator;
+    state_table[','] = TokenType::Comma;
+    state_table['+'] = TokenType::Op_Plus;
+    state_table['-'] = TokenType::Op_Minus;
+    state_table['*'] = TokenType::Op_Mult;
+    state_table['/'] = TokenType::Op_Div;
+    state_table['!'] = TokenType::Op_Ne;
+    state_table['<'] = TokenType::Op_Lt;
+    state_table['>'] = TokenType::Op_Gt;
+    state_table[','] = TokenType::Comma;
+    state_table['&'] = TokenType::Op_Bit_And;
+    state_table['|'] = TokenType::Op_Bit_Or;
+    state_table['^'] = TokenType::Op_Bit_Xor;
+    state_table['~'] = TokenType::Op_Bit_Not;
+    state_table['='] = TokenType::Op_Assign;
+    state_table['\''] = TokenType::Char_Literal;
+    state_table['"'] = TokenType::String_Literal;
+    state_table['_'] = TokenType::Underscore;
+
+    return state_table;
+}();
+
+constexpr unsigned at(TokenType curr) { return static_cast<unsigned>(curr); }
+
+constexpr auto transition_table = []()
+{
+    std::array<std::array<TokenType, TokenCount>, TokenCount> transition_table{};
+    auto when = [&transition_table](TokenType curr, TokenType letter) -> auto& {
+                    return transition_table[static_cast<unsigned>(curr)]
+                        [static_cast<unsigned>(letter)];
+                };
+
+    for(auto& row : transition_table) {
+        for(auto& each : row) {
+            each = TokenType::End_Token;
+        }
+        row[at(TokenType::Invalid)] = TokenType::Invalid;
+    }
+    for(unsigned i = 0; i < TokenCount; ++i) {
+        when(TokenType::None, static_cast<TokenType>(i)) = static_cast<TokenType>(i);
+    }
+    for(auto& each : transition_table[at(TokenType::Invalid)]) {
+        each = TokenType::Invalid;
+    }
+
+    // Identifiers
+    constexpr TokenType to_identifier[] = {
+        TokenType::Identifier, TokenType::Int_Literal, TokenType::Underscore
+    };
+    for(auto each : to_identifier) {
+        when(TokenType::Identifier, each) = TokenType::Identifier;
+    }
+    // String literals
+    for(auto& each : transition_table[at(TokenType::String_Literal)]) {
+        each = TokenType::String_Literal;
+    }
+    // End at next '"'
+    when(TokenType::String_Literal, TokenType::String_Literal) = TokenType::End_Token;
+    when(TokenType::String_Literal, TokenType::Invalid)        = TokenType::Invalid;
+    // Char literals
+    for(auto& each : transition_table[at(TokenType::Char_Literal)]) {
+        each = TokenType::Char_Literal;
+    }
+    // End at next '\''
+    when(TokenType::Char_Literal, TokenType::Char_Literal) = TokenType::End_Token;
+    when(TokenType::Char_Literal, TokenType::Invalid)      = TokenType::Invalid;
+    // Int literals
+    when(TokenType::Int_Literal, TokenType::Int_Literal) = TokenType::Int_Literal;
+    when(TokenType::Int_Literal, TokenType::Underscore)  = TokenType::Int_Literal;
+    when(TokenType::Int_Literal, TokenType::Dot)         = TokenType::Float_Literal;
+    // Float literals
+    when(TokenType::Float_Literal, TokenType::Int_Literal) = TokenType::Float_Literal;
+    // Misc
+    when(TokenType::Op_Assign, TokenType::Op_Assign) = TokenType::Op_Eq;
+    when(TokenType::Op_Lt,     TokenType::Op_Assign) = TokenType::Op_Le;
+    when(TokenType::Op_Gt,     TokenType::Op_Assign) = TokenType::Op_Ge;
+    when(TokenType::Op_Ne,     TokenType::Op_Assign) = TokenType::Op_Ne;
+    when(TokenType::Op_Lt,     TokenType::Op_Lt)     = TokenType::Op_Left_Shift;
+    when(TokenType::Op_Gt,     TokenType::Op_Gt)     = TokenType::Op_Right_Shift;
+
+    return transition_table;
+}();
+
+void Lexer::process(std::istream& input)
+{
+    TokenType letter_state, next_state;
+    TokenType token_state = TokenType::None;
+    std::string token_text;
+    while(input) {
+        const char letter = input.get();
+        letter_state = state_table[letter];
+        next_state = transition_table[at(token_state)][at(letter_state)];
+
+        switch(next_state) {
+        case TokenType::End_Token:
+            switch(token_state) {
+            case TokenType::Op_Left_Shift:
+                if(token_text.size() != 2) {
+                    print_error(0, "Expected '<<', but instead found: ", token_text);
+                }
+                break;
+            case TokenType::Op_Right_Shift:
+                if(token_text.size() != 2) {
+                    print_error(0, "Expected '>>', but instead found: ", token_text);
+                }
+                break;
+            default:
+                break;
+            }
+            m_tokens.emplace_back(0, token_state, token_text);
+            token_text.clear();
+            if(letter_state != TokenType::None) {
+                token_text += letter;
+            }
+            token_state = letter_state;
+            break;
+        case TokenType::Invalid:
+            std::cerr << "ERROR: Invalid character: '" << letter << "'\n";
+            exit(1);
+        case TokenType::None:
+            token_text.clear();
+            token_state = next_state;
+            break;
+        default:
+            token_text += letter;
+            token_state = next_state;
+            break;
+        }
+    }
 }
 
 void Lexer::run()

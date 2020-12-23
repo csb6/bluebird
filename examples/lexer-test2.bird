@@ -1,0 +1,12 @@
+function main() is
+   let a: Integer = 9;
+   let b: Integer = 89;
+   let c: Integer = 89 + 0;
+   a = a + 90;
+   a != b;
+   if a < 9_000 do
+       a = a * b /(c + 0);
+   end if;
+end main;
+
+type Integer is range 0 upto 9_000_000;
