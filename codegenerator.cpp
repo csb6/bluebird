@@ -33,6 +33,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Attributes.h>
+#include <lld/Common/Driver.h>
 #pragma GCC diagnostic pop
 
 #include "ast.h"
@@ -78,7 +79,6 @@ CodeGenerator::CodeGenerator(const char* source_filename,
 
 llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
 {
-    // TODO: make sure this doesn't mess-up the insertion point for IR instructions
     return gen.m_ir_builder.CreateGlobalStringPtr(value);
 }
 
@@ -92,8 +92,7 @@ llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 {
     return llvm::ConstantInt::get(gen.m_context,
-                                  llvm::APInt(type()->bit_size(),
-                                              value.str(), 10));
+                                  llvm::APInt(type()->bit_size(), value.str(), 10));
 }
 
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
@@ -272,6 +271,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
         in_if_block(curr_funct, static_cast<IfBlock*>(statement));
         break;
     case StatementKind::Block:
+        // TODO: add support for anonymous blocks
         break;
     }
 }
@@ -416,10 +416,10 @@ void CodeGenerator::link(const std::filesystem::path& object_file,
                          const std::filesystem::path& exe_file)
 {
 #ifdef __APPLE__
-    int status = system(("ld " + object_file.string()
-                         + " -o " + exe_file.string() + " -lSystem").c_str());
-    if(status != 0) {
-        std::cerr << "Linker error: status code: " << status << '\n';
+    const char* args[] = { "lld", "-sdk_version", "10.14", "-o", exe_file.c_str(),
+                           object_file.c_str(), "-lSystem" };
+    if(!lld::mach_o::link(args, true, llvm::outs(), llvm::errs())) {
+        std::cerr << "Linker failed\n";
         exit(1);
     }
 #else
