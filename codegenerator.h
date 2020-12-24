@@ -73,7 +73,7 @@ private:
 
     void emit(const std::filesystem::path& object_file);
     void link(const std::filesystem::path& object_file,
-              const std::filesystem::path& exe_file);
+              const std::filesystem::path& exe_file = "a.out");
 public:
     explicit CodeGenerator(const char* source_filename, const std::vector<Function*>&);
     void run();

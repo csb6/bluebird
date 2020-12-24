@@ -30,11 +30,20 @@ Todo:
 [X] Generate an object file from the LLVM IR
 [ ] Generate an executable from LLVM IR, possibly integrating simple C library
     functions (e.g. printf() or puts()) to have some output
+[ ] Add standard interface for adding builtin functions/types
 [X] Add typechecking for int literals and expressions (ensuring that int literals
     are only used with expressions that evaluate to range types)
-[X] Add check so that int literals are always within the range of the type they
+[ ] Add check so that int literals are always within the range of the type they
     are being used with
 [X] Add above two items for assignments/initialization statements
+[ ] Change build system to CMake to be more portable across Windows/Unix, set
+    platform-specific linker/compiler flags more easily
+[ ] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
+    depend specifically on RangeTypes
+[ ] Add while-loops
+[ ] Add support for creating ranges and using them within larger expressions/variables
+[ ] Add simple for-loops that iterate over a range
+[ ] Add support for for-loops that iterate over a RangeType's range
 [ ] Consider adding a viceversa keyword to be used with binary expressions
 [ ] Work on the various TODOs throughout the codebase
 [ ] Consider reading characters on-demand from an iostream in the lexer instead
