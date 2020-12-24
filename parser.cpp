@@ -18,118 +18,59 @@
 #include <string_view>
 #include <iostream>
 #include <algorithm>
+#include <array>
 
-using Precedence = char;
+using Precedence = signed char;
 constexpr Precedence Invalid_Binary_Operator = -2;
 constexpr Precedence Operand = 100;
 
-constexpr Precedence operator_precedence_table[] = {
-    // Keywords
-    //  Keyword_Funct:
-         Invalid_Binary_Operator,
-    //  Keyword_Is:
-         Invalid_Binary_Operator,
-    // Keyword_Do:
-         Invalid_Binary_Operator,
-    //  Keyword_Let:
-         Invalid_Binary_Operator,
-    //  Keyword_Const:
-         Invalid_Binary_Operator,
-    //  Keyword_Type:
-         Invalid_Binary_Operator,
-    //  Keyword_End:
-         Invalid_Binary_Operator,
-    //   Keyword_If
-         Invalid_Binary_Operator,
-    //   Keyword_Else
-         Invalid_Binary_Operator,
-    //   Keyword_Type
-         Invalid_Binary_Operator,
-    // Non-operator symbols
-    //  Open_Parentheses:
-         Invalid_Binary_Operator,
-    //  Closed_Parentheses:
-         Invalid_Binary_Operator,
-    //  End_Statement:
-         Invalid_Binary_Operator,
-    //  Type_Indicator:
-         Invalid_Binary_Operator,
-    //  Comma:
-         Invalid_Binary_Operator,
-    // Operators
-    //  Arithmetic
-    //   Op_Plus:
-          14,
-    //   Op_Minus:
-          14,
-    //   Op_Div:
-          15,
-    //   Op_Mult:
-          15,
-    //   Op_Mod:
-          15,
-    //   Op_Rem:
-          15,
-    //  Logical
-    //   Op_And:
-          7,
-    //   Op_Or:
-          6,
-    //   Op_Not:
-          Invalid_Binary_Operator,
-    //  Comparison
-    //   Op_Eq:
-          11,
-    //   Op_Ne:
-          11,
-    //   Op_Lt:
-          12,
-    //   Op_Gt:
-          12,
-    //   Op_Le:
-          12,
-    //   Op_Ge:
-          12,
-    //  Bitwise
-    //   Op_Left_Shift:
-          13,
-    //   Op_Right_Shift:
-          13,
-    //   Op_Bit_And:
-          10,
-    //   Op_Bit_Or:
-          8,
-    //   Op_Bit_Xor:
-          9,
-    //   Op_Bit_Not:
-          Invalid_Binary_Operator,
-    //  Range
-    //   Op_Thru:
-          13,
-    //   Op_Upto:
-          13,
-    // Pseudo-Operators
-    //  Op_Assign:
-         Invalid_Binary_Operator,
-    // Operands
-    //  String_Literal:
-         Operand,
-    //  Char_Literal:
-         Operand,
-    //  Int_Literal:
-         Operand,
-    //  Float_Literal:
-         Operand,
-    //  Name:
-         Operand
-};
+// Only contains precedences for binary operators
+constexpr auto operator_precedence_table = []()
+{
+    constexpr size_t table_size = size_t(TokenType::Name) + 1;
+    std::array<Precedence, table_size> op_table{};
 
-static_assert(sizeof(operator_precedence_table) / sizeof(operator_precedence_table[0])
-              == int(TokenType::Name) + 1, "Table out-of-sync with TokenType enum");
+    for(auto& precedence : op_table) {
+        precedence = Invalid_Binary_Operator;
+    }
+    // Arithmetic
+    op_table[size_t(TokenType::Op_Plus)] = 14;
+    op_table[size_t(TokenType::Op_Minus)] = 14;
+    op_table[size_t(TokenType::Op_Div)] = 15;
+    op_table[size_t(TokenType::Op_Mult)] = 15;
+    op_table[size_t(TokenType::Op_Mod)] = 15;
+    op_table[size_t(TokenType::Op_Rem)] = 15;
+    // Logical
+    op_table[size_t(TokenType::Op_And)] = 7;
+    op_table[size_t(TokenType::Op_Or)] = 6;
+    // Comparison
+    op_table[size_t(TokenType::Op_Eq)] = 11;
+    op_table[size_t(TokenType::Op_Ne)] = 11;
+    op_table[size_t(TokenType::Op_Lt)] = 12;
+    op_table[size_t(TokenType::Op_Gt)] = 12;
+    op_table[size_t(TokenType::Op_Le)] = 12;
+    op_table[size_t(TokenType::Op_Ge)] = 12;
+    op_table[size_t(TokenType::Op_Left_Shift)] = 13;
+    op_table[size_t(TokenType::Op_Right_Shift)] = 13;
+    op_table[size_t(TokenType::Op_Bit_And)] = 10;
+    op_table[size_t(TokenType::Op_Bit_Or)] = 8;
+    op_table[size_t(TokenType::Op_Bit_Xor)] = 9;
+    // Range
+    op_table[size_t(TokenType::Op_Thru)] = 13;
+    op_table[size_t(TokenType::Op_Upto)] = 13;
+    // Operands
+    op_table[size_t(TokenType::String_Literal)] = Operand;
+    op_table[size_t(TokenType::Char_Literal)] = Operand;
+    op_table[size_t(TokenType::Int_Literal)] = Operand;
+    op_table[size_t(TokenType::Float_Literal)] = Operand;
+    op_table[size_t(TokenType::Name)] = Operand;
+
+    return op_table;
+}();
 
 constexpr Precedence precedence_of(const TokenType index)
 {
-    return operator_precedence_table[short(index)];
+    return operator_precedence_table[(unsigned char)index];
 }
 
 constexpr bool is_binary_operator(const Precedence p)
