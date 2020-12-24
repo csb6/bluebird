@@ -57,6 +57,12 @@ size_t multi_int::bits_needed() const
     return mpz_sizeinbase(m_number, 2);
 }
 
+multi_int& multi_int::operator+=(unsigned int other)
+{
+    mpz_add_ui(m_number, m_number, other);
+    return *this;
+}
+
 multi_int& multi_int::operator+=(const multi_int& other)
 {
     mpz_add(m_number, m_number, other.m_number);
@@ -72,6 +78,12 @@ multi_int& multi_int::operator-=(const multi_int& other)
 multi_int& multi_int::operator-=(unsigned int other)
 {
     mpz_sub_ui(m_number, m_number, other);
+    return *this;
+}
+
+multi_int& multi_int::operator*=(unsigned int other)
+{
+    mpz_mul_ui(m_number, m_number, other);
     return *this;
 }
 

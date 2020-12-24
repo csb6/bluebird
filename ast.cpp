@@ -29,9 +29,24 @@ void RangeType::print(std::ostream& output) const
 
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
-      bit_size(std::max(lower.bits_needed(), upper.bits_needed())),
       is_signed(lower.is_negative())
-{}
+{
+    if(is_signed) {
+        if(lower.bits_needed() > upper.bits_needed()) {
+            multi_int lower_double{lower};
+            lower_double *= 2;
+            lower_double += 1;
+            bit_size = lower_double.bits_needed();
+        } else {
+            multi_int upper_double{upper};
+            upper_double *= 2;
+            upper_double += 1;
+            bit_size = upper_double.bits_needed();
+        }
+    } else {
+        bit_size = upper.bits_needed();
+    }
+}
 
 bool Range::contains(const multi_int& value) const
 {

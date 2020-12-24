@@ -1,0 +1,6 @@
+function main() is
+    let a: A;
+    a = 150;
+end;
+
+type A is range -128 thru 150;

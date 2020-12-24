@@ -34,10 +34,12 @@ class multi_int {
     size_t bits_needed() const;
     std::string str() const;
 
+    multi_int& operator+=(unsigned int);
     multi_int& operator+=(const multi_int&);
     multi_int& operator-=(const multi_int&);
     multi_int& operator-=(unsigned int);
     multi_int& operator*=(const multi_int&);
+    multi_int& operator*=(unsigned int);
     multi_int& operator/=(const multi_int&);
     multi_int& mod(const multi_int&);
     multi_int& rem(const multi_int&);

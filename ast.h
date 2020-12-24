@@ -60,10 +60,10 @@ enum class FunctionKind : char {
 // Upper/lower bounds are inclusive
 struct Range {
     multi_int lower_bound, upper_bound;
-    unsigned short bit_size;
     bool is_signed;
+    unsigned short bit_size;
 
-    Range() : bit_size(0), is_signed(true) {}
+    Range() : is_signed(true), bit_size(0) {}
     Range(const multi_int& lower, const multi_int& upper);
 
     bool contains(const multi_int&) const;
