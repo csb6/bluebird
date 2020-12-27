@@ -129,6 +129,7 @@ private:
     Assignment* in_assignment();
     IfBlock* in_if_block();
     Block* in_else_block();
+    WhileLoop* in_while_loop();
     // Handle each function definition
     void in_function_definition();
     // Types

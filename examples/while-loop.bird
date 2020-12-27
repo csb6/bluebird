@@ -1,0 +1,12 @@
+function main() is
+   let a: Integer = 90;
+   let b: Integer = 0;
+   while b < a do
+       b = b + 1;
+       let d: Integer = -80;
+       while d <= b do
+           d = d + 90;
+       end while;
+   end while;
+   let c: Integer = a;
+end main;

@@ -70,6 +70,7 @@ private:
                      llvm::BasicBlock* successor = nullptr);
     void in_block(llvm::Function*, struct Block*,
                   llvm::BasicBlock* successor);
+    void in_while_loop(llvm::Function*, struct WhileLoop*);
 
     void emit(const std::filesystem::path& object_file);
     void link(const std::filesystem::path& object_file,

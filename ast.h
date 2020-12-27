@@ -41,7 +41,7 @@ enum class ExpressionKind : char {
 };
 
 enum class StatementKind : char {
-    Basic, Initialization, Assignment, IfBlock, Block
+    Basic, Initialization, Assignment, IfBlock, Block, While
 };
 
 enum class TypeCategory : char {
@@ -340,6 +340,17 @@ struct IfBlock final : public Block {
     explicit IfBlock(Expression* cond) : condition(cond) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
+    void          print(std::ostream&) const override;
+    void          check_types() const override;
+};
+
+// A block that runs repeatedly until its condition is false
+struct WhileLoop final : public Block {
+    Magnum::Pointer<Expression> condition;
+
+    explicit WhileLoop(Expression* cond) : condition(cond) {}
+
+    StatementKind kind() const override { return StatementKind::While; }
     void          print(std::ostream&) const override;
     void          check_types() const override;
 };

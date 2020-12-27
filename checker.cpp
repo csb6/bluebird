@@ -52,6 +52,17 @@ static void print_type_mismatch(const Expression* expr,
     other_type->print(std::cerr);
 }
 
+static void nonbool_condition_error(const Expression* condition,
+                                    const char* statement_name)
+{
+    std::cerr << "ERROR: In statement starting at line " << condition->line_num()
+              << ":\n Expected boolean condition for this " << statement_name
+              << ", but instead found:\n  Expression: ";
+    condition->print(std::cerr);
+    std::cerr << '\t';
+    condition->type()->print(std::cerr);
+}
+
 // No need to typecheck for literal/lvalue expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
@@ -162,12 +173,7 @@ void IfBlock::check_types() const
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
-        std::cerr << "ERROR: In statement starting at line " << condition->line_num()
-                  << ":\n Expected boolean condition for this if-statement,"
-                     " but instead found:\n  Expression: ";
-        condition->print(std::cerr);
-        std::cerr << '\t';
-        condition->type()->print(std::cerr);
+        nonbool_condition_error(condition.get(), "if-statement");
         exit(1);
     }
     Block::check_types();
@@ -181,6 +187,16 @@ void Block::check_types() const
     for(auto* stmt : statements) {
         stmt->check_types();
     }
+}
+
+void WhileLoop::check_types() const
+{
+    condition->check_types();
+    if(condition->type() != &Type::Bool) {
+        nonbool_condition_error(condition.get(), "while-loop");
+        exit(1);
+    }
+    Block::check_types();
 }
 
 void Checker::run() const

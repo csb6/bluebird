@@ -208,12 +208,19 @@ void IfBlock::print(std::ostream& output) const
     condition->print(output);
     output << '\n';
     Block::print(output);
-    if(else_or_else_if == nullptr) {
-        return;
-    } else {
+    if(else_or_else_if != nullptr) {
         output << "Else ";
+        else_or_else_if->print(output);
     }
-    else_or_else_if->print(output);
+}
+
+void WhileLoop::print(std::ostream& output) const
+{
+    output << "While Loop:\n";
+    output << "Condition: ";
+    condition->print(output);
+    output << '\n';
+    Block::print(output);
 }
 
 void LValue::print(std::ostream& output) const

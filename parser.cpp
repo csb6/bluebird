@@ -486,6 +486,8 @@ Statement* Parser::in_statement()
         return in_if_block();
     case TokenType::Keyword_Let:
         return in_initialization();
+    case TokenType::Keyword_While:
+        return in_while_loop();
     default:
         if(std::next(token)->type == TokenType::Op_Assign) {
             return in_assignment();
@@ -577,6 +579,40 @@ Block* Parser::in_else_block()
         }
     }
     print_error(token->line_num, "Incomplete else-block");
+    exit(1);
+}
+
+WhileLoop* Parser::in_while_loop()
+{
+    assert_token_is(TokenType::Keyword_While, "keyword `while`", *token);
+    ++token;
+    m_names_table.open_scope();
+    // First, parse the condition
+    auto* new_while_loop = m_statements.make<WhileLoop>(parse_expression());
+    assert_token_is(TokenType::Keyword_Do,
+                    "keyword `do` following `while` condition", *token);
+
+    // Parse the statements inside the loop body
+    ++token;
+    while(token != m_input_end) {
+        if(token->type == TokenType::Keyword_End) {
+            // End of block
+            m_names_table.close_scope();
+            if(std::next(token)->type == TokenType::Keyword_While) {
+                // Optional keyword to show end of while-block
+                ++token;
+            }
+            ++token;
+            assert_token_is(TokenType::End_Statement,
+                            "closing `;` or an end label after end of while-block",
+                            *token);
+            ++token;
+            return new_while_loop;
+        } else {
+            new_while_loop->statements.push_back(in_statement());
+        }
+    }
+    print_error(token->line_num, "Incomplete while-loop-block");
     exit(1);
 }
 

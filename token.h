@@ -22,7 +22,7 @@
 enum class TokenType : unsigned char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
-    Keyword_End, Keyword_If, Keyword_Else, Keyword_Range,
+    Keyword_End, Keyword_If, Keyword_Else, Keyword_While, Keyword_Range,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma,

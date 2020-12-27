@@ -56,6 +56,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Else:
         output << "Keyword `else`";
         break;
+    case TokenType::Keyword_While:
+        output << "Keyword `while`";
+        break;
     case TokenType::Keyword_Range:
         output << "Keyword `range`";
         break;

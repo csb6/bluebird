@@ -270,6 +270,9 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     case StatementKind::IfBlock:
         in_if_block(curr_funct, static_cast<IfBlock*>(statement));
         break;
+    case StatementKind::While:
+        in_while_loop(curr_funct, static_cast<WhileLoop*>(statement));
+        break;
     case StatementKind::Block:
         // TODO: add support for anonymous blocks
         break;
@@ -338,6 +341,28 @@ void CodeGenerator::in_block(llvm::Function* curr_funct,
         in_statement(curr_funct, stmt);
     }
     m_ir_builder.CreateBr(successor);
+    m_ir_builder.SetInsertPoint(successor);
+}
+
+void CodeGenerator::in_while_loop(llvm::Function* curr_funct, WhileLoop* whileloop)
+{
+    auto* cond_block = llvm::BasicBlock::Create(m_context, "whileloophead", curr_funct);
+    m_ir_builder.CreateBr(cond_block);
+    m_ir_builder.SetInsertPoint(cond_block);
+
+    llvm::Value* condition = whileloop->condition->codegen(*this);
+    const auto cond_br_point = m_ir_builder.saveIP();
+
+    auto* loop_body = llvm::BasicBlock::Create(m_context, "whileloopbody", curr_funct);
+    auto* successor = llvm::BasicBlock::Create(m_context, "successor", curr_funct);
+    m_ir_builder.SetInsertPoint(loop_body);
+    // TODO: move as many loads as possible from loop body into the condition block;
+    // this can lead to better code generation
+    in_block(curr_funct, whileloop, cond_block);
+
+    // Finally, insert the branch instruction right before the two branching blocks
+    m_ir_builder.restoreIP(cond_br_point);
+    m_ir_builder.CreateCondBr(condition, loop_body, successor);
     m_ir_builder.SetInsertPoint(successor);
 }
 
