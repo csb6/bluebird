@@ -301,13 +301,10 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
     // The if-block (jumped-to when condition is true)
     auto* if_true = llvm::BasicBlock::Create(m_context, "iftrue", curr_funct);
     m_ir_builder.SetInsertPoint(if_true);
-    for(Statement* stmt : ifblock->statements) {
-        in_statement(curr_funct, stmt);
-    }
     if(successor == nullptr) {
         successor = llvm::BasicBlock::Create(m_context, "successor", curr_funct);
     }
-    m_ir_builder.CreateBr(successor);
+    in_block(curr_funct, ifblock, successor);
 
     // The linked block (i.e. else or else-if block); jumped to when false
     llvm::BasicBlock* if_false = successor;
@@ -323,8 +320,7 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
-        in_block(curr_funct, static_cast<Block*>(ifblock->else_or_else_if),
-                 successor);
+        in_block(curr_funct, ifblock->else_or_else_if, successor);
     }
     // Finally, insert the branch instruction right before the two branching blocks
     m_ir_builder.restoreIP(cond_br_point);
