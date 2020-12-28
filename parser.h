@@ -64,14 +64,14 @@ public:
 
     // All add functions assume the name isn't already used for something else
     void       add_lvalue(LValue*);
-    void       add_builtin_type(RangeType&);
+    void       add_builtin_type(RangeType*);
     RangeType* add_type(const std::string& name,
                         const multi_int& lower_limit, const multi_int& upper_limit);
     // Add a temporary type that lacks a definition
     RangeType* add_type(const std::string& name);
     Function*  add_function(const BBFunction&);
     Function*  add_function(const std::string& name);
-    void       add_builtin_function(BuiltinFunction&);
+    void       add_builtin_function(BuiltinFunction*);
 
     void add_unresolved(LValue*);
     void add_unresolved(FunctionCall*);
@@ -102,10 +102,7 @@ private:
     TokenIterator m_input_end;
     TokenIterator token;
 
-    MemoryPool m_range_types;
-    MemoryPool m_lvalues;
-    MemoryPool m_functions;
-    MemoryPool m_statements;
+    MemoryPool m_range_types, m_lvalues, m_functions, m_statements;
     SymbolTable m_names_table;
 
     // Points to memory in m_functions

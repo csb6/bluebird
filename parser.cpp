@@ -199,7 +199,16 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
       m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64),
       m_names_table(m_range_types, m_lvalues, m_functions)
 {
-    m_names_table.add_builtin_type(RangeType::Integer);
+    m_names_table.add_builtin_type(&RangeType::Integer);
+
+    {
+        // function print_int(num : Integer)
+        auto* print_int = m_functions.make<BuiltinFunction>("print_int");
+        auto* num = m_lvalues.make<LValue>("num", &RangeType::Integer);
+        print_int->parameters.push_back(num);
+        m_names_table.add_builtin_function(print_int);
+        m_function_list.push_back(print_int);
+    }
 }
 
 // Pratt parser
@@ -302,17 +311,22 @@ Expression* Parser::in_function_call()
         new_function_call->function = m_names_table.add_function(token->text);
         m_names_table.add_unresolved(new_function_call);
     } else {
-        switch(match.value().name_type) {
+        SymbolInfo match_value{match.value()};
+        switch(match_value.name_type) {
         case NameType::DeclaredFunct:
             // A temp declaration (one without definition) has been declared, but haven't
             // resolved its definition yet
-            new_function_call->function = match.value().function;
+            new_function_call->function = match_value.function;
             m_names_table.add_unresolved(new_function_call);
             break;
         case NameType::Funct:
             // Found a function with a full definition
-            new_function_call->function = match.value().function;
+            new_function_call->function = match_value.function;
             is_resolved = true;
+            if(match_value.function->kind() == FunctionKind::Builtin) {
+                auto* builtin = static_cast<BuiltinFunction*>(match_value.function);
+                builtin->is_used = true;
+            }
             break;
         default:
             print_error(token->line_num, "Expected `" + token->text
@@ -841,8 +855,7 @@ SymbolTable::search_for_definition(const std::string& name, NameType kind) const
     while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
-        if(match != scope.symbols.end()
-           && match->second.name_type == kind) {
+        if(match != scope.symbols.end() && match->second.name_type == kind) {
             return {match->second};
         } else {
             scope_index = scope.parent_index;
@@ -856,9 +869,9 @@ void SymbolTable::add_lvalue(LValue* lval)
     m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
 }
 
-void SymbolTable::add_builtin_type(RangeType& type)
+void SymbolTable::add_builtin_type(RangeType* type)
 {
-    m_scopes[m_curr_scope].symbols[type.name] = SymbolInfo{NameType::Type, &type};
+    m_scopes[m_curr_scope].symbols[type->name] = SymbolInfo{NameType::Type, type};
 }
 
 RangeType* SymbolTable::add_type(const std::string& name,
@@ -894,10 +907,10 @@ Function* SymbolTable::add_function(const std::string& name)
     return ptr;
 }
 
-void SymbolTable::add_builtin_function(BuiltinFunction& function)
+void SymbolTable::add_builtin_function(BuiltinFunction* function)
 {
-    m_scopes[m_curr_scope].symbols[function.name] =
-        SymbolInfo{NameType::Funct, &function};
+    m_scopes[m_curr_scope].symbols[function->name] =
+        SymbolInfo{NameType::Funct, function};
 }
 
 void SymbolTable::add_unresolved(LValue* lvalue)

@@ -40,8 +40,6 @@
 #include <iostream>
 #include <string>
 
-BuiltinFunction BuiltinFunction::Print{"print"};
-
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
@@ -383,6 +381,11 @@ void CodeGenerator::declare_function_headers()
     std::vector<llvm::Type*> parameter_types;
     std::vector<llvm::StringRef> parameter_names;
     for(const Function *function : m_functions) {
+        if(function->kind() == FunctionKind::Builtin) {
+            auto* builtin = static_cast<const BuiltinFunction*>(function);
+            if(!builtin->is_used)
+                continue;
+        }
         // First, create a function declaration
         parameter_types.reserve(function->parameters.size());
         parameter_names.reserve(function->parameters.size());

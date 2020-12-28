@@ -1,0 +1,10 @@
+function main() is
+
+    let a: Integer = 89;
+    let b: Integer = 9;
+    print_int(a);
+    print_int(b);
+    print_int(a+b);
+    print_int(45);
+
+end main;
