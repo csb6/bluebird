@@ -358,6 +358,7 @@ struct WhileLoop final : public Block {
 // A callable procedure that optionally takes inputs
 struct Function {
     std::string name;
+    Type* return_type = nullptr;
     std::vector<LValue*> parameters;
 
     explicit Function(const std::string& n) : name(n) {}

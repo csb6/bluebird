@@ -209,6 +209,15 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
         m_names_table.add_builtin_function(print_int);
         m_function_list.push_back(print_int);
     }
+    {
+        // function putchar(c : Integer): Integer
+        auto* put_char = m_functions.make<BuiltinFunction>("putchar");
+        auto* c = m_lvalues.make<LValue>("c", &RangeType::Integer);
+        put_char->parameters.push_back(c);
+        put_char->return_type = &RangeType::Integer;
+        m_names_table.add_builtin_function(put_char);
+        m_function_list.push_back(put_char);
+    }
 }
 
 // Pratt parser
