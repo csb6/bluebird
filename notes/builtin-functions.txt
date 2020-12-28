@@ -1,0 +1,29 @@
+We need to have a way to map libc functions (and eventually other OS functionality) into Bluebird.
+
+End result:
+int printf(const char* format, ...); -> function print_int(a: Integer);
+
+Ignore varargs for now, just need way to call:
+
+printf("%d\n", a);
+
+from within the language.
+
+To do this, need to:
+
+-Add the printf function to the symbol table (in the module-global scope)
+-Have a marker so that if the builtin is called, it is marked 'is_used'
+-For all used builtin functions, do codegen. Instead of generating a function body (like
+for BBFunctions), generate a wrapper function that has a Bluebird-compatible interface but
+does all C-specific work in its body (e.g. calling the C function properly, doing casts, filling
+in default args, etc.)
+   -This will probably require each BuiltinFunction object to carry a lambda that has the
+    necessary LLVM calls in it, meaning the BuiltinFunction needs to be constructed in a
+    translation unit linked against LLVM
+-Additionally, make a declaration of the C-function as it appears when Clang generates
+the declaration
+
+The end goal is to be able, before the module is parsed/processed, to add the available
+builtin functions to the symbol table so that they are treated like already defined functions,
+then generate the proper declarations and wrapper functions iff the builtin function is
+actually called from the Bluebird program.
