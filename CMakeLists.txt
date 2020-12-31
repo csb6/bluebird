@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16.4)
 
 project(Bluebird)
 
+# For some reason CMake can't find LLVM on macOS,
+# so we need to give it some help
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
     set(LLVM_DIR /usr/local/opt/llvm/lib/cmake/llvm)
 endif()
@@ -13,10 +15,11 @@ link_directories(${LLVM_LIBRARY_DIR})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options(/W4)
 else()
-    add_compile_options(-Wall -Wextra -pedantic-errors -Wdeprecated)
+    add_compile_options(-Wall -Wextra -Wdeprecated)
 endif()
 
 add_executable(bluebird
