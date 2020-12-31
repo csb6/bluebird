@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& output, const Range&);
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type Void, String, Char, Int, Float, Bool;
+    static const Type Void, String, Float, Bool;
     std::string name;
 
     Type() = default;
@@ -81,10 +81,18 @@ struct Type {
     virtual void           print(std::ostream&) const;
 };
 
+struct LiteralType final : public Type {
+    static const LiteralType Char, Int;
+
+    using Type::Type;
+
+    TypeCategory category() const override { return TypeCategory::Literal; }
+};
+
 // Type with integer bounds
 struct RangeType final : public Type {
     // Some more default types that don't have to be declared
-    static RangeType Integer;
+    static RangeType Integer, Character;
     Range range;
 
     using Type::Type;
@@ -137,11 +145,12 @@ struct StringLiteral final : public Expression {
 struct CharLiteral final : public Expression {
     char value;
     unsigned int line;
+    const Type* actual_type = &LiteralType::Char;
 
     CharLiteral(unsigned int line_n, char v) : value(v), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::CharLiteral; }
-    const Type*    type() const override { return &Type::Char; }
+    const Type*    type() const override { return actual_type; }
     unsigned int   line_num() const override { return line; }
     void           print(std::ostream&) const override;
 
@@ -153,7 +162,7 @@ struct IntLiteral final : public Expression {
     // Holds arbitrarily-sized integers
     multi_int value;
     unsigned int line;
-    const Type* actual_type = &Type::Int;
+    const Type* actual_type = &LiteralType::Int;
 
     IntLiteral(unsigned int line_n, const std::string& v)
         : value(v), line(line_n) {}

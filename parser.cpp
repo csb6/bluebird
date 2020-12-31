@@ -191,6 +191,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
       m_names_table(m_range_types, m_lvalues, m_functions)
 {
     m_names_table.add_builtin_type(&RangeType::Integer);
+    m_names_table.add_builtin_type(&RangeType::Character);
 
     {
         // function print_int(num : Integer)

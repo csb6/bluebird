@@ -1,0 +1,10 @@
+function do_stuff(ch : Character) is
+   let a : Character = '\t';
+end do_stuff;
+
+function main() is
+   let a : Character;
+   let b : Character = 'b';
+   a = '\n';
+   do_stuff(b);
+end;

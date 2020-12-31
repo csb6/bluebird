@@ -67,30 +67,59 @@ static void nonbool_condition_error(const Expression* condition,
 // so each of their check_types() member functions are empty, defined in header
 
 template<typename Other>
-static void check_literal_types(IntLiteral* literal, const Other* other,
+static void check_literal_types(Expression* literal, const Other* other,
                                 const Type* other_type)
 {
     if(other_type->category() == TypeCategory::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const Range& range = range_type->range;
-        if(!range.contains(literal->value)) {
-            std::cerr << "ERROR: In expression starting at line " << literal->line
-                      << ":\n Integer literal `";
+        switch(literal->kind()) {
+        case ExpressionKind::IntLiteral: {
+            auto* int_literal = static_cast<IntLiteral*>(literal);
+            if(!range.contains(int_literal->value)) {
+                std::cerr << "ERROR: In expression starting at line "
+                          << int_literal->line << ":\n Integer Literal `";
+                int_literal->print(std::cerr);
+                std::cerr << "` is not in the range of:\n  ";
+                range_type->print(std::cerr);
+                std::cerr << " so it cannot be used with:\n  ";
+                other->print(std::cerr);
+                std::cerr << "\n Which has type:\n  ";
+                range_type->print(std::cerr);
+                std::cerr << "\n";
+                exit(1);
+            }
+            // Literals (if used with a compatible range type) take on the type of what
+            // they are used with
+            int_literal->actual_type = other_type;
+            break;
+        }
+        case ExpressionKind::CharLiteral: {
+            auto* char_literal = static_cast<CharLiteral*>(literal);
+            if(other_type != &RangeType::Character) {
+                std::cerr << "ERROR: In expression starting at line "
+                          << char_literal->line
+                          << ":\n Character Literal ";
+                char_literal->print(std::cerr);
+                std::cerr << " cannot be used with the non-character type:\n  ";
+                other_type->print(std::cerr);
+                std::cerr << "\n";
+                exit(1);
+            }
+            char_literal->actual_type = other_type;
+            break;
+        }
+        default:
+            std::cerr << "ERROR: In expression starting at line " << literal->line_num()
+                      << ":\n Expected a literal type, but instead found expression:\n";
             literal->print(std::cerr);
-            std::cerr << "` is not in the range of:\n  ";
-            range_type->print(std::cerr);
-            std::cerr << " so it cannot be used with:\n  ";
-            other->print(std::cerr);
             std::cerr << "\n Which has type:\n  ";
             range_type->print(std::cerr);
             std::cerr << "\n";
             exit(1);
         }
-        // Literals (if used with a compatible range type) take on the type of what
-        // they are used with
-        literal->actual_type = other_type;
     } else {
-        print_type_mismatch(literal, other, other_type, "Used with", "IntLiteral");
+        print_type_mismatch(literal, other, other_type, "Used with", "Literal");
         exit(1);
     }
 }
@@ -109,12 +138,10 @@ void BinaryExpression::check_types()
     const Type* right_type = right->type();
     // Check that the types of both sides of the operator match
     if(left_type != right_type) {
-        if(right->kind() == ExpressionKind::IntLiteral) {
-            check_literal_types(static_cast<IntLiteral*>(right.get()), left.get(),
-                                left_type);
-        } else if(left->kind() == ExpressionKind::IntLiteral) {
-            check_literal_types(static_cast<IntLiteral*>(left.get()), right.get(),
-                                right_type);
+        if(right_type->category() == TypeCategory::Literal) {
+            check_literal_types(right.get(), left.get(), left_type);
+        } else if(left_type->category() == TypeCategory::Literal) {
+            check_literal_types(left.get(), right.get(), right_type);
         } else {
             print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
             exit(1);
@@ -139,8 +166,8 @@ void FunctionCall::check_types()
         // Make sure each arg type matches corresponding parameter type
         const LValue* param = function->parameters[i];
         if(arg->type() != param->type) {
-            if(arg->kind() == ExpressionKind::IntLiteral) {
-                check_literal_types(static_cast<IntLiteral*>(arg), param, param->type);
+            if(arg->type()->category() == TypeCategory::Literal) {
+                check_literal_types(arg, param, param->type);
             } else {
                 print_type_mismatch(arg, param, param->type, "Expected function parameter",
                                     "Actual function argument");
@@ -161,9 +188,8 @@ void Initialization::check_types()
         return;
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        if(expression->kind() == ExpressionKind::IntLiteral) {
-            check_literal_types(static_cast<IntLiteral*>(expression.get()),
-                                lvalue, lvalue->type);
+        if(expression->type()->category() == TypeCategory::Literal) {
+            check_literal_types(expression.get(), lvalue, lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue, lvalue->type);
             exit(1);
@@ -175,9 +201,8 @@ void Assignment::check_types()
 {
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        if(expression->kind() == ExpressionKind::IntLiteral) {
-            check_literal_types(static_cast<IntLiteral*>(expression.get()),
-                                lvalue, lvalue->type);
+        if(expression->type()->category() == TypeCategory::Literal) {
+            check_literal_types(expression.get(), lvalue, lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue, lvalue->type);
             exit(1);

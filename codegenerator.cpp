@@ -84,7 +84,7 @@ llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 {
     // Create a signed `char` type
     return llvm::ConstantInt::get(gen.m_context,
-                                  llvm::APInt(sizeof(value), value, true));
+                                  llvm::APInt(sizeof(value)*8, value, true));
 }
 
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)

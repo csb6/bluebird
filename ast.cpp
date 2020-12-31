@@ -245,10 +245,12 @@ void BuiltinFunction::print(std::ostream& output) const
 
 const Type Type::Void{"VoidType"};
 const Type Type::String{"StringLiteral"};
-const Type Type::Char{"CharLiteral"};
-const Type Type::Int{"IntLiteral"};
 const Type Type::Float{"FloatLiteral"};
 const Type Type::Bool{"Boolean"};
 
+const LiteralType LiteralType::Char{"CharLiteral"};
+const LiteralType LiteralType::Int{"IntLiteral"};
+
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
 RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};
+RangeType RangeType::Character{"Character", multi_int{"0"}, multi_int{"255"}};
