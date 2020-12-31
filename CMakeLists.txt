@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.16.4)
 
 project(Bluebird)
 
-# For some reason CMake can't find LLVM on macOS,
-# so we need to give it some help
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+    # For some reason CMake can't find LLVM on macOS,
+    # so we need to give it some help
     set(LLVM_DIR /usr/local/opt/llvm/lib/cmake/llvm)
+    # Without this, won't link proper std::filesystem code
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 endif()
 find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -22,16 +24,9 @@ else()
     add_compile_options(-Wall -Wextra -Wdeprecated)
 endif()
 
-add_executable(bluebird
-  main.cpp
-  lexer.cpp
-  parser.cpp
-  ast.cpp
-  token.cpp
-  checker.cpp
-  codegenerator.cpp
-  multiprecision.cpp)
-include_directories(third_party third_party/mini-gmp)
+add_executable(bluebird)
+include_directories(src third_party third_party/mini-gmp)
+add_subdirectory(src)
 add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(llvm_libs core native option)
