@@ -67,7 +67,7 @@ static void nonbool_condition_error(const Expression* condition,
 // so each of their check_types() member functions are empty, defined in header
 
 template<typename Other>
-static void check_literal_types(const IntLiteral* literal, const Other* other,
+static void check_literal_types(IntLiteral* literal, const Other* other,
                                 const Type* other_type)
 {
     if(other_type->category() == TypeCategory::Range) {
@@ -86,6 +86,9 @@ static void check_literal_types(const IntLiteral* literal, const Other* other,
             std::cerr << "\n";
             exit(1);
         }
+        // Literals (if used with a compatible range type) take on the type of what
+        // they are used with
+        literal->actual_type = other_type;
     } else {
         print_type_mismatch(literal, other, other_type, "Used with", "IntLiteral");
         exit(1);
@@ -93,11 +96,11 @@ static void check_literal_types(const IntLiteral* literal, const Other* other,
 }
 
 // TODO: check that unary operators are valid for their values
-void UnaryExpression::check_types() const
+void UnaryExpression::check_types()
 {}
 
 // TODO: check if this binary op is legal for this type
-void BinaryExpression::check_types() const
+void BinaryExpression::check_types()
 {
     // Ensure the sub-expressions are correct first
     left->check_types();
@@ -106,18 +109,20 @@ void BinaryExpression::check_types() const
     const Type* right_type = right->type();
     // Check that the types of both sides of the operator match
     if(left_type != right_type) {
-        print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
-        exit(1);
-    } else if(right->kind() == ExpressionKind::IntLiteral) {
-        check_literal_types(static_cast<const IntLiteral*>(right.get()), left.get(),
-                            left_type);
-    } else if(left->kind() == ExpressionKind::IntLiteral) {
-        check_literal_types(static_cast<const IntLiteral*>(left.get()), right.get(),
-                            right_type);
+        if(right->kind() == ExpressionKind::IntLiteral) {
+            check_literal_types(static_cast<IntLiteral*>(right.get()), left.get(),
+                                left_type);
+        } else if(left->kind() == ExpressionKind::IntLiteral) {
+            check_literal_types(static_cast<IntLiteral*>(left.get()), right.get(),
+                                right_type);
+        } else {
+            print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
+            exit(1);
+        }
     }
 }
 
-void FunctionCall::check_types() const
+void FunctionCall::check_types()
 {
     if(arguments.size() != function->parameters.size()) {
         std::cerr << "ERROR: In expression starting at line " << line
@@ -128,48 +133,59 @@ void FunctionCall::check_types() const
     }
     const size_t arg_count = arguments.size();
     for(size_t i = 0; i < arg_count; ++i) {
-        const Expression* arg = arguments[i].get();
+        Expression* arg = arguments[i].get();
         // Ensure each argument expression is internally typed correctly
         arg->check_types();
         // Make sure each arg type matches corresponding parameter type
         const LValue* param = function->parameters[i];
         if(arg->type() != param->type) {
-            print_type_mismatch(arg, param, param->type,
-                                "Expected function parameter", "Actual function argument");
-            exit(1);
-        } else if(arg->kind() == ExpressionKind::IntLiteral) {
-            check_literal_types(static_cast<const IntLiteral*>(arg), param,
-                                param->type);
+            if(arg->kind() == ExpressionKind::IntLiteral) {
+                check_literal_types(static_cast<IntLiteral*>(arg), param, param->type);
+            } else {
+                print_type_mismatch(arg, param, param->type, "Expected function parameter",
+                                    "Actual function argument");
+                exit(1);
+            }
         }
     }
 }
 
-void BasicStatement::check_types() const
+void BasicStatement::check_types()
 {
     expression->check_types();
 }
 
-void Initialization::check_types() const
+void Initialization::check_types()
 {
     if(expression == nullptr)
         return;
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        print_type_mismatch(expression.get(), lvalue, lvalue->type);
-        exit(1);
+        if(expression->kind() == ExpressionKind::IntLiteral) {
+            check_literal_types(static_cast<IntLiteral*>(expression.get()),
+                                lvalue, lvalue->type);
+        } else {
+            print_type_mismatch(expression.get(), lvalue, lvalue->type);
+            exit(1);
+        }
     }
 }
 
-void Assignment::check_types() const
+void Assignment::check_types()
 {
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        print_type_mismatch(expression.get(), lvalue, lvalue->type);
-        exit(1);
+        if(expression->kind() == ExpressionKind::IntLiteral) {
+            check_literal_types(static_cast<IntLiteral*>(expression.get()),
+                                lvalue, lvalue->type);
+        } else {
+            print_type_mismatch(expression.get(), lvalue, lvalue->type);
+            exit(1);
+        }
     }
 }
 
-void IfBlock::check_types() const
+void IfBlock::check_types()
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
@@ -182,14 +198,14 @@ void IfBlock::check_types() const
     }
 }
 
-void Block::check_types() const
+void Block::check_types()
 {
     for(auto* stmt : statements) {
         stmt->check_types();
     }
 }
 
-void WhileLoop::check_types() const
+void WhileLoop::check_types()
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
@@ -203,8 +219,7 @@ void Checker::run() const
 {
     for(const auto *function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            for(const auto *statement
-                    : static_cast<const BBFunction*>(function)->statements) {
+            for(auto *statement : static_cast<const BBFunction*>(function)->statements) {
                 statement->check_types();
             }
         }

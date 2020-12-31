@@ -28,12 +28,12 @@ Todo:
       being constructed/moved in a bad design
 [ ] Add support for module-global variables
 [X] Generate an object file from the LLVM IR
-[ ] Generate an executable from LLVM IR, possibly integrating simple C library
+[X] Generate an executable from LLVM IR, possibly integrating simple C library
     functions (e.g. printf() or puts()) to have some output
 [ ] Add standard interface for adding builtin functions/types
 [X] Add typechecking for int literals and expressions (ensuring that int literals
     are only used with expressions that evaluate to range types)
-[ ] Add check so that int literals are always within the range of the type they
+[X] Add check so that int literals are always within the range of the type they
     are being used with
 [X] Add above two items for assignments/initialization statements
 [ ] Change build system to CMake to be more portable across Windows/Unix, set

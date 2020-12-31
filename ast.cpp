@@ -82,19 +82,9 @@ void StringLiteral::print(std::ostream& output) const
 
 void CharLiteral::print(std::ostream& output) const
 {
+    output << '\'';
     print_unescape(value, output);
-}
-
-const Type* IntLiteral::type() const
-{
-    switch(context_kind) {
-    case ContextKind::Expression:
-        return context_expr->type();
-    case ContextKind::LValue:
-        return context_lvalue->type;
-    case ContextKind::None:
-        return &Type::Int;
-    }
+    output << '\'';
 }
 
 void IntLiteral::print(std::ostream& output) const

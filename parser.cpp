@@ -136,9 +136,8 @@ static Expression* fold_constants(Token op, Expression* right)
 
 static Expression* fold_constants(Expression* left, const Token& op, Expression* right)
 {
-    bool left_is_literal = left->kind() == ExpressionKind::IntLiteral;
-    bool right_is_literal = right->kind() == ExpressionKind::IntLiteral;
-    if(right_is_literal && left_is_literal) {
+    if(left->kind() == ExpressionKind::IntLiteral
+       && right->kind() == ExpressionKind::IntLiteral) {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
         auto* l_int = static_cast<IntLiteral*>(left);
         auto* r_int = static_cast<IntLiteral*>(right);
@@ -181,14 +180,6 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
         }
         delete right;
         return left;
-    } else if(left_is_literal) {
-        auto* left_side = static_cast<IntLiteral*>(left);
-        left_side->context_kind = ContextKind::Expression;
-        left_side->context_expr = right;
-    } else if(right_is_literal) {
-        auto* right_side = static_cast<IntLiteral*>(right);
-        right_side->context_kind = ContextKind::Expression;
-        right_side->context_expr = left;
     }
     return new BinaryExpression(left, op.type, right);
 }
@@ -362,12 +353,6 @@ Expression* Parser::in_function_call()
             return new_function_call;
         default: {
             auto* arg = parse_expression(TokenType::Comma);
-            if(is_resolved && arg_count < new_function_call->function->parameters.size()
-               && arg->kind() == ExpressionKind::IntLiteral) {
-                auto* arg_lit = static_cast<IntLiteral*>(arg);
-                arg_lit->context_kind = ContextKind::LValue;
-                arg_lit->context_lvalue = new_function_call->function->parameters[arg_count];
-            }
             ++arg_count;
             new_function_call->arguments.emplace_back(arg);
         }
@@ -460,13 +445,6 @@ Initialization* Parser::in_initialization()
         ++token;
         Expression* init_val = parse_expression();
         ++token;
-        if(init_val->kind() == ExpressionKind::IntLiteral) {
-            // Resolve int literal's type based on the type of the lvalue
-            // it is being assigned to
-            auto* init_lit = static_cast<IntLiteral*>(init_val);
-            init_lit->context_kind = ContextKind::LValue;
-            init_lit->context_lvalue = new_statement->lvalue;
-        }
         new_statement->expression = Magnum::pointer<Expression>(init_val);
     }
     m_names_table.add_lvalue(new_statement->lvalue);
@@ -491,13 +469,6 @@ Assignment* Parser::in_assignment()
 
     std::advance(token, 2); // skip varname and `=` operator
     Expression* expr = parse_expression();
-    if(expr->kind() == ExpressionKind::IntLiteral) {
-        // Resolve int literal's type based on the type of the lvalue
-        // it is being assigned to
-        auto* lit = static_cast<IntLiteral*>(expr);
-        lit->context_kind = ContextKind::LValue;
-        lit->context_lvalue = lval_match->lvalue;
-    }
     ++token;
     return m_statements.make<Assignment>(expr, lval_match->lvalue);
 }
@@ -968,16 +939,6 @@ void SymbolTable::validate_names()
             } else {
                 // Update call to point to the actual function
                 funct_call->function = match->function;
-                for(size_t arg_num = 0; arg_num < funct_call->function->parameters.size();
-                    ++arg_num) {
-                    Expression* arg = funct_call->arguments[arg_num].get();
-                    if(arg->kind() == ExpressionKind::IntLiteral) {
-                        auto* arg_lit = static_cast<IntLiteral*>(arg);
-                        arg_lit->context_kind = ContextKind::LValue;
-                        arg_lit->context_lvalue =
-                            funct_call->function->parameters[arg_num];
-                    }
-                }
             }
         }
         scope.unresolved_funct_calls.clear();
