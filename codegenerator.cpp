@@ -241,7 +241,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_ir_builder.SetInsertPoint(entry, entry->begin());
 
     llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
-        llvm::IntegerType::get(m_context, lvalue->type->range.bit_size), nullptr,
+        llvm::IntegerType::get(m_context, lvalue->type->bit_size()), nullptr,
         lvalue->name.c_str());
     m_lvalues[lvalue] = alloc;
     m_ir_builder.restoreIP(prev_insert_point);

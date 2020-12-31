@@ -1,10 +1,21 @@
 function main() is
 
-    let a: Integer = 89;
-    let b: Integer = 9;
-    putchar(a);
-    putchar(b);
-    putchar(a+b);
-    putchar(45);
+    let i: Integer = 0;
+    while i < 5 do
+        putchar('h');
+        putchar('e');
+        putchar('l');
+        putchar('l');
+        putchar('o');
+        putchar(' ');
+        putchar('w');
+        putchar('o');
+        putchar('r');
+        putchar('l');
+        putchar('d');
+        putchar('!');
+        putchar('\n');
+        i = i + 1;
+    end while;
 
 end main;

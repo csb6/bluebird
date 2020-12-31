@@ -194,17 +194,9 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     m_names_table.add_builtin_type(&RangeType::Character);
 
     {
-        // function print_int(num : Integer)
-        auto* print_int = m_functions.make<BuiltinFunction>("print_int");
-        auto* num = m_lvalues.make<LValue>("num", &RangeType::Integer);
-        print_int->parameters.push_back(num);
-        m_names_table.add_builtin_function(print_int);
-        m_function_list.push_back(print_int);
-    }
-    {
-        // function putchar(c : Integer): Integer
+        // function putchar(c : Character): Integer
         auto* put_char = m_functions.make<BuiltinFunction>("putchar");
-        auto* c = m_lvalues.make<LValue>("c", &RangeType::Integer);
+        auto* c = m_lvalues.make<LValue>("c", &RangeType::Character);
         put_char->parameters.push_back(c);
         put_char->return_type = &RangeType::Integer;
         m_names_table.add_builtin_function(put_char);
