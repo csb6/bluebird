@@ -26,24 +26,33 @@ Todo:
       range is not being set correctly (i.e. printing the range out gives: "(0, )"
     - Issue was with complex situation of move semantics, with multiple temporaries
       being constructed/moved in a bad design
-[ ] Add support for module-global variables
 [X] Generate an object file from the LLVM IR
 [X] Generate an executable from LLVM IR, possibly integrating simple C library
     functions (e.g. printf() or puts()) to have some output
-[ ] Add standard interface for adding builtin functions/types
 [X] Add typechecking for int literals and expressions (ensuring that int literals
     are only used with expressions that evaluate to range types)
 [X] Add check so that int literals are always within the range of the type they
     are being used with
 [X] Add above two items for assignments/initialization statements
-[ ] Change build system to CMake to be more portable across Windows/Unix, set
+[X] Change build system to CMake to be more portable across Windows/Unix, set
     platform-specific linker/compiler flags more easily
+[ ] Add support for module-global variables
+[ ] Add support for arrays of integers/characters
+[ ] Figure out how strings should work
+[ ] Add standard interface for adding builtin functions/types
 [ ] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
     depend specifically on RangeTypes
 [X] Add while-loops
+[ ] Add support for using parameters within a function definition
+[ ] Add return statement and return types, enabling non-void functions
+[ ] Add support for user-defined record types
 [ ] Add support for creating ranges and using them within larger expressions/variables
 [ ] Add simple for-loops that iterate over a range
 [ ] Add support for for-loops that iterate over a RangeType's range
+[ ] Add short-circuiting to logical operators, with non-short-circuiting options
+[ ] Consider adding support for syntactic sugar for chained comparison:
+    "`a op1 b op2 c ... y opN z` is equivalent to `a op1 b and b op2 c and ... y opN z`,
+    except that each expression is evaluated at most once." (from Python docs)
 [ ] Consider adding a viceversa keyword to be used with binary expressions
 [ ] Work on the various TODOs throughout the codebase
 [ ] Consider reading characters on-demand from an iostream in the lexer instead
