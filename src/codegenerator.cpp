@@ -446,6 +446,18 @@ void CodeGenerator::link(const std::filesystem::path& object_file,
         std::cerr << "Linker failed\n";
         exit(1);
     }
+#elif defined _WIN32
+    const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
+    if(!lld::coff::link(args, true, llvm::outs(), llvm::errs())) {
+        std::cerr << "Linker failed\n";
+        exit(1);
+    }
+#elif defined __linux__
+    const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
+    if(!lld::elf::link(args, true, llvm::outs(), llvm::errs())) {
+        std::cerr << "Linker failed\n";
+        exit(1);
+    }
 #else
     std::cerr << "Note: linking not implemented for this platform, so"
         " no executable will be produced. Manually use linker to turn emitted"

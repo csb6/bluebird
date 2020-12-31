@@ -31,4 +31,13 @@ add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(llvm_libs core native option)
 target_link_libraries(bluebird ${llvm_libs}
-                      lldDriver lldCommon lldCore lldYAML lldReaderWriter lldMachO)
+                      lldDriver lldCommon lldCore lldYAML lldReaderWriter)
+
+#Try to link parts of lld that generate this platform's executables
+if(CMAKE_SYSTEM MATCHES "Darwin")
+    target_link_libraries(bluebird lldMachO)
+elseif(CMAKE_SYSTEM MATCHES "Windows")
+    target_link_libraries(bluebird WindowsManifest lldCOFF)
+elseif(CMAKE_SYSTEM MATCHES "Linux")
+    target_link_libraries(bluebird lldELF)
+endif()
