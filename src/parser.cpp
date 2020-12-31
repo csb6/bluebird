@@ -105,7 +105,7 @@ static void print_error_expected(std::string_view expected, const Expression* ac
     std::cerr << '\n';
 }
 
-static void assert_token_is(TokenType type, std::string_view description, Token token)
+static void check_token_is(TokenType type, std::string_view description, Token token)
 {
     if(token.type != type) {
         print_error_expected(description, token);
@@ -246,7 +246,7 @@ Expression* Parser::in_literal()
 Expression* Parser::in_lvalue_expression()
 {
     const TokenIterator current = token++;
-    assert_token_is(TokenType::Name, "variable/constant name", *current);
+    check_token_is(TokenType::Name, "variable/constant name", *current);
 
     // Need to find the right LValue that this LValueExpression is a usage of
     const auto match = m_names_table.find(current->text);
@@ -292,7 +292,7 @@ Expression* Parser::in_expression()
 
 Expression* Parser::in_function_call()
 {
-    assert_token_is(TokenType::Name, "function name", *token);
+    check_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
     auto* new_function_call = new FunctionCall(token->line_num, token->text);
@@ -329,8 +329,8 @@ Expression* Parser::in_function_call()
     }
 
     ++token;
-    assert_token_is(TokenType::Open_Parentheses,
-                    "'(' token before function call argument list", *token);
+    check_token_is(TokenType::Open_Parentheses,
+                   "'(' token before function call argument list", *token);
 
     // Next, parse the arguments, each of which should be some sort of expression
     ++token;
@@ -357,8 +357,8 @@ Expression* Parser::in_function_call()
 
 Expression* Parser::in_parentheses()
 {
-    assert_token_is(TokenType::Open_Parentheses,
-                    "opening parentheses for an expression group", *token);
+    check_token_is(TokenType::Open_Parentheses,
+                   "opening parentheses for an expression group", *token);
 
     ++token;
     Expression* result = parse_expression(TokenType::Closed_Parentheses);
@@ -374,7 +374,7 @@ Expression* Parser::in_parentheses()
 // Creates LValue, but does not add to symbol table 
 LValue* Parser::in_lvalue_declaration()
 {
-    assert_token_is(TokenType::Name, "the name of an lvalue", *token);
+    check_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
         print_error(token->line_num, "`" + token->text
                     + "` cannot be used as an lvalue name. It is already defined as a name");
@@ -383,7 +383,7 @@ LValue* Parser::in_lvalue_declaration()
     LValue* new_lvalue = m_lvalues.make<LValue>(token->text);
 
     ++token;
-    assert_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
+    check_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
 
     ++token;
     if(token->type == TokenType::Keyword_Const) {
@@ -391,7 +391,7 @@ LValue* Parser::in_lvalue_declaration()
         new_lvalue->is_mutable = false;
         ++token;
     }
-    assert_token_is(TokenType::Name, "typename", *token);
+    check_token_is(TokenType::Name, "typename", *token);
 
     const auto match = m_names_table.find(token->text);
     if(!match) {
@@ -422,7 +422,7 @@ LValue* Parser::in_lvalue_declaration()
 
 Initialization* Parser::in_initialization()
 {
-    assert_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
+    check_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
     ++token;
     auto *new_statement =
         m_statements.make<Initialization>(in_lvalue_declaration());
@@ -488,21 +488,21 @@ BasicStatement* Parser::in_basic_statement()
 {
     auto *new_statement = m_statements.make<BasicStatement>(parse_expression());
 
-    assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
+    check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
     return new_statement;
 }
 
 IfBlock* Parser::in_if_block()
 {
-    assert_token_is(TokenType::Keyword_If, "keyword `if`", *token);
+    check_token_is(TokenType::Keyword_If, "keyword `if`", *token);
     ++token;
 
     m_names_table.open_scope();
     // First, parse the if-condition
     auto *new_if_block = m_statements.make<IfBlock>(parse_expression());
-    assert_token_is(TokenType::Keyword_Do,
-                    "keyword `do` following `if` condition", *token);
+    check_token_is(TokenType::Keyword_Do,
+                   "keyword `do` following `if` condition", *token);
 
     // Next, parse the statements inside the if-block
     ++token;
@@ -515,9 +515,9 @@ IfBlock* Parser::in_if_block()
                 ++token;
             }
             ++token;
-            assert_token_is(TokenType::End_Statement,
-                            "closing `;` or an end label after end of if-block",
-                            *token);
+            check_token_is(TokenType::End_Statement,
+                           "closing `;` or an end label after end of if-block",
+                           *token);
             ++token;
             return new_if_block;
         } else if(token->type == TokenType::Keyword_Else) {
@@ -542,7 +542,7 @@ IfBlock* Parser::in_if_block()
 
 Block* Parser::in_else_block()
 {
-    assert_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
+    check_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
     m_names_table.open_scope();
     auto* new_else_block = m_statements.make<Block>();
     ++token;
@@ -556,9 +556,9 @@ Block* Parser::in_else_block()
                 ++token;
             }
             ++token;
-            assert_token_is(TokenType::End_Statement,
-                            "closing `;` or an end label after end of else-block",
-                            *token);
+            check_token_is(TokenType::End_Statement,
+                           "closing `;` or an end label after end of else-block",
+                           *token);
             ++token;
             return new_else_block;
         } else {
@@ -571,13 +571,13 @@ Block* Parser::in_else_block()
 
 WhileLoop* Parser::in_while_loop()
 {
-    assert_token_is(TokenType::Keyword_While, "keyword `while`", *token);
+    check_token_is(TokenType::Keyword_While, "keyword `while`", *token);
     ++token;
     m_names_table.open_scope();
     // First, parse the condition
     auto* new_while_loop = m_statements.make<WhileLoop>(parse_expression());
-    assert_token_is(TokenType::Keyword_Do,
-                    "keyword `do` following `while` condition", *token);
+    check_token_is(TokenType::Keyword_Do,
+                   "keyword `do` following `while` condition", *token);
 
     // Parse the statements inside the loop body
     ++token;
@@ -590,9 +590,9 @@ WhileLoop* Parser::in_while_loop()
                 ++token;
             }
             ++token;
-            assert_token_is(TokenType::End_Statement,
-                            "closing `;` or an end label after end of while-block",
-                            *token);
+            check_token_is(TokenType::End_Statement,
+                           "closing `;` or an end label after end of while-block",
+                           *token);
             ++token;
             return new_while_loop;
         } else {
@@ -606,7 +606,7 @@ WhileLoop* Parser::in_while_loop()
 void Parser::in_function_definition()
 {
     ++token;
-    assert_token_is(TokenType::Name, "name to follow `function keyword`", *token);
+    check_token_is(TokenType::Name, "name to follow `function keyword`", *token);
 
     // First, set the function's name, making sure it isn't being used for
     // anything else
@@ -619,8 +619,8 @@ void Parser::in_function_definition()
     BBFunction new_funct{token->text};
 
     ++token;
-    assert_token_is(TokenType::Open_Parentheses,
-                    "`(` to follow name of function in definition", *token);
+    check_token_is(TokenType::Open_Parentheses,
+                   "`(` to follow name of function in definition", *token);
 
     m_names_table.open_scope();
     // Next, parse the parameters
@@ -642,8 +642,8 @@ void Parser::in_function_definition()
         } else if(token->type == TokenType::Closed_Parentheses) {
             // Next, look for `is` keyword
             ++token;
-            assert_token_is(TokenType::Keyword_Is,
-                            "keyword `is` to follow parameters of the function", *token);
+            check_token_is(TokenType::Keyword_Is,
+                           "keyword `is` to follow parameters of the function", *token);
             break;
         } else {
             print_error_expected("parameter name", *token);
@@ -668,8 +668,8 @@ void Parser::in_function_definition()
                 ++token;
             }
             ++token;
-            assert_token_is(TokenType::End_Statement,
-                            "end of statement (a.k.a. `;`) or an end label", *token);
+            check_token_is(TokenType::End_Statement,
+                           "end of statement (a.k.a. `;`) or an end label", *token);
             Function* ptr = m_names_table.add_function(new_funct);
             m_function_list.push_back(ptr);
             ++token;
@@ -722,9 +722,9 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
 void Parser::in_type_definition()
 {
-    assert_token_is(TokenType::Keyword_Type, "keyword `type`", *token);
+    check_token_is(TokenType::Keyword_Type, "keyword `type`", *token);
     ++token;
-    assert_token_is(TokenType::Name, "typename", *token);
+    check_token_is(TokenType::Name, "typename", *token);
 
     if(const auto match = m_names_table.find(token->text);
        match && match.value().name_type != NameType::DeclaredType) {
@@ -734,7 +734,7 @@ void Parser::in_type_definition()
 
     const auto& type_name = token->text;
     ++token;
-    assert_token_is(TokenType::Keyword_Is, "keyword `is`", *token);
+    check_token_is(TokenType::Keyword_Is, "keyword `is`", *token);
 
     // TODO: add ability to distinguish between new distinct types and new subtypes
     ++token;
@@ -748,7 +748,7 @@ void Parser::in_type_definition()
         exit(1);
     }
 
-    assert_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
+    check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
 }
 
