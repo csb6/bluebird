@@ -2,12 +2,10 @@ cmake_minimum_required(VERSION 3.16.4)
 
 project(Bluebird)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+if(CMAKE_SYSTEM MATCHES "Darwin")
     # For some reason CMake can't find LLVM on macOS,
     # so we need to give it some help
     set(LLVM_DIR /usr/local/opt/llvm/lib/cmake/llvm)
-    # Without this, won't link proper std::filesystem code
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 endif()
 find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -36,6 +34,8 @@ target_link_libraries(bluebird ${llvm_libs}
 #Try to link parts of lld that generate this platform's executables
 if(CMAKE_SYSTEM MATCHES "Darwin")
     target_link_libraries(bluebird lldMachO)
+    # Without this, won't link proper std::filesystem code
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
 elseif(CMAKE_SYSTEM MATCHES "Windows")
     target_link_libraries(bluebird WindowsManifest lldCOFF)
 elseif(CMAKE_SYSTEM MATCHES "Linux")
