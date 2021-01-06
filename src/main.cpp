@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     CodeGenerator codegen{argv[1], parser.functions()};
     codegen.run();
 
-    std::cout << parser << '\n';
+    std::cout << parser;
 
     return 0;
 }

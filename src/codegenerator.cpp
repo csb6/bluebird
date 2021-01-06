@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -442,19 +442,19 @@ void CodeGenerator::link(const std::filesystem::path& object_file,
 #ifdef __APPLE__
     const char* args[] = { "lld", "-sdk_version", "10.14", "-o", exe_file.c_str(),
                            object_file.c_str(), "-lSystem" };
-    if(!lld::mach_o::link(args, true, llvm::outs(), llvm::errs())) {
+    if(!lld::mach_o::link(args, false, llvm::outs(), llvm::errs())) {
         std::cerr << "Linker failed\n";
         exit(1);
     }
 #elif defined _WIN32
     const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
-    if(!lld::coff::link(args, true, llvm::outs(), llvm::errs())) {
+    if(!lld::coff::link(args, false, llvm::outs(), llvm::errs())) {
         std::cerr << "Linker failed\n";
         exit(1);
     }
 #elif defined __linux__
     const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
-    if(!lld::elf::link(args, true, llvm::outs(), llvm::errs())) {
+    if(!lld::elf::link(args, false, llvm::outs(), llvm::errs())) {
         std::cerr << "Linker failed\n";
         exit(1);
     }
