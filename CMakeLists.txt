@@ -1,3 +1,19 @@
+# Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
+#    Copyright (C) 2021  Cole Blakley
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
 cmake_minimum_required(VERSION 3.16.4)
 
 project(Bluebird)
@@ -5,9 +21,11 @@ project(Bluebird)
 if(CMAKE_SYSTEM MATCHES "Darwin")
     # For some reason CMake can't find LLVM on macOS,
     # so we need to give it some help
-    set(LLVM_DIR /usr/local/opt/llvm/lib/cmake/llvm)
+    find_package(LLVM REQUIRED CONFIG
+        HINTS /usr/local/opt/llvm/lib/cmake/llvm)
+else()
+    find_package(LLVM REQUIRED CONFIG)
 endif()
-find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 # To find the lld .a files
