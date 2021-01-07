@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -32,7 +32,7 @@
 #include <filesystem>
 
 namespace llvm {
-    class AllocaInst;
+    class Value;
     class raw_fd_ostream;
     class TargetMachine;
 };
@@ -45,7 +45,8 @@ private:
     llvm::TargetMachine* m_target_machine;
 
     const std::vector<struct Function*>& m_functions;
-    std::unordered_map<const struct LValue*, llvm::AllocaInst*> m_lvalues;
+    const std::vector<struct Initialization*>& m_global_vars;
+    std::unordered_map<const struct LValue*, llvm::Value*> m_lvalues;
 
     // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp
@@ -58,6 +59,7 @@ private:
     friend struct BinaryExpression;
     friend struct FunctionCall;
 
+    void declare_globals();
     void declare_builtin_functions();
     void declare_function_headers();
     // Generate code for initializing lvalues
@@ -76,7 +78,8 @@ private:
     void link(const std::filesystem::path& object_file,
               const std::filesystem::path& exe_file = "a.out");
 public:
-    explicit CodeGenerator(const char* source_filename, const std::vector<Function*>&);
+    CodeGenerator(const char* source_filename,
+                  const std::vector<Function*>&, const std::vector<Initialization*>&);
     void run();
 };
 #endif

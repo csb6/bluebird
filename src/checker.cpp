@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -19,9 +19,16 @@
 #include <iostream>
 
 Checker::Checker(const std::vector<Function*>& functions,
-                 const std::vector<RangeType*>& types)
-    : m_functions(functions), m_types(types)
+                 const std::vector<RangeType*>& types,
+                 const std::vector<Initialization*>& global_vars)
+    : m_functions(functions), m_types(types), m_global_vars(global_vars)
 {}
+
+static void print_error(const Expression* expr, const char* message)
+{
+    std::cerr << "ERROR: In expression starting at line " << expr->line_num()
+              << ":\n" << message;
+}
 
 template<typename Other>
 static void print_type_mismatch(const Expression* expr,
@@ -30,8 +37,7 @@ static void print_type_mismatch(const Expression* expr,
                                 const char* expr_label = "Expression",
                                 const TokenType* op = nullptr)
 {
-    std::cerr << "ERROR: In expression starting at line " << expr->line_num()
-              << ":\n Types don't match:\n  ";
+    print_error(expr, " Types don't match:\n  ");
 
     // Left
     std::cerr << expr_label << ": ";
@@ -55,9 +61,8 @@ static void print_type_mismatch(const Expression* expr,
 static void nonbool_condition_error(const Expression* condition,
                                     const char* statement_name)
 {
-    std::cerr << "ERROR: In statement starting at line " << condition->line_num()
-              << ":\n Expected boolean condition for this " << statement_name
-              << ", but instead found:\n  Expression: ";
+    print_error(condition, " Exprected boolean condition for this ");
+    std::cerr << statement_name << ", but instead found:\n  Expression: ";
     condition->print(std::cerr);
     std::cerr << '\t';
     condition->type()->print(std::cerr);
@@ -77,16 +82,13 @@ static void check_literal_types(Expression* literal, const Other* other,
         case ExpressionKind::IntLiteral: {
             auto* int_literal = static_cast<IntLiteral*>(literal);
             if(!range.contains(int_literal->value)) {
-                std::cerr << "ERROR: In expression starting at line "
-                          << int_literal->line << ":\n Integer Literal `";
+                print_error(int_literal, " Integer Literal `");
                 int_literal->print(std::cerr);
                 std::cerr << "` is not in the range of:\n  ";
                 range_type->print(std::cerr);
                 std::cerr << " so it cannot be used with:\n  ";
                 other->print(std::cerr);
-                std::cerr << "\n Which has type:\n  ";
-                range_type->print(std::cerr);
-                std::cerr << "\n";
+                std::cerr << '\n';
                 exit(1);
             }
             // Literals (if used with a compatible range type) take on the type of what
@@ -97,9 +99,7 @@ static void check_literal_types(Expression* literal, const Other* other,
         case ExpressionKind::CharLiteral: {
             auto* char_literal = static_cast<CharLiteral*>(literal);
             if(other_type != &RangeType::Character) {
-                std::cerr << "ERROR: In expression starting at line "
-                          << char_literal->line
-                          << ":\n Character Literal ";
+                print_error(char_literal, " Character Literal ");
                 char_literal->print(std::cerr);
                 std::cerr << " cannot be used with the non-character type:\n  ";
                 other_type->print(std::cerr);
@@ -110,8 +110,7 @@ static void check_literal_types(Expression* literal, const Other* other,
             break;
         }
         default:
-            std::cerr << "ERROR: In expression starting at line " << literal->line_num()
-                      << ":\n Expected a literal type, but instead found expression:\n";
+            print_error(literal, " Expected a literal type, but instead found expression: ");
             literal->print(std::cerr);
             std::cerr << "\n Which has type:\n  ";
             range_type->print(std::cerr);
@@ -152,10 +151,9 @@ void BinaryExpression::check_types()
 void FunctionCall::check_types()
 {
     if(arguments.size() != function->parameters.size()) {
-        std::cerr << "ERROR: In expression starting at line " << line
-                  << ":\n Function `" << name << "` expects "
-                  << function->parameters.size() << " arguments, but "
-                  << arguments.size() << " were provided\n";
+        print_error(this, " Function `");
+        std::cerr << name << "` expects " << function->parameters.size()
+                  << " arguments, but " << arguments.size() << " were provided\n";
         exit(1);
     }
     const size_t arg_count = arguments.size();
@@ -242,6 +240,22 @@ void WhileLoop::check_types()
 
 void Checker::run() const
 {
+    for(Initialization* var : m_global_vars) {
+        var->check_types();
+        if(var->expression != nullptr) {
+            switch(var->expression->kind()) {
+            case ExpressionKind::CharLiteral:
+            case ExpressionKind::IntLiteral:
+                break;
+            default:
+                print_error(var->expression.get(),
+                            " Global variables/constants can only be initialized"
+                            " to integer or character literals\n");
+                exit(1);
+            }
+        }
+    }
+
     for(const auto *function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             for(auto *statement : static_cast<const BBFunction*>(function)->statements) {

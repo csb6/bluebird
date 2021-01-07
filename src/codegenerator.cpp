@@ -48,9 +48,10 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 
 CodeGenerator::CodeGenerator(const char* source_filename,
-                             const std::vector<Function*>& functions)
+                             const std::vector<Function*>& functions,
+                             const std::vector<Initialization*>& global_vars)
     : m_ir_builder(m_context), m_module(source_filename, m_context),
-      m_functions(functions)
+      m_functions(functions), m_global_vars(global_vars)
 {
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
@@ -100,7 +101,7 @@ llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
 
 llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 {
-    llvm::AllocaInst* src_lvalue = gen.m_lvalues[lvalue];
+    llvm::Value* src_lvalue = gen.m_lvalues[lvalue];
     if(src_lvalue == nullptr) {
         std::cerr << "Codegen error: Could not find lvalue referenced by:\n";
         print(std::cerr);
@@ -281,7 +282,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 {
     LValue* lvalue = assgn->lvalue;
     if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
-        llvm::AllocaInst* alloc = match->second;
+        llvm::Value* alloc = match->second;
         m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
     } else {
         std::cerr << "Codegen error: Could not find lvalue `"
@@ -358,6 +359,22 @@ void CodeGenerator::in_while_loop(llvm::Function* curr_funct, WhileLoop* whilelo
     m_ir_builder.restoreIP(cond_br_point);
     m_ir_builder.CreateCondBr(condition, loop_body, successor);
     m_ir_builder.SetInsertPoint(successor);
+}
+
+void CodeGenerator::declare_globals()
+{
+    for(Initialization* global : m_global_vars) {
+        LValue* lvalue = global->lvalue;
+        m_module.getOrInsertGlobal(lvalue->name,
+                llvm::IntegerType::get(m_context, lvalue->type->bit_size()));
+        llvm::GlobalVariable* global_ptr = m_module.getNamedGlobal(lvalue->name);
+        if(global->expression != nullptr) {
+            auto* init_val =
+                static_cast<llvm::Constant*>(global->expression->codegen(*this));
+            global_ptr->setInitializer(init_val);
+        }
+        m_lvalues[lvalue] = global_ptr;
+    }
 }
 
 void CodeGenerator::declare_builtin_functions()
@@ -468,6 +485,7 @@ void CodeGenerator::link(const std::filesystem::path& object_file,
 void CodeGenerator::run()
 {
     declare_function_headers();
+    declare_globals();
 
     for(const Function *fcn : m_functions) {
         if(fcn->kind() != FunctionKind::Normal)

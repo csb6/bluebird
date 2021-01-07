@@ -36,7 +36,7 @@ Todo:
 [X] Add above two items for assignments/initialization statements
 [X] Change build system to CMake to be more portable across Windows/Unix, set
     platform-specific linker/compiler flags more easily
-[ ] Add support for module-global variables
+[X] Add support for module-global variables
 [ ] Add support for arrays of integers/characters
 [ ] Figure out how strings should work
 [ ] Add standard interface for adding builtin functions/types

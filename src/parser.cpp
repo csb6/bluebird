@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -763,6 +763,9 @@ void Parser::run()
         case TokenType::Keyword_Type:
             in_type_definition();
             break;
+        case TokenType::Keyword_Let:
+            m_global_var_list.push_back(in_initialization());
+            break;
         default:
             print_error(token->line_num, "Unexpected token:");
             std::cerr << *token << '\n';
@@ -776,6 +779,11 @@ void Parser::run()
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {
+    output << "Global Variables:\n";
+    for(const auto* decl : parser.m_global_var_list) {
+        decl->print(output);
+    }
+    output << "\nFunctions:\n";
     for(const auto *function_definition : parser.m_function_list) {
         function_definition->print(output);
         output << '\n';

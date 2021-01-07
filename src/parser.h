@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -109,6 +109,8 @@ private:
     std::vector<Function*> m_function_list;
     // Points to memory in m_range_types
     std::vector<RangeType*> m_range_type_list;
+    // Points to memory in m_statements
+    std::vector<Initialization*> m_global_var_list;
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
@@ -138,6 +140,7 @@ public:
     void run();
     const auto& functions() const { return m_function_list; }
     const auto& types() const { return m_range_type_list; }
+    const auto& global_vars() const { return m_global_var_list; }
     const auto& names_table() const { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);

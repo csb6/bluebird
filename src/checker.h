@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -22,8 +22,10 @@ class Checker {
 private:
     const std::vector<struct Function*>& m_functions;
     const std::vector<struct RangeType*>& m_types;
+    const std::vector<struct Initialization*>& m_global_vars;
 public:
-    Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&);
+    Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&,
+            const std::vector<struct Initialization*>&);
     void run() const;
 };
 #endif

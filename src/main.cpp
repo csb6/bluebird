@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -49,10 +49,10 @@ int main(int argc, char **argv)
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
 
-    Checker checker{parser.functions(), parser.types()};
+    Checker checker{parser.functions(), parser.types(), parser.global_vars()};
     checker.run();
 
-    CodeGenerator codegen{argv[1], parser.functions()};
+    CodeGenerator codegen{argv[1], parser.functions(), parser.global_vars()};
     codegen.run();
 
     std::cout << parser;
