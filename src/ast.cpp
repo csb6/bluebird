@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -213,6 +213,13 @@ void WhileLoop::print(std::ostream& output) const
     Block::print(output);
 }
 
+void ReturnStatement::print(std::ostream& output) const
+{
+    output << "Return: ";
+    expression->print(output);
+    output << '\n';
+}
+
 void LValue::print(std::ostream& output) const
 {
     if(is_mutable) {
@@ -226,7 +233,14 @@ void LValue::print(std::ostream& output) const
 
 void BBFunction::print(std::ostream& output) const
 {
-    output << "Function: " << name << "\nParameters:\n";
+    output << "Function: " << name;
+    if(return_type != nullptr) {
+        output << "\tReturn ";
+        return_type->print(output);
+    } else {
+        output << '\n';
+    }
+    output << "Parameters:\n";
     for(const auto *param : parameters) {
         param->print(output);
         output << '\n';

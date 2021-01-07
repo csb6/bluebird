@@ -272,6 +272,8 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     case StatementKind::While:
         in_while_loop(curr_funct, static_cast<WhileLoop*>(statement));
         break;
+    case StatementKind::Return:
+        break;
     case StatementKind::Block:
         // TODO: add support for anonymous blocks
         break;

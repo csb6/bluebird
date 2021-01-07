@@ -43,7 +43,7 @@ Todo:
 [ ] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
     depend specifically on RangeTypes
 [X] Add while-loops
-[ ] Add support for using parameters within a function definition
+[X] Add support for using parameters within a function definition
 [ ] Add return statement and return types, enabling non-void functions
 [ ] Add support for user-defined record types
 [ ] Add support for creating ranges and using them within larger expressions/variables

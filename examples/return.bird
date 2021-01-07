@@ -1,0 +1,7 @@
+function foo() is
+    
+end;
+
+function main() is
+    let a: Integer = 8 + 9;
+end;

@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -61,6 +61,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         break;
     case TokenType::Keyword_Range:
         output << "Keyword `range`";
+        break;
+    case TokenType::Keyword_Return:
+        output << "Keyword `return`";
         break;
     case TokenType::End_Statement:
         output << "End Statement Marker (a.k.a `;`)";

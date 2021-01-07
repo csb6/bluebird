@@ -129,6 +129,7 @@ private:
     IfBlock* in_if_block();
     Block* in_else_block();
     WhileLoop* in_while_loop();
+    ReturnStatement* in_return_statement();
     // Handle each function definition
     void in_function_definition();
     // Types

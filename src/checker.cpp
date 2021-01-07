@@ -238,6 +238,8 @@ void WhileLoop::check_types()
     Block::check_types();
 }
 
+void ReturnStatement::check_types() { expression->check_types(); }
+
 void Checker::run() const
 {
     for(Initialization* var : m_global_vars) {
@@ -257,9 +259,26 @@ void Checker::run() const
     }
 
     for(const auto *function : m_functions) {
-        if(function->kind() == FunctionKind::Normal) {
-            for(auto *statement : static_cast<const BBFunction*>(function)->statements) {
-                statement->check_types();
+        if(function->kind() != FunctionKind::Normal)
+            continue;
+        for(auto *statement : static_cast<const BBFunction*>(function)->statements) {
+            statement->check_types();
+            if(statement->kind() == StatementKind::Return) {
+                auto* return_stmt = static_cast<ReturnStatement*>(statement);
+                const Type* return_type = return_stmt->expression->type();
+                if(function->return_type != return_type) {
+                    print_error(return_stmt->expression.get(), " Wrong return type: ");
+                    return_type->print(std::cerr);
+                    if(function->return_type == nullptr) {
+                        std::cerr << " Did not expect function `" << function->name
+                                  << "` to return something\n";
+                    } else {
+                        std::cerr << " Expected return type for this function: ";
+                        function->return_type->print(std::cerr);
+                        std::cerr << '\n';
+                    }
+                    exit(1);
+                }
             }
         }
     }

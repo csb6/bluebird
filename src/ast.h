@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -41,7 +41,7 @@ enum class ExpressionKind : char {
 };
 
 enum class StatementKind : char {
-    Basic, Initialization, Assignment, IfBlock, Block, While
+    Basic, Initialization, Assignment, IfBlock, Block, While, Return
 };
 
 enum class TypeCategory : char {
@@ -355,10 +355,20 @@ struct WhileLoop final : public Block {
     void          check_types() override;
 };
 
+struct ReturnStatement final : public Statement {
+    Magnum::Pointer<Expression> expression;
+
+    explicit ReturnStatement(Expression* expr) : expression(expr) {}
+
+    StatementKind kind() const override { return StatementKind::Return; }
+    void          print(std::ostream&) const override;
+    void          check_types() override;
+};
+
 // A callable procedure that optionally takes inputs
 struct Function {
     std::string name;
-    Type* return_type = nullptr;
+    const Type* return_type = nullptr;
     std::vector<LValue*> parameters;
 
     explicit Function(const std::string& n) : name(n) {}

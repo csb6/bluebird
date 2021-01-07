@@ -475,6 +475,8 @@ Statement* Parser::in_statement()
         return in_initialization();
     case TokenType::Keyword_While:
         return in_while_loop();
+    case TokenType::Keyword_Return:
+        return in_return_statement();
     default:
         if(std::next(token)->type == TokenType::Op_Assign) {
             return in_assignment();
@@ -601,6 +603,18 @@ WhileLoop* Parser::in_while_loop()
     }
     print_error(token->line_num, "Incomplete while-loop-block");
     exit(1);
+}
+
+ReturnStatement* Parser::in_return_statement()
+{
+    check_token_is(TokenType::Keyword_Return, "`return` keyword", *token);
+
+    ++token;
+    auto* return_stmt = m_statements.make<ReturnStatement>(in_expression());
+    check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
+                   *token);
+    ++token;
+    return return_stmt;
 }
 
 void Parser::in_function_definition()

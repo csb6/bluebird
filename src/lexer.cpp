@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -40,6 +40,7 @@ Lexer::Lexer(std::string::const_iterator input_begin,
          {"else", TokenType::Keyword_Else},
          {"while", TokenType::Keyword_While},
          {"range", TokenType::Keyword_Range},
+         {"return", TokenType::Keyword_Return},
          {"and", TokenType::Op_And},
          {"or", TokenType::Op_Or},
          {"not", TokenType::Op_Not},
