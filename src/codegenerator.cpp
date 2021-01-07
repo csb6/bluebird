@@ -365,14 +365,17 @@ void CodeGenerator::declare_globals()
 {
     for(Initialization* global : m_global_vars) {
         LValue* lvalue = global->lvalue;
-        m_module.getOrInsertGlobal(lvalue->name,
-                llvm::IntegerType::get(m_context, lvalue->type->bit_size()));
-        llvm::GlobalVariable* global_ptr = m_module.getNamedGlobal(lvalue->name);
-        if(global->expression != nullptr) {
-            auto* init_val =
-                static_cast<llvm::Constant*>(global->expression->codegen(*this));
-            global_ptr->setInitializer(init_val);
+        auto* type = llvm::IntegerType::get(m_context, lvalue->type->bit_size());
+        llvm::Constant* init_val;
+        if(global->expression == nullptr) {
+            init_val = llvm::Constant::getNullValue(type);
+        } else {
+            init_val = static_cast<llvm::Constant*>(global->expression->codegen(*this));
         }
+        auto* global_ptr =
+            new llvm::GlobalVariable(m_module, type, !lvalue->is_mutable,
+                                     llvm::GlobalValue::LinkageTypes::InternalLinkage,
+                                     init_val, lvalue->name);
         m_lvalues[lvalue] = global_ptr;
     }
 }
