@@ -103,8 +103,9 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 {
     llvm::Value* src_lvalue = gen.m_lvalues[lvalue];
     if(src_lvalue == nullptr) {
-        std::cerr << "Codegen error: Could not find lvalue referenced by:\n";
+        std::cerr << "Codegen error: Could not find lvalue referenced by:\n ";
         print(std::cerr);
+        std::cerr << '\n';
         exit(1);
     }
     return gen.m_ir_builder.CreateLoad(src_lvalue, name);
@@ -226,7 +227,6 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
         call_instr->setName("call" + name);
     return call_instr;
 }
-
 
 void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
 {
@@ -400,20 +400,20 @@ void CodeGenerator::declare_function_headers()
     // Reused between iterations to reduce allocations
     std::vector<llvm::Type*> parameter_types;
     std::vector<llvm::StringRef> parameter_names;
-    for(const Function *function : m_functions) {
-        if(function->kind() == FunctionKind::Builtin) {
-            auto* builtin = static_cast<const BuiltinFunction*>(function);
+    for(const Function *ast_function : m_functions) {
+        if(ast_function->kind() == FunctionKind::Builtin) {
+            auto* builtin = static_cast<const BuiltinFunction*>(ast_function);
             if(!builtin->is_used)
                 continue;
         }
         // First, create a function declaration
-        parameter_types.reserve(function->parameters.size());
-        parameter_names.reserve(function->parameters.size());
+        parameter_types.reserve(ast_function->parameters.size());
+        parameter_names.reserve(ast_function->parameters.size());
 
-        for(const auto *param : function->parameters) {
+        for(const LValue* ast_param : ast_function->parameters) {
             parameter_types.push_back(
-                llvm::Type::getIntNTy(m_context, param->type->range.bit_size));
-            parameter_names.push_back(param->name);
+                llvm::Type::getIntNTy(m_context, ast_param->type->range.bit_size));
+            parameter_names.push_back(ast_param->name);
         }
 
         // TODO: add support for return types other than void
@@ -422,13 +422,13 @@ void CodeGenerator::declare_function_headers()
         // TODO: add more fine-grained support for Linkage
         auto* curr_funct = llvm::Function::Create(funct_type,
                                                   llvm::Function::ExternalLinkage,
-                                                  function->name,
+                                                  ast_function->name,
                                                   m_module);
         assert(curr_funct->getParent() != nullptr);
         curr_funct->addFnAttr(llvm::Attribute::NoUnwind);
 
         auto param_name_it = parameter_names.begin();
-        for(auto& param : curr_funct->args()) {
+        for(llvm::Argument& param : curr_funct->args()) {
             param.setName(*param_name_it);
             ++param_name_it;
         }
@@ -499,6 +499,19 @@ void CodeGenerator::run()
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
+
+        auto ast_arg_it = fcn->parameters.begin();
+        // When arguments are mutable, need to alloca them in the funct body in order
+        // to read/write to them (since codegen assumes all variables are on stack)
+        // TODO: For constant arguments, avoid the unnecessary alloca and have way
+        //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
+        //  instead using it directly, since it will already be in a register
+        for(auto& arg : curr_funct->args()) {
+            llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
+                arg.getType(), nullptr, arg.getName());
+            m_lvalues[*ast_arg_it++] = alloc;
+            m_ir_builder.CreateStore(&arg, alloc);
+        }
         for(auto *statement : function->statements) {
             in_statement(curr_funct, statement);
         }

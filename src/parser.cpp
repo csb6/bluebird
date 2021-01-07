@@ -628,7 +628,9 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            new_funct.parameters.push_back(in_lvalue_declaration());
+            LValue* param = in_lvalue_declaration();
+            new_funct.parameters.push_back(param);
+            m_names_table.add_lvalue(param);
 
             ++token;
             // Check for a comma separator after typename

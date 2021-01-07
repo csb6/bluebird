@@ -6,7 +6,7 @@ function main() is
 end main;
 
 function use_n(n : Positive) is
-   let x : Positive = 4;
+   let x : Positive = 4 + n;
 end;
 
 
