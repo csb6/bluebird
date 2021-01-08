@@ -62,10 +62,12 @@ private:
     void declare_globals();
     void declare_builtin_functions();
     void declare_function_headers();
+    void define_functions();
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
+    void in_return_statement(struct ReturnStatement*);
     // successor is nullptr -> if-block
     // sucessor isn't nullptr -> else-if-block
     void in_if_block(llvm::Function*, struct IfBlock*,

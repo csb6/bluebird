@@ -263,10 +263,15 @@ void Checker::run() const
             continue;
         for(auto *statement : static_cast<const BBFunction*>(function)->statements) {
             statement->check_types();
-            if(statement->kind() == StatementKind::Return) {
-                auto* return_stmt = static_cast<ReturnStatement*>(statement);
-                const Type* return_type = return_stmt->expression->type();
-                if(function->return_type != return_type) {
+            if(statement->kind() != StatementKind::Return)
+                continue;
+            auto* return_stmt = static_cast<ReturnStatement*>(statement);
+            const Type* return_type = return_stmt->expression->type();
+            if(function->return_type != return_type) {
+                if(return_type->category() == TypeCategory::Literal) {
+                    check_literal_types(return_stmt->expression.get(),
+                                        function, function->return_type);
+                } else {
                     print_error(return_stmt->expression.get(), " Wrong return type: ");
                     return_type->print(std::cerr);
                     if(function->return_type == nullptr) {

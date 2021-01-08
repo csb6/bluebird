@@ -273,6 +273,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
         in_while_loop(curr_funct, static_cast<WhileLoop*>(statement));
         break;
     case StatementKind::Return:
+        in_return_statement(static_cast<ReturnStatement*>(statement));
         break;
     case StatementKind::Block:
         // TODO: add support for anonymous blocks
@@ -291,6 +292,11 @@ void CodeGenerator::in_assignment(Assignment* assgn)
                   << assgn->lvalue->name << "` in lvalue table\n";
         exit(1);
     }
+}
+
+void CodeGenerator::in_return_statement(ReturnStatement* stmt)
+{
+    m_ir_builder.CreateRet(stmt->expression->codegen(*this));
 }
 
 void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
@@ -337,7 +343,10 @@ void CodeGenerator::in_block(llvm::Function* curr_funct,
     for(Statement* stmt : block->statements) {
         in_statement(curr_funct, stmt);
     }
-    m_ir_builder.CreateBr(successor);
+    if(m_ir_builder.GetInsertBlock()->getTerminator() == nullptr) {
+        // Only jump to successor if a ret wasn't already inserted
+        m_ir_builder.CreateBr(successor);
+    }
     m_ir_builder.SetInsertPoint(successor);
 }
 
@@ -414,13 +423,17 @@ void CodeGenerator::declare_function_headers()
 
         for(const LValue* ast_param : ast_function->parameters) {
             parameter_types.push_back(
-                llvm::Type::getIntNTy(m_context, ast_param->type->range.bit_size));
+                llvm::Type::getIntNTy(m_context, ast_param->type->bit_size()));
             parameter_names.push_back(ast_param->name);
         }
 
-        // TODO: add support for return types other than void
-        auto* funct_type = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
-                                                   parameter_types, false);
+        // TODO: add support for return types other than range types
+        auto* return_type = llvm::Type::getVoidTy(m_context);
+        if(ast_function->return_type != nullptr) {
+            return_type =
+                llvm::Type::getIntNTy(m_context, ast_function->return_type->bit_size());
+        }
+        auto* funct_type = llvm::FunctionType::get(return_type, parameter_types, false);
         // TODO: add more fine-grained support for Linkage
         auto* curr_funct = llvm::Function::Create(funct_type,
                                                   llvm::Function::ExternalLinkage,
@@ -437,6 +450,41 @@ void CodeGenerator::declare_function_headers()
 
         parameter_types.clear();
         parameter_names.clear();
+    }
+}
+
+void CodeGenerator::define_functions()
+{
+    for(const Function *fcn : m_functions) {
+        if(fcn->kind() != FunctionKind::Normal)
+            // Builtin functions have no body
+            continue;
+        auto* function = static_cast<const BBFunction*>(fcn);
+        llvm::Function* curr_funct = m_module.getFunction(function->name);
+        // Next, create a block containing the body of the function
+        auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
+        m_ir_builder.SetInsertPoint(funct_body);
+
+        auto ast_arg_it = fcn->parameters.begin();
+        // When arguments are mutable, need to alloca them in the funct body in order
+        // to read/write to them (since codegen assumes all variables are on stack)
+        // TODO: For constant arguments, avoid the unnecessary alloca and have way
+        //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
+        //  instead using it directly, since it will already be in a register
+        for(auto& arg : curr_funct->args()) {
+            llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
+                arg.getType(), nullptr, arg.getName());
+            m_lvalues[*ast_arg_it++] = alloc;
+            m_ir_builder.CreateStore(&arg, alloc);
+        }
+        for(auto *statement : function->statements) {
+            in_statement(curr_funct, statement);
+        }
+        if(fcn->return_type == nullptr) {
+            // All blocks must end in a ret instruction of some kind
+            m_ir_builder.CreateRetVoid();
+        }
+        llvm::verifyFunction(*curr_funct, &llvm::errs());
     }
 }
 
@@ -491,36 +539,7 @@ void CodeGenerator::run()
 {
     declare_function_headers();
     declare_globals();
-
-    for(const Function *fcn : m_functions) {
-        if(fcn->kind() != FunctionKind::Normal)
-            // Builtin functions have no body
-            continue;
-        auto* function = static_cast<const BBFunction*>(fcn);
-        llvm::Function* curr_funct = m_module.getFunction(function->name);
-        // Next, create a block containing the body of the function
-        auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
-        m_ir_builder.SetInsertPoint(funct_body);
-
-        auto ast_arg_it = fcn->parameters.begin();
-        // When arguments are mutable, need to alloca them in the funct body in order
-        // to read/write to them (since codegen assumes all variables are on stack)
-        // TODO: For constant arguments, avoid the unnecessary alloca and have way
-        //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
-        //  instead using it directly, since it will already be in a register
-        for(auto& arg : curr_funct->args()) {
-            llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
-                arg.getType(), nullptr, arg.getName());
-            m_lvalues[*ast_arg_it++] = alloc;
-            m_ir_builder.CreateStore(&arg, alloc);
-        }
-        for(auto *statement : function->statements) {
-            in_statement(curr_funct, statement);
-        }
-        // All blocks must end in a ret instruction of some kind
-        m_ir_builder.CreateRetVoid();
-        llvm::verifyFunction(*curr_funct, &llvm::errs());
-    }
+    define_functions();
 
     llvm::verifyModule(m_module, &llvm::errs());
     m_module.print(llvm::errs(), nullptr);

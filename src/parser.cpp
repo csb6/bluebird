@@ -610,11 +610,37 @@ ReturnStatement* Parser::in_return_statement()
     check_token_is(TokenType::Keyword_Return, "`return` keyword", *token);
 
     ++token;
-    auto* return_stmt = m_statements.make<ReturnStatement>(in_expression());
+    auto* return_stmt = m_statements.make<ReturnStatement>(parse_expression());
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
                    *token);
     ++token;
     return return_stmt;
+}
+
+void Parser::in_return_type(Function* funct)
+{
+    check_token_is(TokenType::Name, "function return type", *token);
+    if(auto match = m_names_table.find(token->text); match) {
+        switch(match.value().name_type) {
+        case NameType::DeclaredType:
+            // A temp type has been declared previously, but not its definition
+            funct->return_type = match.value().range_type;
+            m_names_table.add_unresolved_return_type(funct);
+            break;
+        case NameType::Type:
+            funct->return_type = match.value().range_type;
+            break;
+        default:
+            print_error(token->line_num, "Expected `" + token->text
+                        + "` to be a typename, but it is defined as another kind of name");
+            exit(1);
+        }
+    } else {
+        // Type wasn't declared yet; add provisionally to name table
+        funct->return_type = m_names_table.add_type(token->text);
+        m_names_table.add_unresolved_return_type(funct);
+    }
+    ++token;
 }
 
 void Parser::in_function_definition()
@@ -630,8 +656,7 @@ void Parser::in_function_definition()
                     " already in use");
         exit(1);
     }
-    BBFunction new_funct{token->text};
-
+    auto* new_funct = m_functions.make<BBFunction>(token->text);
     ++token;
     check_token_is(TokenType::Open_Parentheses,
                    "`(` to follow name of function in definition", *token);
@@ -643,7 +668,7 @@ void Parser::in_function_definition()
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
             LValue* param = in_lvalue_declaration();
-            new_funct.parameters.push_back(param);
+            new_funct->parameters.push_back(param);
             m_names_table.add_lvalue(param);
 
             ++token;
@@ -656,8 +681,13 @@ void Parser::in_function_definition()
                 exit(1);
             }
         } else if(token->type == TokenType::Closed_Parentheses) {
-            // Next, look for `is` keyword
             ++token;
+            // Optional return type
+            if(token->type == TokenType::Type_Indicator) {
+                ++token;
+                in_return_type(new_funct);
+            }
+            // Next, look for `is` keyword
             check_token_is(TokenType::Keyword_Is,
                            "keyword `is` to follow parameters of the function", *token);
             break;
@@ -674,20 +704,20 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type != TokenType::Keyword_End) {
             // Found a statement, parse it
-            new_funct.statements.push_back(in_statement());
+            new_funct->statements.push_back(in_statement());
         } else {
             // End of function
             m_names_table.close_scope();
             if(std::next(token)->type == TokenType::Name
-               && std::next(token)->text == new_funct.name) {
+               && std::next(token)->text == new_funct->name) {
                 // Optional end label for function; comes after `end`
                 ++token;
             }
             ++token;
             check_token_is(TokenType::End_Statement,
                            "end of statement (a.k.a. `;`) or an end label", *token);
-            Function* ptr = m_names_table.add_function(new_funct);
-            m_function_list.push_back(ptr);
+            m_names_table.add_function(new_funct);
+            m_function_list.push_back(new_funct);
             ++token;
             return;
         }
@@ -890,11 +920,9 @@ RangeType* SymbolTable::add_type(const std::string& name)
     return ptr;
 }
 
-Function* SymbolTable::add_function(const BBFunction& function)
+void SymbolTable::add_function(BBFunction* function)
 {
-    Function* ptr = m_functions.make<BBFunction>(function);
-    m_scopes[m_curr_scope].symbols[function.name] = SymbolInfo{NameType::Funct, ptr};
-    return ptr;
+    m_scopes[m_curr_scope].symbols[function->name] = SymbolInfo{NameType::Funct, function};
 }
 
 Function* SymbolTable::add_function(const std::string& name)
@@ -918,6 +946,11 @@ void SymbolTable::add_unresolved(LValue* lvalue)
 void SymbolTable::add_unresolved(FunctionCall* funct)
 {
     m_scopes[m_curr_scope].unresolved_funct_calls.push_back(funct);
+}
+
+void SymbolTable::add_unresolved_return_type(Function* funct)
+{
+    m_scopes[m_curr_scope].unresolved_return_type_functs.push_back(funct);
 }
 
 void SymbolTable::validate_names()
@@ -944,6 +977,21 @@ void SymbolTable::validate_names()
             }
         }
         scope.lvalues_type_unresolved.clear();
+
+        for(Function* funct : scope.unresolved_return_type_functs) {
+            std::optional<SymbolInfo> match
+                = search_for_definition(funct->return_type->name, NameType::Type);
+            if(!match) {
+                print_error("Return type `" + funct->return_type->name
+                            + "` of function `" + funct->name
+                            + "` is used but has no definition");
+                exit(1);
+            } else {
+                // Update to the newly-defined type (replacing the temp type)
+                funct->return_type = match->range_type;
+            }
+        }
+        scope.unresolved_return_type_functs.clear();
 
         // Try and resolve function calls to functions declared later
         for(FunctionCall* funct_call : scope.unresolved_funct_calls) {

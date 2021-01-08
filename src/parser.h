@@ -51,6 +51,7 @@ struct Scope {
     int parent_index;
     std::unordered_map<std::string, SymbolInfo> symbols{};
     std::vector<LValue*> lvalues_type_unresolved{};
+    std::vector<Function*> unresolved_return_type_functs{};
     std::vector<FunctionCall*> unresolved_funct_calls{};
 };
 
@@ -69,12 +70,13 @@ public:
                         const multi_int& lower_limit, const multi_int& upper_limit);
     // Add a temporary type that lacks a definition
     RangeType* add_type(const std::string& name);
-    Function*  add_function(const BBFunction&);
+    void       add_function(BBFunction*);
     Function*  add_function(const std::string& name);
     void       add_builtin_function(BuiltinFunction*);
 
     void add_unresolved(LValue*);
     void add_unresolved(FunctionCall*);
+    void add_unresolved_return_type(Function*);
 
     // Checking that no names are declared but not defined (or imported)
     void validate_names();
@@ -115,6 +117,7 @@ private:
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
     LValue* in_lvalue_declaration();
+    void in_return_type(Function*);
     // Handle each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
