@@ -46,7 +46,7 @@ static void print_type_mismatch(const Expression* expr,
     expr->type()->print(std::cerr);
     // Op
     if(op != nullptr) {
-        std::cerr << "  Operator: " << *op << '\n';
+        std::cerr << "  Operator: " << *op << "\n";
     }
     // Right
     std::cerr << "  ";
@@ -88,7 +88,7 @@ static void check_literal_types(Expression* literal, const Other* other,
                 range_type->print(std::cerr);
                 std::cerr << " so it cannot be used with:\n  ";
                 other->print(std::cerr);
-                std::cerr << '\n';
+                std::cerr << "\n";
                 exit(1);
             }
             // Literals (if used with a compatible range type) take on the type of what
@@ -280,7 +280,7 @@ void Checker::run() const
                     } else {
                         std::cerr << " Expected return type for this function: ";
                         function->return_type->print(std::cerr);
-                        std::cerr << '\n';
+                        std::cerr << "\n";
                     }
                     exit(1);
                 }

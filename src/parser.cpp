@@ -102,7 +102,7 @@ static void print_error_expected(std::string_view expected, const Expression* ac
     std::cerr << "ERROR: Line " << actual->line_num() << ": "
               << "Expected " << expected << ", but instead found expression:\n";
     actual->print(std::cerr);
-    std::cerr << '\n';
+    std::cerr << "\n";
 }
 
 static void check_token_is(TokenType type, std::string_view description, Token token)
@@ -371,7 +371,7 @@ Expression* Parser::in_parentheses()
     return result;
 }
 
-// Creates LValue, but does not add to symbol table 
+// Creates LValue, but does not add to symbol table
 LValue* Parser::in_lvalue_declaration()
 {
     check_token_is(TokenType::Name, "the name of an lvalue", *token);
@@ -814,7 +814,7 @@ void Parser::run()
             break;
         default:
             print_error(token->line_num, "Unexpected token:");
-            std::cerr << *token << '\n';
+            std::cerr << *token << "\n";
             exit(1);
         }
     }
@@ -832,7 +832,7 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
     output << "\nFunctions:\n";
     for(const auto *function_definition : parser.m_function_list) {
         function_definition->print(output);
-        output << '\n';
+        output << "\n";
     }
     return output;
 }

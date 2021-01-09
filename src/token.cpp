@@ -165,12 +165,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 
 std::ostream& operator<<(std::ostream& output, const Token& token)
 {
-    output << token.type << '\n';
+    output << token.type << "\n";
 
     if(!token.text.empty()) {
         output << "  Text: ";
         print_unescape(token.text, output);
-        output << '\n';
+        output << "\n";
     }
     return output;
 }

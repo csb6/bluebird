@@ -105,7 +105,7 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
     if(src_lvalue == nullptr) {
         std::cerr << "Codegen error: Could not find lvalue referenced by:\n ";
         print(std::cerr);
-        std::cerr << '\n';
+        std::cerr << "\n";
         exit(1);
     }
     return gen.m_ir_builder.CreateLoad(src_lvalue, name);

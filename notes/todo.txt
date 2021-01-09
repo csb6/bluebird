@@ -44,7 +44,7 @@ Todo:
     depend specifically on RangeTypes
 [X] Add while-loops
 [X] Add support for using parameters within a function definition
-[ ] Fix bug where programs ending with a single-line comment (maybe any comment?)
+[X] Fix bug where programs ending with a single-line comment (maybe any comment?)
     and no trailing newline segfault
 [X] Add return statement and return types, enabling non-void functions
 [ ] Add checks to ensure all paths out of a function have a return statement ending them

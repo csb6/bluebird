@@ -51,13 +51,13 @@ Lexer::Lexer(std::string::const_iterator input_begin,
 
 void print_error(unsigned int line_num, const char *text, char token)
 {
-    std::cerr << "Line " << line_num << ": " << text << token << '\n';
+    std::cerr << "Line " << line_num << ": " << text << token << "\n";
 }
 
 void print_error(unsigned int line_num, const char *text,
                  const std::string &token = "")
 {
-    std::cerr << "Line " << line_num << ": " << text << token << '\n';
+    std::cerr << "Line " << line_num << ": " << text << token << "\n";
 }
 
 void Lexer::run()
@@ -66,7 +66,7 @@ void Lexer::run()
     auto input_iter = m_input_begin;
     std::string token_text;
     unsigned int line_num = 1;
-    while(input_iter != m_input_end) {
+    while(input_iter < m_input_end) {
         char curr = *input_iter;
 
         switch(curr_state) {
@@ -125,7 +125,7 @@ void Lexer::run()
                 case '*':
                     m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                     break;
-                // Bitwise operators 
+                // Bitwise operators
                 case '&':
                     m_tokens.emplace_back(line_num, TokenType::Op_Bit_And);
                     break;
@@ -138,7 +138,7 @@ void Lexer::run()
                 case '~':
                     m_tokens.emplace_back(line_num, TokenType::Op_Bit_Not);
                     break;
-                // More operators 
+                // More operators
                 case '<':
                     switch(*std::next(input_iter)) {
                     case '<':
