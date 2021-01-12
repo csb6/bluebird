@@ -34,10 +34,12 @@ system for the language itself
 
 ## Currently Implemented Features
 
-- Void functions
-- Variables, constants, and assignment
+- Functions, variables, constants, and assignment
+- Module-global variables
 - If, else-if, and else statements
+- While loops
 - Type definitions for integer types, with ranges specified (no runtime range checks yet)
+- Simple 8-bit character type
 - Logical, comparison, bitwise, and arithmetic operators, as well as parentheses for grouping
 - Detailed error checking in the lexing and parsing stages
 - Automatic resolution of variable and function names, preventing the need for forward declarations within a file
@@ -64,6 +66,38 @@ function fizzbuzz() is
 end fizzbuzz; // 'fizzbuzz' label at end is optional
 ```
 
+## Semantics
+
+Parameters are passed by value. I plan on eventually implementing pointer types,
+but for now there are only integer types and a single character type.
+
+Variables are mutable by default; they can be made constant (i.e. allowing no
+reassignment or modification) by adding the `constant` keyword to the declaration:
+
+```
+let age: constant Age = 99;
+```
+
+Two default types, `Integer` (a 32-bit integer) and `Character` (an 8-bit character),
+do not have to be defined.
+
+An arbitrary number of additional integer types can be defined, each of which is incompatible
+with all others. To define an integer type, specify the desired range. The compiler
+will try to choose a reasonable bit size for values of the new type:
+
+```
+type Dalmation_Count is range 1 thru 101;
+// Or, equivalently:
+type Dalmation_Count is range 1 upto 102;
+
+let original_amt: Dalmation_Count = 96;
+let puppy_amt: Dalmation_Count = 5;
+let new_amt: Dalmation_Count = original_amt + puppy_amt; // Allowed
+let pupp_amt2: Integer = 5;
+// Compilation error (below): cannot use Dalmation_Count and Integer together
+let new_amt2: Dalmation_Count = original_amt + puppy_amt2;
+```
+
 ## Building
 
 ### Dependencies
@@ -73,7 +107,7 @@ end fizzbuzz; // 'fizzbuzz' label at end is optional
 - LLVM 10
 - All other dependencies will be bundled into the `third_party/` directory
 
-### Building the compiler
+### Compiling the compiler
 
 The build system is CMake.
 
@@ -100,8 +134,8 @@ If you have any issues building the compiler, please leave a Github issue.
 The compiler executable, `bluebird`, should be found in the `build` directory
 after `make` finishes. Pass it a filename to compile something
 (e.g. `bluebird ../examples/arithmetic.bird`). An object file with the same name (but
-a `.o` extension instead of a `.bird` extension) should be produced. On macOS, a
-runnable `a.out` executable will also be generated.
+a `.o` extension instead of a `.bird` extension) as well as an `a.out` executable
+should be produced.
 
 ## License
 
