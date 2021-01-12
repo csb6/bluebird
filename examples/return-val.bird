@@ -1,0 +1,9 @@
+function get_ch(a : Character): Character is
+    return a;
+end get_ch;
+
+function main() is
+    let b: Character = get_ch('y');
+    putchar(b);
+    putchar('\n');
+end main;

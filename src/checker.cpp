@@ -274,8 +274,8 @@ void Checker::run() const
                 } else {
                     print_error(return_stmt->expression.get(), " Wrong return type: ");
                     return_type->print(std::cerr);
-                    if(function->return_type == nullptr) {
-                        std::cerr << " Did not expect function `" << function->name
+                    if(function->return_type == &Type::Void) {
+                        std::cerr << " Did not expect void function `" << function->name
                                   << "` to return something\n";
                     } else {
                         std::cerr << " Expected return type for this function: ";

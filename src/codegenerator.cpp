@@ -429,7 +429,7 @@ void CodeGenerator::declare_function_headers()
 
         // TODO: add support for return types other than range types
         auto* return_type = llvm::Type::getVoidTy(m_context);
-        if(ast_function->return_type != nullptr) {
+        if(ast_function->return_type != &Type::Void) {
             return_type =
                 llvm::Type::getIntNTy(m_context, ast_function->return_type->bit_size());
         }
@@ -480,7 +480,7 @@ void CodeGenerator::define_functions()
         for(auto *statement : function->statements) {
             in_statement(curr_funct, statement);
         }
-        if(fcn->return_type == nullptr) {
+        if(fcn->return_type == &Type::Void) {
             // All blocks must end in a ret instruction of some kind
             m_ir_builder.CreateRetVoid();
         }

@@ -257,7 +257,7 @@ struct FunctionCall final : public Expression {
 
     // TODO: have this be the return type
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
-    const Type*    type() const override { return &Type::Void; }
+    const Type*    type() const override;
     unsigned int   line_num() const override { return line; }
     void           print(std::ostream&) const override;
 
@@ -368,7 +368,7 @@ struct ReturnStatement final : public Statement {
 // A callable procedure that optionally takes inputs
 struct Function {
     std::string name;
-    const Type* return_type = nullptr;
+    const Type* return_type = &Type::Void;
     std::vector<LValue*> parameters;
 
     explicit Function(const std::string& n) : name(n) {}

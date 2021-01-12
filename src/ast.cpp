@@ -137,6 +137,8 @@ void BinaryExpression::print(std::ostream& output) const
     output << ')';
 }
 
+const Type* FunctionCall::type() const { return function->return_type; }
+
 void FunctionCall::print(std::ostream& output) const
 {
     output << name << '(';
