@@ -188,10 +188,10 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end),
       m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
       m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64),
-      m_names_table(m_range_types, m_lvalues, m_functions)
+      m_names_table(m_functions)
 {
-    m_names_table.add_builtin_type(&RangeType::Integer);
-    m_names_table.add_builtin_type(&RangeType::Character);
+    m_names_table.add_type(&RangeType::Integer);
+    m_names_table.add_type(&RangeType::Character);
 
     {
         // function putchar(c : Character): Integer
@@ -397,7 +397,7 @@ LValue* Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue->type = m_names_table.add_type(token->text);
+        new_lvalue->type = m_range_types.make<RangeType>(token->text);
         m_names_table.add_unresolved(new_lvalue);
     } else {
         switch(match.value().name_type) {
@@ -637,7 +637,9 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        funct->return_type = m_names_table.add_type(token->text);
+        auto* ret_type = m_range_types.make<RangeType>(token->text);
+        funct->return_type = ret_type;
+        m_names_table.add_type(ret_type);
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -762,8 +764,9 @@ void Parser::in_range_type_definition(const std::string& type_name)
         exit(1);
     }
 
-    RangeType* ptr = m_names_table.add_type(type_name, lower_limit, upper_limit);
-    m_range_type_list.push_back(ptr);
+    auto* new_type = m_range_types.make<RangeType>(type_name, lower_limit, upper_limit);
+    m_names_table.add_type(new_type);
+    m_range_type_list.push_back(new_type);
 }
 
 void Parser::in_type_definition()
@@ -819,8 +822,7 @@ void Parser::run()
         }
     }
 
-    // Check that there are no unresolved types/functions
-    m_names_table.validate_names();
+    m_names_table.resolve_usages();
 }
 
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
@@ -838,9 +840,7 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
 }
 
 
-SymbolTable::SymbolTable(MemoryPool& range_types, MemoryPool& lvalues,
-                         MemoryPool& functions)
-    : m_range_types(range_types), m_lvalues(lvalues), m_functions(functions)
+SymbolTable::SymbolTable(MemoryPool& functions) : m_functions(functions)
 {
     m_scopes.reserve(20);
     // Add root scope
@@ -875,8 +875,7 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
 }
 
 
-std::optional<SymbolInfo>
-SymbolTable::search_for_definition(const std::string& name, NameType kind) const
+std::optional<SymbolInfo> SymbolTable::find(const std::string& name, NameType kind) const
 {
     int scope_index = m_curr_scope;
     while(scope_index >= 0) {
@@ -896,28 +895,9 @@ void SymbolTable::add_lvalue(LValue* lval)
     m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
 }
 
-void SymbolTable::add_builtin_type(RangeType* type)
+void SymbolTable::add_type(RangeType* type)
 {
     m_scopes[m_curr_scope].symbols[type->name] = SymbolInfo{NameType::Type, type};
-}
-
-RangeType* SymbolTable::add_type(const std::string& name,
-                                 const multi_int& lower_limit,
-                                 const multi_int& upper_limit)
-{
-    RangeType* ptr = m_range_types.make<RangeType>(name, lower_limit, upper_limit);
-    m_scopes[m_curr_scope].symbols[name]
-        = SymbolInfo{NameType::Type, ptr};
-    return ptr;
-}
-
-
-RangeType* SymbolTable::add_type(const std::string& name)
-{
-    RangeType* ptr = m_range_types.make<RangeType>(name);
-    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredType, ptr};
-    // Return temp type until the type of this lvalue gets resolved
-    return ptr;
 }
 
 void SymbolTable::add_function(BBFunction* function)
@@ -953,20 +933,19 @@ void SymbolTable::add_unresolved_return_type(Function* funct)
     m_scopes[m_curr_scope].unresolved_return_type_functs.push_back(funct);
 }
 
-void SymbolTable::validate_names()
+void SymbolTable::resolve_usages()
 {
     // Check that all functions and types in this module have a definition.
     // If they don't, try to find one/fix-up the symbol table
 
     // TODO: Have mechanism where types/functions in other modules are resolved
-    int old_curr_scope = m_curr_scope;
+    const int old_curr_scope = m_curr_scope;
     for(size_t scope_index = 0; scope_index < m_scopes.size(); ++scope_index) {
         m_curr_scope = scope_index;
         Scope& scope = m_scopes[scope_index];
         // Try and resolve the types of lvalues whose types were not declared beforehand
         for(LValue* lvalue : scope.lvalues_type_unresolved) {
-            std::optional<SymbolInfo> match
-                = search_for_definition(lvalue->type->name, NameType::Type);
+            std::optional<SymbolInfo> match = find(lvalue->type->name, NameType::Type);
             if(!match) {
                 print_error("Type `" + lvalue->type->name
                             + "` is used but has no definition");
@@ -979,8 +958,7 @@ void SymbolTable::validate_names()
         scope.lvalues_type_unresolved.clear();
 
         for(Function* funct : scope.unresolved_return_type_functs) {
-            std::optional<SymbolInfo> match
-                = search_for_definition(funct->return_type->name, NameType::Type);
+            std::optional<SymbolInfo> match = find(funct->return_type->name, NameType::Type);
             if(!match) {
                 print_error("Return type `" + funct->return_type->name
                             + "` of function `" + funct->name
@@ -995,8 +973,7 @@ void SymbolTable::validate_names()
 
         // Try and resolve function calls to functions declared later
         for(FunctionCall* funct_call : scope.unresolved_funct_calls) {
-            std::optional<SymbolInfo> match
-                = search_for_definition(funct_call->name, NameType::Funct);
+            std::optional<SymbolInfo> match = find(funct_call->name, NameType::Funct);
             if(!match) {
                 print_error("Function `" + funct_call->name
                             + "` is used but has no definition");

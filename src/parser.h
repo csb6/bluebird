@@ -57,19 +57,15 @@ struct Scope {
 
 class SymbolTable {
 public:
-    SymbolTable(MemoryPool& range_types, MemoryPool& lvalues,
-                MemoryPool& functions);
+    SymbolTable(MemoryPool& functions);
     void open_scope();
     void close_scope();
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
     void       add_lvalue(LValue*);
-    void       add_builtin_type(RangeType*);
-    RangeType* add_type(const std::string& name,
-                        const multi_int& lower_limit, const multi_int& upper_limit);
-    // Add a temporary type that lacks a definition
-    RangeType* add_type(const std::string& name);
+    void       add_type(RangeType*);
+
     void       add_function(BBFunction*);
     Function*  add_function(const std::string& name);
     void       add_builtin_function(BuiltinFunction*);
@@ -78,20 +74,16 @@ public:
     void add_unresolved(FunctionCall*);
     void add_unresolved_return_type(Function*);
 
-    // Checking that no names are declared but not defined (or imported)
-    void validate_names();
+    void resolve_usages();
 private:
     // Scope tree
     std::vector<Scope> m_scopes;
     int m_curr_scope;
 
     // AST entities
-    MemoryPool &m_range_types;
-    MemoryPool &m_lvalues;
     MemoryPool &m_functions;
 
-    std::optional<SymbolInfo>
-    search_for_definition(const std::string& name, NameType) const;
+    std::optional<SymbolInfo> find(const std::string& name, NameType) const;
     std::optional<SymbolInfo>
     search_for_funct_definition(const std::string& name) const;
 };
