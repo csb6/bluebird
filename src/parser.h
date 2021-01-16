@@ -57,18 +57,15 @@ struct Scope {
 
 class SymbolTable {
 public:
-    SymbolTable(MemoryPool& functions);
+    SymbolTable();
     void open_scope();
     void close_scope();
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
-    void       add_lvalue(LValue*);
-    void       add_type(RangeType*);
-
-    void       add_function(BBFunction*);
-    Function*  add_function(const std::string& name);
-    void       add_builtin_function(BuiltinFunction*);
+    void add_lvalue(LValue*);
+    void add_type(RangeType*);
+    void add_function(Function*);
 
     void add_unresolved(LValue*);
     void add_unresolved(FunctionCall*);
@@ -79,9 +76,6 @@ private:
     // Scope tree
     std::vector<Scope> m_scopes;
     int m_curr_scope;
-
-    // AST entities
-    MemoryPool &m_functions;
 
     std::optional<SymbolInfo> find(const std::string& name, NameType) const;
     std::optional<SymbolInfo>

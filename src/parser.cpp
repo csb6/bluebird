@@ -187,8 +187,7 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end),
       m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
-      m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64),
-      m_names_table(m_functions)
+      m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64)
 {
     m_names_table.add_type(&RangeType::Integer);
     m_names_table.add_type(&RangeType::Character);
@@ -199,7 +198,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
         auto* c = m_lvalues.make<LValue>("c", &RangeType::Character);
         put_char->parameters.push_back(c);
         put_char->return_type = &RangeType::Integer;
-        m_names_table.add_builtin_function(put_char);
+        m_names_table.add_function(put_char);
         m_function_list.push_back(put_char);
     }
 }
@@ -301,7 +300,7 @@ Expression* Parser::in_function_call()
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_function_call->function = m_names_table.add_function(token->text);
+        new_function_call->function = m_functions.make<BBFunction>(token->text);
         m_names_table.add_unresolved(new_function_call);
     } else {
         SymbolInfo match_value{match.value()};
@@ -840,7 +839,7 @@ std::ostream& operator<<(std::ostream& output, const Parser& parser)
 }
 
 
-SymbolTable::SymbolTable(MemoryPool& functions) : m_functions(functions)
+SymbolTable::SymbolTable()
 {
     m_scopes.reserve(20);
     // Add root scope
@@ -900,22 +899,9 @@ void SymbolTable::add_type(RangeType* type)
     m_scopes[m_curr_scope].symbols[type->name] = SymbolInfo{NameType::Type, type};
 }
 
-void SymbolTable::add_function(BBFunction* function)
+void SymbolTable::add_function(Function* function)
 {
     m_scopes[m_curr_scope].symbols[function->name] = SymbolInfo{NameType::Funct, function};
-}
-
-Function* SymbolTable::add_function(const std::string& name)
-{
-    Function* ptr = m_functions.make<BBFunction>(name);
-    m_scopes[m_curr_scope].symbols[name] = SymbolInfo{NameType::DeclaredFunct, ptr};
-    return ptr;
-}
-
-void SymbolTable::add_builtin_function(BuiltinFunction* function)
-{
-    m_scopes[m_curr_scope].symbols[function->name] =
-        SymbolInfo{NameType::Funct, function};
 }
 
 void SymbolTable::add_unresolved(LValue* lvalue)
