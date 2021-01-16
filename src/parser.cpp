@@ -83,11 +83,13 @@ static void print_error(unsigned int line_num, std::string_view message)
 {
     std::cerr << "ERROR: Line " << line_num << ": "
               << message << "\n";
+    exit(1);
 }
 
 static void print_error(std::string_view message)
 {
     std::cerr << "ERROR: " << message << "\n";
+    exit(1);
 }
 
 static void print_error_expected(std::string_view expected, Token actual)
@@ -95,6 +97,7 @@ static void print_error_expected(std::string_view expected, Token actual)
     std::cerr << "ERROR: Line " << actual.line_num << ": "
               << "Expected " << expected << ", but instead found token:\n";
     std::cerr << "  " << actual;
+    exit(1);
 }
 
 static void print_error_expected(std::string_view expected, const Expression* actual)
@@ -103,6 +106,7 @@ static void print_error_expected(std::string_view expected, const Expression* ac
               << "Expected " << expected << ", but instead found expression:\n";
     actual->print(std::cerr);
     std::cerr << "\n";
+    exit(1);
 }
 
 static void check_token_is(TokenType type, std::string_view description, Token token)
@@ -128,7 +132,7 @@ static Expression* fold_constants(Token op, Expression* right)
             break;
         default:
             print_error_expected("unary operator that works on integer literals", op);
-            exit(1);
+            
         }
         return r_int;
     }
@@ -176,7 +180,6 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
             return new BinaryExpression(left, op.type, right);
         default:
             print_error_expected("binary operator that works on integer literals", op);
-            exit(1);
         }
         delete right;
         return left;
@@ -213,7 +216,6 @@ Expression* Parser::parse_expression(TokenType right_token)
         auto op = token;
         if(!is_binary_operator(curr_precedence)) {
             print_error_expected("binary operator", *token);
-            exit(1);
         }
         ++token;
         Expression* right_side = parse_expression(op->type);
@@ -238,7 +240,7 @@ Expression* Parser::in_literal()
         return new FloatLiteral(current->line_num, std::stod(current->text));
     default:
         print_error_expected("literal", *current);
-        exit(1);
+        return nullptr;
     }
 }
 
@@ -252,11 +254,11 @@ Expression* Parser::in_lvalue_expression()
     if(!match) {
         print_error(current->line_num,
                     "Unknown variable/constant `" + current->text + "`");
-        exit(1);
+        return nullptr;
     } else if(match.value().name_type != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
                     + current->text + "` is already being used as a name");
-        exit(1);
+        return nullptr;
     } else {
         auto* new_lvalue_expr =
             new LValueExpression(current->line_num, current->text, match.value().lvalue);
@@ -323,7 +325,6 @@ Expression* Parser::in_function_call()
         default:
             print_error(token->line_num, "Expected `" + token->text
                         + "` to be a function name, but it is defined as another kind of name");
-            exit(1);
         }
     }
 
@@ -351,7 +352,7 @@ Expression* Parser::in_function_call()
         }
     }
     print_error(token->line_num, "Function call definition ended early");
-    exit(1);
+    return nullptr;
 }
 
 Expression* Parser::in_parentheses()
@@ -363,7 +364,6 @@ Expression* Parser::in_parentheses()
     Expression* result = parse_expression(TokenType::Closed_Parentheses);
     if(token->type != TokenType::Closed_Parentheses) {
         print_error_expected("closing parentheses for an expression group", *token);
-        exit(1);
     }
 
     ++token;
@@ -377,7 +377,6 @@ LValue* Parser::in_lvalue_declaration()
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
         print_error(token->line_num, "`" + token->text
                     + "` cannot be used as an lvalue name. It is already defined as a name");
-        exit(1);
     }
     LValue* new_lvalue = m_lvalues.make<LValue>(token->text);
 
@@ -412,7 +411,6 @@ LValue* Parser::in_lvalue_declaration()
         default:
             print_error(token->line_num, "Expected `" + token->text
                         + "` to be a typename, but it is defined as another kind of name");
-            exit(1);
         }
     }
 
@@ -432,7 +430,6 @@ Initialization* Parser::in_initialization()
         ++token;
     } else if(token->type != TokenType::Op_Assign) {
         print_error_expected("assignment operator or ';'", *token);
-        exit(1);
     } else {
         ++token;
         Expression* init_val = parse_expression();
@@ -449,14 +446,12 @@ Assignment* Parser::in_assignment()
     if(!lval_match) {
         print_error(token->line_num, "`" + token->text
                     + "` is not a variable name and so cannot be assigned to");
-        exit(1);
     } else if(lval_match->name_type != NameType::LValue) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a variable, but it is defined as another kind of name");
-        exit(1);
     } else if(!lval_match->lvalue->is_mutable) {
         print_error(token->line_num, "cannot assign to constant `" + token->text + "`");
-        exit(1);
+        
     }
 
     std::advance(token, 2); // skip varname and `=` operator
@@ -538,7 +533,7 @@ IfBlock* Parser::in_if_block()
         }
     }
     print_error(token->line_num, "Incomplete if-block");
-    exit(1);
+    return nullptr;
 }
 
 Block* Parser::in_else_block()
@@ -567,7 +562,7 @@ Block* Parser::in_else_block()
         }
     }
     print_error(token->line_num, "Incomplete else-block");
-    exit(1);
+    return nullptr;
 }
 
 WhileLoop* Parser::in_while_loop()
@@ -601,7 +596,7 @@ WhileLoop* Parser::in_while_loop()
         }
     }
     print_error(token->line_num, "Incomplete while-loop-block");
-    exit(1);
+    return nullptr;
 }
 
 ReturnStatement* Parser::in_return_statement()
@@ -632,7 +627,6 @@ void Parser::in_return_type(Function* funct)
         default:
             print_error(token->line_num, "Expected `" + token->text
                         + "` to be a typename, but it is defined as another kind of name");
-            exit(1);
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
@@ -655,7 +649,7 @@ void Parser::in_function_definition()
     if(match && match.value().name_type != NameType::DeclaredFunct) {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
-        exit(1);
+        
     }
     auto* new_funct = m_functions.make<BBFunction>(token->text);
     ++token;
@@ -679,7 +673,6 @@ void Parser::in_function_definition()
                 --token;
             } else if(token->type != TokenType::Comma) {
                 print_error_expected("comma to follow the parameter", *token);
-                exit(1);
             }
         } else if(token->type == TokenType::Closed_Parentheses) {
             ++token;
@@ -694,7 +687,6 @@ void Parser::in_function_definition()
             break;
         } else {
             print_error_expected("parameter name", *token);
-            exit(1);
         }
 
         ++token;
@@ -730,22 +722,18 @@ void Parser::in_range_type_definition(const std::string& type_name)
     Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
     if(expr->kind() != ExpressionKind::Binary) {
         print_error_expected("binary expression with operator `thru` or `upto`", *token);
-        exit(1);
     }
     auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
     if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
         print_error_expected("binary expression with operator `thru` or `upto`", *token);
-        exit(1);
     }
 
     if(range_expr->left->kind() != ExpressionKind::IntLiteral) {
         print_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());
-        exit(1);
     } else if(range_expr->right->kind() != ExpressionKind::IntLiteral) {
         print_error_expected("integer constant expression as the range's upper bound",
                              range_expr->right.get());
-        exit(1);
     }
     auto* left_expr = static_cast<const IntLiteral*>(range_expr->left.get());
     auto* right_expr = static_cast<const IntLiteral*>(range_expr->right.get());
@@ -760,7 +748,6 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
     if(upper_limit < lower_limit) {
         print_error(token->line_num, "Upper limit of range is lower than the lower limit");
-        exit(1);
     }
 
     auto* new_type = m_range_types.make<RangeType>(type_name, lower_limit, upper_limit);
@@ -777,7 +764,6 @@ void Parser::in_type_definition()
     if(const auto match = m_names_table.find(token->text);
        match && match.value().name_type != NameType::DeclaredType) {
         print_error(token->line_num, "Name: " + token->text + " already in use");
-        exit(1);
     }
 
     const auto& type_name = token->text;
@@ -793,7 +779,6 @@ void Parser::in_type_definition()
     } else {
         // TODO: handle arrays/record types here
         print_error_expected("keyword range", *token);
-        exit(1);
     }
 
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
@@ -815,9 +800,8 @@ void Parser::run()
             m_global_var_list.push_back(in_initialization());
             break;
         default:
-            print_error(token->line_num, "Unexpected token:");
-            std::cerr << *token << "\n";
-            exit(1);
+            print_error_expected("start of a variable/type declaration or a "
+                                 "function definition", *token);
         }
     }
 
@@ -935,7 +919,6 @@ void SymbolTable::resolve_usages()
             if(!match) {
                 print_error("Type `" + lvalue->type->name
                             + "` is used but has no definition");
-                exit(1);
             } else {
                 // Update to the newly-defined type (replacing the temp type)
                 lvalue->type = match->range_type;
@@ -949,7 +932,6 @@ void SymbolTable::resolve_usages()
                 print_error("Return type `" + funct->return_type->name
                             + "` of function `" + funct->name
                             + "` is used but has no definition");
-                exit(1);
             } else {
                 // Update to the newly-defined type (replacing the temp type)
                 funct->return_type = match->range_type;
@@ -963,7 +945,6 @@ void SymbolTable::resolve_usages()
             if(!match) {
                 print_error("Function `" + funct_call->name
                             + "` is used but has no definition");
-                exit(1);
             } else {
                 // Update call to point to the actual function
                 funct_call->function = match->function;
