@@ -19,12 +19,12 @@
 
 void Type::print(std::ostream& output) const
 {
-    output << "Type: " << name << '\n';
+    output << "Type: " << name << "\n";
 }
 
 void RangeType::print(std::ostream& output) const
 {
-    output << "Type: " << name << " Range: " << range << '\n';
+    output << "Type: " << name << " Range: " << range << "\n";
 }
 
 Range::Range(const multi_int& lower, const multi_int& upper)
@@ -154,7 +154,7 @@ void BasicStatement::print(std::ostream& output) const
     if(expression) {
         output << "Statement:\n";
         expression->print(output);
-        output << '\n';
+        output << "\n";
     } else {
         output << "Empty Statement\n";
     }
@@ -168,7 +168,7 @@ void Initialization::print(std::ostream& output) const
     if(expression) {
         output << "Expression: ";
         expression->print(output);
-        output << '\n';
+        output << "\n";
     } else {
         output << "Empty Statement\n";
     }
@@ -180,7 +180,7 @@ void Assignment::print(std::ostream& output) const
     lvalue->print(output);
     output << " = ";
     expression->print(output);
-    output << '\n';
+    output << "\n";
 }
 
 void Block::print(std::ostream& output) const
@@ -190,7 +190,7 @@ void Block::print(std::ostream& output) const
     for(const auto& each : statements) {
         each->print(output);
     }
-    output << '\n';
+    output << "\n";
 }
 
 void IfBlock::print(std::ostream& output) const
@@ -198,7 +198,7 @@ void IfBlock::print(std::ostream& output) const
     output << "If Block:\n";
     output << "Condition: ";
     condition->print(output);
-    output << '\n';
+    output << "\n";
     Block::print(output);
     if(else_or_else_if != nullptr) {
         output << "Else ";
@@ -211,7 +211,7 @@ void WhileLoop::print(std::ostream& output) const
     output << "While Loop:\n";
     output << "Condition: ";
     condition->print(output);
-    output << '\n';
+    output << "\n";
     Block::print(output);
 }
 
@@ -219,7 +219,7 @@ void ReturnStatement::print(std::ostream& output) const
 {
     output << "Return: ";
     expression->print(output);
-    output << '\n';
+    output << "\n";
 }
 
 void LValue::print(std::ostream& output) const
@@ -240,23 +240,20 @@ void BBFunction::print(std::ostream& output) const
         output << "\tReturn ";
         return_type->print(output);
     } else {
-        output << '\n';
+        output << "\n";
     }
     output << "Parameters:\n";
     for(const auto *param : parameters) {
         param->print(output);
-        output << '\n';
+        output << "\n";
     }
-    output << "Statements:\n";
-
-    for(const auto& statement : statements) {
-        statement->print(output);
-    }
+    output << "Body:\n";
+    body.print(output);
 }
 
 void BuiltinFunction::print(std::ostream& output) const
 {
-    output << "Built-In Function: " << name << '\n';
+    output << "Built-In Function: " << name << "\n";
 }
 
 const Type Type::Void{"VoidType"};

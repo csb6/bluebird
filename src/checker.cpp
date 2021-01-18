@@ -175,12 +175,12 @@ void FunctionCall::check_types()
     }
 }
 
-void BasicStatement::check_types()
+void BasicStatement::check_types(Checker&)
 {
     expression->check_types();
 }
 
-void Initialization::check_types()
+void Initialization::check_types(Checker&)
 {
     if(expression == nullptr)
         return;
@@ -195,7 +195,7 @@ void Initialization::check_types()
     }
 }
 
-void Assignment::check_types()
+void Assignment::check_types(Checker&)
 {
     expression->check_types();
     if(expression->type() != lvalue->type) {
@@ -208,42 +208,65 @@ void Assignment::check_types()
     }
 }
 
-void IfBlock::check_types()
+void IfBlock::check_types(Checker& checker)
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
         nonbool_condition_error(condition.get(), "if-statement");
         exit(1);
     }
-    Block::check_types();
+    Block::check_types(checker);
     if(else_or_else_if != nullptr) {
-        else_or_else_if->check_types();
+        else_or_else_if->check_types(checker);
     }
 }
 
-void Block::check_types()
+void Block::check_types(Checker& checker)
 {
     for(auto* stmt : statements) {
-        stmt->check_types();
+        stmt->check_types(checker);
     }
 }
 
-void WhileLoop::check_types()
+void WhileLoop::check_types(Checker& checker)
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
         nonbool_condition_error(condition.get(), "while-loop");
         exit(1);
     }
-    Block::check_types();
+    Block::check_types(checker);
 }
 
-void ReturnStatement::check_types() { expression->check_types(); }
+void ReturnStatement::check_types(Checker& checker)
+{
+    expression->check_types();
 
-void Checker::run() const
+    const Type* return_type = expression->type();
+    const BBFunction* curr_funct = checker.m_curr_funct;
+    if(curr_funct->return_type != return_type) {
+        if(return_type->category() == TypeCategory::Literal) {
+            check_literal_types(expression.get(), curr_funct, curr_funct->return_type);
+        } else {
+            print_error(expression.get(), " Wrong return type: ");
+            return_type->print(std::cerr);
+            if(curr_funct->return_type == &Type::Void) {
+                std::cerr << " Did not expect void function `" << curr_funct->name
+                          << "` to return something\n";
+            } else {
+                std::cerr << " Expected return type for this function: ";
+                curr_funct->return_type->print(std::cerr);
+                std::cerr << "\n";
+            }
+            exit(1);
+        }
+    }
+}
+
+void Checker::run()
 {
     for(Initialization* var : m_global_vars) {
-        var->check_types();
+        var->check_types(*this);
         if(var->expression != nullptr) {
             switch(var->expression->kind()) {
             case ExpressionKind::CharLiteral:
@@ -258,33 +281,10 @@ void Checker::run() const
         }
     }
 
-    for(const auto *function : m_functions) {
-        if(function->kind() != FunctionKind::Normal)
-            continue;
-        for(auto *statement : static_cast<const BBFunction*>(function)->statements) {
-            statement->check_types();
-            if(statement->kind() != StatementKind::Return)
-                continue;
-            auto* return_stmt = static_cast<ReturnStatement*>(statement);
-            const Type* return_type = return_stmt->expression->type();
-            if(function->return_type != return_type) {
-                if(return_type->category() == TypeCategory::Literal) {
-                    check_literal_types(return_stmt->expression.get(),
-                                        function, function->return_type);
-                } else {
-                    print_error(return_stmt->expression.get(), " Wrong return type: ");
-                    return_type->print(std::cerr);
-                    if(function->return_type == &Type::Void) {
-                        std::cerr << " Did not expect void function `" << function->name
-                                  << "` to return something\n";
-                    } else {
-                        std::cerr << " Expected return type for this function: ";
-                        function->return_type->print(std::cerr);
-                        std::cerr << "\n";
-                    }
-                    exit(1);
-                }
-            }
+    for(Function* function : m_functions) {
+        if(function->kind() == FunctionKind::Normal) {
+            m_curr_funct = static_cast<BBFunction*>(function);
+            m_curr_funct->body.check_types(*this);
         }
     }
 }

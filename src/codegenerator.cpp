@@ -477,7 +477,7 @@ void CodeGenerator::define_functions()
             m_lvalues[*ast_arg_it++] = alloc;
             m_ir_builder.CreateStore(&arg, alloc);
         }
-        for(auto *statement : function->statements) {
+        for(auto *statement : function->body.statements) {
             in_statement(curr_funct, statement);
         }
         if(fcn->return_type == &Type::Void) {

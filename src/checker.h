@@ -23,9 +23,12 @@ private:
     const std::vector<struct Function*>& m_functions;
     const std::vector<struct RangeType*>& m_types;
     const std::vector<struct Initialization*>& m_global_vars;
+    struct BBFunction* m_curr_funct = nullptr;
+
+    friend struct ReturnStatement;
 public:
     Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&,
             const std::vector<struct Initialization*>&);
-    void run() const;
+    void run();
 };
 #endif

@@ -694,7 +694,7 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type != TokenType::Keyword_End) {
             // Found a statement, parse it
-            new_funct->statements.push_back(in_statement());
+            new_funct->body.statements.push_back(in_statement());
         } else {
             // End of function
             m_names_table.close_scope();

@@ -284,7 +284,7 @@ struct Statement {
 
     virtual StatementKind kind() const = 0;
     virtual void          print(std::ostream&) const = 0;
-    virtual void          check_types() = 0;
+    virtual void          check_types(class Checker&) = 0;
 };
 
 // A brief, usually one-line statement that holds a single expression
@@ -295,7 +295,7 @@ struct BasicStatement final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Basic; }
     void          print(std::ostream&) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -308,7 +308,7 @@ struct Initialization final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Initialization; }
     void          print(std::ostream& output) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // Statement where an existing variable is given a value
@@ -320,7 +320,7 @@ struct Assignment final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Assignment; }
     void          print(std::ostream& output) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // A group of statements contained in a scope
@@ -329,7 +329,7 @@ struct Block : public Statement {
 
     StatementKind kind() const override { return StatementKind::Block; }
     void          print(std::ostream&) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // A block that is executed only when its boolean condition is true
@@ -341,7 +341,7 @@ struct IfBlock final : public Block {
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // A block that runs repeatedly until its condition is false
@@ -352,7 +352,7 @@ struct WhileLoop final : public Block {
 
     StatementKind kind() const override { return StatementKind::While; }
     void          print(std::ostream&) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 struct ReturnStatement final : public Statement {
@@ -362,7 +362,7 @@ struct ReturnStatement final : public Statement {
 
     StatementKind kind() const override { return StatementKind::Return; }
     void          print(std::ostream&) const override;
-    void          check_types() override;
+    void          check_types(Checker&) override;
 };
 
 // A callable procedure that optionally takes inputs
@@ -385,7 +385,7 @@ struct Function {
 // A procedure written in Bluebird containing statements and
 // optionally inputs/outputs
 struct BBFunction final : public Function {
-    std::vector<Statement*> statements;
+    Block body;
 
     explicit BBFunction(const std::string& n) : Function(n) {}
 
