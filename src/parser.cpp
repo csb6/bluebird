@@ -630,9 +630,7 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        auto* ret_type = m_range_types.make<RangeType>(token->text);
-        funct->return_type = ret_type;
-        m_names_table.add_type(ret_type);
+        funct->return_type = m_range_types.make<RangeType>(token->text);
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -649,7 +647,6 @@ void Parser::in_function_definition()
     if(match && match.value().name_type != NameType::DeclaredFunct) {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
-        
     }
     auto* new_funct = m_functions.make<BBFunction>(token->text);
     ++token;
