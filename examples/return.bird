@@ -10,6 +10,21 @@ function foo(): Natural is
     return 0;
 end;
 
+function foo2(): Natural is
+    let b: Natural = 8;
+    let c: Natural = 90;
+    if b < c do
+       if b == c do
+          return 1;
+       else
+          return 0;
+       end if;
+    else
+       return 0;
+    end if;
+    b + 3;
+end foo2;
+
 function main() is
     let a: Integer = 8 + 9;
 end;

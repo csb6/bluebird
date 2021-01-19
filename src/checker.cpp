@@ -129,8 +129,7 @@ static void check_literal_types(Expression* literal, const Other* other,
 }
 
 // TODO: check that unary operators are valid for their values
-void UnaryExpression::check_types()
-{}
+void UnaryExpression::check_types() {}
 
 // TODO: check if this binary op is legal for this type
 void BinaryExpression::check_types()
@@ -180,15 +179,16 @@ void FunctionCall::check_types()
     }
 }
 
-void BasicStatement::check_types(Checker&)
+bool BasicStatement::check_types(Checker&)
 {
     expression->check_types();
+    return false;
 }
 
-void Initialization::check_types(Checker&)
+bool Initialization::check_types(Checker&)
 {
     if(expression == nullptr)
-        return;
+        return false;
     expression->check_types();
     if(expression->type() != lvalue->type) {
         if(expression->type()->category() == TypeCategory::Literal) {
@@ -198,9 +198,10 @@ void Initialization::check_types(Checker&)
             exit(1);
         }
     }
+    return false;
 }
 
-void Assignment::check_types(Checker&)
+bool Assignment::check_types(Checker&)
 {
     expression->check_types();
     if(expression->type() != lvalue->type) {
@@ -211,39 +212,43 @@ void Assignment::check_types(Checker&)
             exit(1);
         }
     }
+    return false;
 }
 
-void IfBlock::check_types(Checker& checker)
+bool IfBlock::check_types(Checker& checker)
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
         nonbool_condition_error(condition.get(), "if-statement");
         exit(1);
     }
-    Block::check_types(checker);
+    bool always_returns = Block::check_types(checker);
     if(else_or_else_if != nullptr) {
-        else_or_else_if->check_types(checker);
+        always_returns &= else_or_else_if->check_types(checker);
+    } else {
+        // Since an if-statement does not cover all possibilities
+        always_returns = false;
     }
+    return always_returns;
 }
 
-void Block::check_types(Checker& checker)
+bool Block::check_types(Checker& checker)
 {
+    bool always_returns = false;
     for(auto* stmt : statements) {
-        stmt->check_types(checker);
+        always_returns |= stmt->check_types(checker);
 
-        if(stmt->kind() == StatementKind::Return && stmt != statements.back()) {
-            auto* ret_stmt = static_cast<ReturnStatement*>(stmt);
-            print_error(ret_stmt->expression->line_num(),
-                "Statements after return statement:");
-            std::cerr << "  ";
-            ret_stmt->print(std::cerr);
-            std::cerr << " are unreachable\n";
+        if(always_returns && stmt != statements.back()) {
+            std::cerr << "ERROR: Statements after:\n  ";
+            stmt->print(std::cerr);
+            std::cerr << " are unreachable because the statement always returns\n";
             exit(1);
         }
     }
+    return always_returns;
 }
 
-void WhileLoop::check_types(Checker& checker)
+bool WhileLoop::check_types(Checker& checker)
 {
     condition->check_types();
     if(condition->type() != &Type::Bool) {
@@ -251,9 +256,10 @@ void WhileLoop::check_types(Checker& checker)
         exit(1);
     }
     Block::check_types(checker);
+    return false;
 }
 
-void ReturnStatement::check_types(Checker& checker)
+bool ReturnStatement::check_types(Checker& checker)
 {
     expression->check_types();
 
@@ -276,6 +282,7 @@ void ReturnStatement::check_types(Checker& checker)
             exit(1);
         }
     }
+    return true;
 }
 
 void Checker::run()
@@ -299,7 +306,12 @@ void Checker::run()
     for(Function* function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             m_curr_funct = static_cast<BBFunction*>(function);
-            m_curr_funct->body.check_types(*this);
+            bool always_returns = m_curr_funct->body.check_types(*this);
+            if(!always_returns && m_curr_funct->return_type != &Type::Void) {
+                std::cerr << "ERROR: function `" << m_curr_funct->name
+                          << "` does not return in all cases\n";
+                exit(1);
+            }
         }
     }
 }

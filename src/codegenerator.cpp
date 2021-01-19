@@ -308,8 +308,10 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
     // The if-block (jumped-to when condition is true)
     auto* if_true = llvm::BasicBlock::Create(m_context, "iftrue", curr_funct);
     m_ir_builder.SetInsertPoint(if_true);
+    bool is_if_block = false;
     if(successor == nullptr) {
         successor = llvm::BasicBlock::Create(m_context, "successor", curr_funct);
+        is_if_block = true;
     }
     in_block(curr_funct, ifblock, successor);
 
@@ -332,7 +334,14 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
     // Finally, insert the branch instruction right before the two branching blocks
     m_ir_builder.restoreIP(cond_br_point);
     m_ir_builder.CreateCondBr(condition, if_true, if_false);
-    m_ir_builder.SetInsertPoint(successor);
+    if(is_if_block && successor->hasNPredecessors(0)) {
+        // Handle all branches always return (meaning successor-block is never reached).
+        // We have to check that we are currently processing an if-block since the
+        // call to generate an if-block also handles creating the successor block
+        successor->eraseFromParent();
+    } else {
+        m_ir_builder.SetInsertPoint(successor);
+    }
 }
 
 // Currently used to generate else-blocks, but should work for anonymous blocks
