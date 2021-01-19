@@ -30,6 +30,11 @@ static void print_error(const Expression* expr, const char* message)
               << ":\n" << message;
 }
 
+static void print_error(unsigned int line_num, const char* message)
+{
+    std::cerr << "ERROR: line " << line_num << ":\n " << message << "\n";
+}
+
 template<typename Other>
 static void print_type_mismatch(const Expression* expr,
                                 const Other* other, const Type* other_type,
@@ -225,6 +230,16 @@ void Block::check_types(Checker& checker)
 {
     for(auto* stmt : statements) {
         stmt->check_types(checker);
+
+        if(stmt->kind() == StatementKind::Return && stmt != statements.back()) {
+            auto* ret_stmt = static_cast<ReturnStatement*>(stmt);
+            print_error(ret_stmt->expression->line_num(),
+                "Statements after return statement:");
+            std::cerr << "  ";
+            ret_stmt->print(std::cerr);
+            std::cerr << " are unreachable\n";
+            exit(1);
+        }
     }
 }
 
