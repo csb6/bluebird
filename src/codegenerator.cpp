@@ -550,8 +550,11 @@ void CodeGenerator::run()
     declare_globals();
     define_functions();
 
-    llvm::verifyModule(m_module, &llvm::errs());
     m_module.print(llvm::errs(), nullptr);
+    if(llvm::verifyModule(m_module, &llvm::errs())) {
+        std::cerr << "ERROR: failed to properly generate code for this module\n";
+        exit(1);
+    }
 
     std::filesystem::path object_file{m_module.getSourceFileName()};
     object_file.replace_extension(".o");

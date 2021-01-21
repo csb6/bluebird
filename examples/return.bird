@@ -22,7 +22,6 @@ function foo2(): Natural is
     else
        return 0;
     end if;
-    b + 3;
 end foo2;
 
 function main() is
