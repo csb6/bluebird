@@ -25,6 +25,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/DIBuilder.h>
 #pragma GCC diagnostic pop
 
 #include <vector>
@@ -38,6 +39,8 @@ namespace llvm {
     class Value;
     class raw_fd_ostream;
     class TargetMachine;
+    class DICompileUnit;
+    class DIFile;
 };
 
 class CodeGenerator {
@@ -50,6 +53,10 @@ private:
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
     std::unordered_map<const struct LValue*, llvm::Value*> m_lvalues;
+
+    llvm::DIBuilder m_dbg_builder;
+    llvm::DICompileUnit* m_dbg_unit;
+    llvm::DIFile* m_dbg_file;
 
     // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp

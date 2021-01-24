@@ -33,6 +33,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <lld/Common/Driver.h>
 #pragma GCC diagnostic pop
 
@@ -64,8 +65,14 @@ CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
                              std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_ir_builder(m_context), m_module(source_filename, m_context),
-      m_functions(functions), m_global_vars(global_vars)
+      m_functions(functions), m_global_vars(global_vars), m_dbg_builder(m_module)
 {
+    m_dbg_unit = m_dbg_builder.createCompileUnit(
+        llvm::dwarf::DW_LANG_C, m_dbg_builder.createFile(source_filename, "."),
+        "Bluebird Compiler", false, "", 0);
+    m_dbg_file = m_dbg_builder.createFile(m_dbg_unit->getFilename(),
+                                          m_dbg_unit->getDirectory());
+
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
@@ -566,6 +573,7 @@ void CodeGenerator::run()
         std::cerr << "ERROR: failed to properly generate code for this module\n";
         exit(1);
     }
+    m_dbg_builder.finalize();
 
     std::filesystem::path object_file{m_module.getSourceFileName()};
     object_file.replace_extension(".o");
