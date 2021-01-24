@@ -46,6 +46,19 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
     return ir_builder.CreateTrunc(integer, llvm::Type::getInt1Ty(ir_builder.getContext()));
 }
 
+llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
+{
+    switch(ast_type->category()) {
+    case TypeCategory::Range:
+        return llvm::IntegerType::get(m_context, ast_type->bit_size());
+    default:
+        // TODO: add support for determining LLVM type for other AST types.
+        // Note that literal types should never reach here (see the literal
+        // codegen() functions)
+        assert(false);
+    }
+}
+
 
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
@@ -242,8 +255,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_ir_builder.SetInsertPoint(entry, entry->begin());
 
     llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
-        llvm::IntegerType::get(m_context, lvalue->type->bit_size()), nullptr,
-        lvalue->name.c_str());
+        to_llvm_type(lvalue->type), nullptr, lvalue->name.c_str());
     m_lvalues[lvalue] = alloc;
     m_ir_builder.restoreIP(prev_insert_point);
 
@@ -385,7 +397,7 @@ void CodeGenerator::declare_globals()
 {
     for(auto& global : m_global_vars) {
         LValue* lvalue = global->lvalue.get();
-        auto* type = llvm::IntegerType::get(m_context, lvalue->type->bit_size());
+        llvm::Type* type = to_llvm_type(lvalue->type);
         llvm::Constant* init_val;
         if(global->expression == nullptr) {
             init_val = llvm::Constant::getNullValue(type);
@@ -431,16 +443,14 @@ void CodeGenerator::declare_function_headers()
         parameter_names.reserve(ast_function->parameters.size());
 
         for(const auto& ast_param : ast_function->parameters) {
-            parameter_types.push_back(
-                llvm::Type::getIntNTy(m_context, ast_param->type->bit_size()));
+            parameter_types.push_back(to_llvm_type(ast_param->type));
             parameter_names.push_back(ast_param->name);
         }
 
         // TODO: add support for return types other than range types
         auto* return_type = llvm::Type::getVoidTy(m_context);
         if(ast_function->return_type != &Type::Void) {
-            return_type =
-                llvm::Type::getIntNTy(m_context, ast_function->return_type->bit_size());
+            return_type = to_llvm_type(ast_function->return_type);
         }
         auto* funct_type = llvm::FunctionType::get(return_type, parameter_types, false);
         // TODO: add more fine-grained support for Linkage

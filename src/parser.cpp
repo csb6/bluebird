@@ -253,7 +253,7 @@ Expression* Parser::in_lvalue_expression()
         print_error(current->line_num,
                     "Unknown variable/constant `" + current->text + "`");
         return nullptr;
-    } else if(match.value().name_type != NameType::LValue) {
+    } else if(match.value().kind != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
                     + current->text + "` is already being used as a name");
         return nullptr;
@@ -305,7 +305,7 @@ Expression* Parser::in_function_call()
         m_names_table.add_unresolved(new_function_call);
     } else {
         SymbolInfo match_value{match.value()};
-        switch(match_value.name_type) {
+        switch(match_value.kind) {
         case NameType::DeclaredFunct:
             // A temp declaration (one without definition) has been declared, but haven't
             // resolved its definition yet
@@ -398,15 +398,15 @@ LValue* Parser::in_lvalue_declaration()
             m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
         m_names_table.add_unresolved(new_lvalue);
     } else {
-        switch(match.value().name_type) {
+        switch(match.value().kind) {
         case NameType::DeclaredType:
             // A temp type (one that lacks a definition) has already been declared, but
             // the actual definition of it hasn't been resolved yet
-            new_lvalue->type = match.value().range_type;
+            new_lvalue->type = match.value().type;
             m_names_table.add_unresolved(new_lvalue);
             break;
         case NameType::Type:
-            new_lvalue->type = match.value().range_type;
+            new_lvalue->type = match.value().type;
             break;
         default:
             print_error(token->line_num, "Expected `" + token->text
@@ -445,7 +445,7 @@ Assignment* Parser::in_assignment()
     if(!lval_match) {
         print_error(token->line_num, "`" + token->text
                     + "` is not a variable name and so cannot be assigned to");
-    } else if(lval_match->name_type != NameType::LValue) {
+    } else if(lval_match->kind != NameType::LValue) {
         print_error(token->line_num, "Expected `" + token->text
                     + "` to be a variable, but it is defined as another kind of name");
     } else if(!lval_match->lvalue->is_mutable) {
@@ -614,14 +614,14 @@ void Parser::in_return_type(Function* funct)
 {
     check_token_is(TokenType::Name, "function return type", *token);
     if(auto match = m_names_table.find(token->text); match) {
-        switch(match.value().name_type) {
+        switch(match.value().kind) {
         case NameType::DeclaredType:
             // A temp type has been declared previously, but not its definition
-            funct->return_type = match.value().range_type;
+            funct->return_type = match.value().type;
             m_names_table.add_unresolved_return_type(funct);
             break;
         case NameType::Type:
-            funct->return_type = match.value().range_type;
+            funct->return_type = match.value().type;
             break;
         default:
             print_error(token->line_num, "Expected `" + token->text
@@ -644,7 +644,7 @@ void Parser::in_function_definition()
     // First, set the function's name, making sure it isn't being used for
     // anything else
     const auto match = m_names_table.find(token->text);
-    if(match && match.value().name_type != NameType::DeclaredFunct) {
+    if(match && match.value().kind != NameType::DeclaredFunct) {
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
     }
@@ -760,7 +760,7 @@ void Parser::in_type_definition()
     check_token_is(TokenType::Name, "typename", *token);
 
     if(const auto match = m_names_table.find(token->text);
-       match && match.value().name_type != NameType::DeclaredType) {
+       match && match.value().kind != NameType::DeclaredType) {
         print_error(token->line_num, "Name: " + token->text + " already in use");
     }
 
@@ -862,7 +862,7 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name, NameType ki
     while(scope_index >= 0) {
         const Scope& scope = m_scopes[scope_index];
         const auto match = scope.symbols.find(name);
-        if(match != scope.symbols.end() && match->second.name_type == kind) {
+        if(match != scope.symbols.end() && match->second.kind == kind) {
             return {match->second};
         } else {
             scope_index = scope.parent_index;
@@ -919,7 +919,7 @@ void SymbolTable::resolve_usages()
                             + "` is used but has no definition");
             } else {
                 // Update to the newly-defined type (replacing the temp type)
-                lvalue->type = match->range_type;
+                lvalue->type = match->type;
             }
         }
         scope.lvalues_type_unresolved.clear();
@@ -932,7 +932,7 @@ void SymbolTable::resolve_usages()
                             + "` is used but has no definition");
             } else {
                 // Update to the newly-defined type (replacing the temp type)
-                funct->return_type = match->range_type;
+                funct->return_type = match->type;
             }
         }
         scope.unresolved_return_type_functs.clear();

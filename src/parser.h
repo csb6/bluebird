@@ -25,24 +25,18 @@
 #include <iosfwd>
 
 struct SymbolInfo {
-    NameType name_type;
+    NameType kind;
     union {
-        RangeType* range_type;
+        Type* type;
         LValue* lvalue = nullptr;
         Function* function;
     };
 
     SymbolInfo() {}
-    explicit SymbolInfo(NameType name) : name_type(name) {}
-    SymbolInfo(NameType name, RangeType* type)
-        : name_type(name), range_type(type)
-    {}
-    SymbolInfo(NameType name, LValue* lv)
-        : name_type(name), lvalue(lv)
-    {}
-    SymbolInfo(NameType name, Function* f)
-        : name_type(name), function(f)
-    {}
+    explicit SymbolInfo(NameType name) : kind(name) {}
+    SymbolInfo(NameType name, Type* t) : kind(name), type(t) {}
+    SymbolInfo(NameType name, LValue* lv) : kind(name), lvalue(lv) {}
+    SymbolInfo(NameType name, Function* f) : kind(name), function(f) {}
 };
 
 struct Scope {

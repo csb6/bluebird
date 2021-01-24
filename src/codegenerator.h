@@ -66,6 +66,7 @@ private:
     void declare_builtin_functions();
     void declare_function_headers();
     void define_functions();
+    llvm::Type* to_llvm_type(const struct Type* ast_type);
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);

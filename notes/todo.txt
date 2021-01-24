@@ -47,7 +47,7 @@ Todo:
 [X] Fix bug where programs ending with a single-line comment (maybe any comment?)
     and no trailing newline segfault
 [X] Add return statement and return types, enabling non-void functions
-[ ] Add checks to ensure all paths out of a function have a return statement ending them
+[X] Add checks to ensure all paths out of a function have a return statement ending them
 [ ] Add support for user-defined record types
 [ ] Add support for creating ranges and using them within larger expressions/variables
 [ ] Add simple for-loops that iterate over a range

@@ -268,11 +268,11 @@ struct FunctionCall final : public Expression {
 // A named object that holds a value and can be assigned at least once
 struct LValue {
     std::string name;
-    RangeType* type;
+    Type* type;
     bool is_mutable = true;
 
     explicit LValue(const std::string& n) : name(n) {}
-    LValue(const std::string& n, RangeType* t) : name(n), type(t) {}
+    LValue(const std::string& n, Type* t) : name(n), type(t) {}
 
     void print(std::ostream&) const;
 };
