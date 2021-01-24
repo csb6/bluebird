@@ -1,0 +1,11 @@
+function factorial(n : Integer): Integer is
+    if n <= 1 do
+        return 1;
+    else
+        return n * factorial(n-1);
+    end if;
+end;
+
+function main() is
+    let n: Integer = factorial(6);
+end;

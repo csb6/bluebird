@@ -650,6 +650,7 @@ void Parser::in_function_definition()
     }
     auto* new_funct = new BBFunction(token->text);
     m_function_list.emplace_back(new_funct);
+    m_names_table.add_function(new_funct);
     ++token;
     check_token_is(TokenType::Open_Parentheses,
                    "`(` to follow name of function in definition", *token);
@@ -707,7 +708,6 @@ void Parser::in_function_definition()
             ++token;
             check_token_is(TokenType::End_Statement,
                            "end of statement (a.k.a. `;`) or an end label", *token);
-            m_names_table.add_function(new_funct);
             ++token;
             return;
         }
