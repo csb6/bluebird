@@ -22,7 +22,6 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
-#include "memory-pool.h"
 #include <iosfwd>
 
 struct SymbolInfo {
@@ -86,19 +85,12 @@ class Parser {
 public:
     using TokenIterator = std::vector<Token>::const_iterator;
 private:
-    TokenIterator m_input_begin;
-    TokenIterator m_input_end;
-    TokenIterator token;
-
-    MemoryPool m_range_types, m_lvalues, m_functions, m_statements;
+    TokenIterator m_input_begin, m_input_end, token;
     SymbolTable m_names_table;
 
-    // Points to memory in m_functions
-    std::vector<Function*> m_function_list;
-    // Points to memory in m_range_types
-    std::vector<RangeType*> m_range_type_list;
-    // Points to memory in m_statements
-    std::vector<Initialization*> m_global_var_list;
+    std::vector<Magnum::Pointer<Function>> m_function_list;
+    std::vector<Magnum::Pointer<RangeType>> m_range_type_list;
+    std::vector<Magnum::Pointer<Initialization>> m_global_var_list;
 
     Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
@@ -128,10 +120,10 @@ public:
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
     void run();
-    const auto& functions() const { return m_function_list; }
-    const auto& types() const { return m_range_type_list; }
-    const auto& global_vars() const { return m_global_var_list; }
-    const auto& names_table() const { return m_names_table; }
+    auto& functions() { return m_function_list; }
+    auto& types() { return m_range_type_list; }
+    auto& global_vars() { return m_global_var_list; }
+    auto& names_table() { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);
 };

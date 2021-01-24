@@ -30,6 +30,9 @@
 #include <vector>
 #include <unordered_map>
 #include <filesystem>
+#include <CorradePointer.h>
+
+namespace Magnum = Corrade::Containers;
 
 namespace llvm {
     class Value;
@@ -44,8 +47,8 @@ private:
     llvm::Module m_module;
     llvm::TargetMachine* m_target_machine;
 
-    const std::vector<struct Function*>& m_functions;
-    const std::vector<struct Initialization*>& m_global_vars;
+    std::vector<Magnum::Pointer<struct Function>>& m_functions;
+    std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
     std::unordered_map<const struct LValue*, llvm::Value*> m_lvalues;
 
     // For codegen, virtual functions attached to each Expression subclass.
@@ -81,7 +84,8 @@ private:
               const std::filesystem::path& exe_file = "a.out");
 public:
     CodeGenerator(const char* source_filename,
-                  const std::vector<Function*>&, const std::vector<Initialization*>&);
+                  std::vector<Magnum::Pointer<Function>>&,
+                  std::vector<Magnum::Pointer<Initialization>>&);
     void run();
 };
 #endif

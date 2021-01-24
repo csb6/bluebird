@@ -17,20 +17,24 @@
 #ifndef CHECKER_H
 #define CHECKER_H
 #include <vector>
+#include <CorradePointer.h>
+
+namespace Magnum = Corrade::Containers;
 
 class Checker {
 private:
-    const std::vector<struct Function*>& m_functions;
-    const std::vector<struct RangeType*>& m_types;
-    const std::vector<struct Initialization*>& m_global_vars;
+    std::vector<Magnum::Pointer<struct Function>>& m_functions;
+    std::vector<Magnum::Pointer<struct RangeType>>& m_types;
+    std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
 
     // Data about the current things being typechecked/analyzed
     struct BBFunction* m_curr_funct = nullptr;
 
     friend struct ReturnStatement;
 public:
-    Checker(const std::vector<Function*>&, const std::vector<struct RangeType*>&,
-            const std::vector<struct Initialization*>&);
+    Checker(std::vector<Magnum::Pointer<Function>>&,
+            std::vector<Magnum::Pointer<RangeType>>&,
+            std::vector<Magnum::Pointer<Initialization>>&);
     void run();
 };
 #endif

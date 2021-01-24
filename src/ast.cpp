@@ -243,7 +243,7 @@ void BBFunction::print(std::ostream& output) const
         output << "\n";
     }
     output << "Parameters:\n";
-    for(const auto *param : parameters) {
+    for(const auto& param : parameters) {
         param->print(output);
         output << "\n";
     }

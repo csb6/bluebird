@@ -18,9 +18,9 @@
 #include "ast.h"
 #include <iostream>
 
-Checker::Checker(const std::vector<Function*>& functions,
-                 const std::vector<RangeType*>& types,
-                 const std::vector<Initialization*>& global_vars)
+Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
+                 std::vector<Magnum::Pointer<RangeType>>& types,
+                 std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_functions(functions), m_types(types), m_global_vars(global_vars)
 {}
 
@@ -166,7 +166,7 @@ void FunctionCall::check_types()
         // Ensure each argument expression is internally typed correctly
         arg->check_types();
         // Make sure each arg type matches corresponding parameter type
-        const LValue* param = function->parameters[i];
+        const LValue* param = function->parameters[i].get();
         if(arg->type() != param->type) {
             if(arg->type()->category() == TypeCategory::Literal) {
                 check_literal_types(arg, param, param->type);
@@ -192,9 +192,9 @@ bool Initialization::check_types(Checker&)
     expression->check_types();
     if(expression->type() != lvalue->type) {
         if(expression->type()->category() == TypeCategory::Literal) {
-            check_literal_types(expression.get(), lvalue, lvalue->type);
+            check_literal_types(expression.get(), lvalue.get(), lvalue->type);
         } else {
-            print_type_mismatch(expression.get(), lvalue, lvalue->type);
+            print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
             exit(1);
         }
     }
@@ -235,10 +235,10 @@ bool IfBlock::check_types(Checker& checker)
 bool Block::check_types(Checker& checker)
 {
     bool always_returns = false;
-    for(auto* stmt : statements) {
+    for(auto& stmt : statements) {
         always_returns |= stmt->check_types(checker);
 
-        if(always_returns && stmt != statements.back()) {
+        if(always_returns && stmt.get() != statements.back().get()) {
             std::cerr << "ERROR: Statements after:\n  ";
             stmt->print(std::cerr);
             std::cerr << " are unreachable because the statement always returns\n";
@@ -287,7 +287,7 @@ bool ReturnStatement::check_types(Checker& checker)
 
 void Checker::run()
 {
-    for(Initialization* var : m_global_vars) {
+    for(auto& var : m_global_vars) {
         var->check_types(*this);
         if(var->expression != nullptr) {
             switch(var->expression->kind()) {
@@ -303,9 +303,9 @@ void Checker::run()
         }
     }
 
-    for(Function* function : m_functions) {
+    for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            m_curr_funct = static_cast<BBFunction*>(function);
+            m_curr_funct = static_cast<BBFunction*>(function.get());
             bool always_returns = m_curr_funct->body.check_types(*this);
             if(!always_returns && m_curr_funct->return_type != &Type::Void) {
                 std::cerr << "ERROR: function `" << m_curr_funct->name

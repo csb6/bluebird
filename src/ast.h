@@ -303,7 +303,7 @@ struct BasicStatement final : public Statement {
 // value of some expression
 struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
-    LValue* lvalue;
+    Magnum::Pointer<LValue> lvalue;
 
     explicit Initialization(LValue* lval) : lvalue(lval) {}
 
@@ -326,7 +326,7 @@ struct Assignment final : public Statement {
 
 // A group of statements contained in a scope
 struct Block : public Statement {
-    std::vector<Statement*> statements;
+    std::vector<Magnum::Pointer<Statement>> statements;
 
     StatementKind kind() const override { return StatementKind::Block; }
     void          print(std::ostream&) const override;
@@ -336,7 +336,7 @@ struct Block : public Statement {
 // A block that is executed only when its boolean condition is true
 struct IfBlock final : public Block {
     Magnum::Pointer<Expression> condition;
-    Block* else_or_else_if = nullptr;
+    Magnum::Pointer<Block> else_or_else_if{nullptr};
 
     explicit IfBlock(Expression* cond) : condition(cond) {}
 
@@ -370,7 +370,7 @@ struct ReturnStatement final : public Statement {
 struct Function {
     std::string name;
     const Type* return_type = &Type::Void;
-    std::vector<LValue*> parameters;
+    std::vector<Magnum::Pointer<LValue>> parameters;
 
     explicit Function(const std::string& n) : name(n) {}
     Function(const Function&) = default;

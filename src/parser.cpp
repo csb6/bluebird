@@ -188,21 +188,19 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
 }
 
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
-    : m_input_begin(input_begin), m_input_end(input_end),
-      m_range_types(sizeof(RangeType) * 64), m_lvalues(sizeof(LValue) * 64),
-      m_functions(sizeof(Function) * 16), m_statements(sizeof(Statement) * 64)
+    : m_input_begin(input_begin), m_input_end(input_end)
 {
     m_names_table.add_type(&RangeType::Integer);
     m_names_table.add_type(&RangeType::Character);
 
     {
         // function putchar(c : Character): Integer
-        auto* put_char = m_functions.make<BuiltinFunction>("putchar");
-        auto* c = m_lvalues.make<LValue>("c", &RangeType::Character);
-        put_char->parameters.push_back(c);
+        auto* put_char = new BuiltinFunction("putchar");
+        auto* c = new LValue("c", &RangeType::Character);
+        put_char->parameters.emplace_back(c);
         put_char->return_type = &RangeType::Integer;
         m_names_table.add_function(put_char);
-        m_function_list.push_back(put_char);
+        m_function_list.emplace_back(put_char);
     }
 }
 
@@ -302,7 +300,8 @@ Expression* Parser::in_function_call()
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_function_call->function = m_functions.make<BBFunction>(token->text);
+        new_function_call->function =
+            m_function_list.emplace_back(Magnum::pointer<BBFunction>(token->text)).get();
         m_names_table.add_unresolved(new_function_call);
     } else {
         SymbolInfo match_value{match.value()};
@@ -378,7 +377,7 @@ LValue* Parser::in_lvalue_declaration()
         print_error(token->line_num, "`" + token->text
                     + "` cannot be used as an lvalue name. It is already defined as a name");
     }
-    LValue* new_lvalue = m_lvalues.make<LValue>(token->text);
+    auto* new_lvalue = new LValue(token->text);
 
     ++token;
     check_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
@@ -395,7 +394,8 @@ LValue* Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue->type = m_range_types.make<RangeType>(token->text);
+        new_lvalue->type =
+            m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
         m_names_table.add_unresolved(new_lvalue);
     } else {
         switch(match.value().name_type) {
@@ -421,8 +421,7 @@ Initialization* Parser::in_initialization()
 {
     check_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
     ++token;
-    auto *new_statement =
-        m_statements.make<Initialization>(in_lvalue_declaration());
+    auto *new_statement = new Initialization(in_lvalue_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -436,7 +435,7 @@ Initialization* Parser::in_initialization()
         ++token;
         new_statement->expression = Magnum::pointer<Expression>(init_val);
     }
-    m_names_table.add_lvalue(new_statement->lvalue);
+    m_names_table.add_lvalue(new_statement->lvalue.get());
     return new_statement;
 }
 
@@ -457,7 +456,7 @@ Assignment* Parser::in_assignment()
     std::advance(token, 2); // skip varname and `=` operator
     Expression* expr = parse_expression();
     ++token;
-    return m_statements.make<Assignment>(expr, lval_match->lvalue);
+    return new Assignment(expr, lval_match->lvalue);
 }
 
 Statement* Parser::in_statement()
@@ -482,7 +481,7 @@ Statement* Parser::in_statement()
 
 BasicStatement* Parser::in_basic_statement()
 {
-    auto *new_statement = m_statements.make<BasicStatement>(parse_expression());
+    auto* new_statement = new BasicStatement(parse_expression());
 
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
@@ -496,7 +495,7 @@ IfBlock* Parser::in_if_block()
 
     m_names_table.open_scope();
     // First, parse the if-condition
-    auto *new_if_block = m_statements.make<IfBlock>(parse_expression());
+    auto* new_if_block = new IfBlock(parse_expression());
     check_token_is(TokenType::Keyword_Do,
                    "keyword `do` following `if` condition", *token);
 
@@ -522,14 +521,14 @@ IfBlock* Parser::in_if_block()
             if(std::next(token)->type == TokenType::Keyword_If) {
                 // Else-if block
                 ++token;
-                new_if_block->else_or_else_if = in_if_block();
+                new_if_block->else_or_else_if = Magnum::pointer<IfBlock>(in_if_block());
             } else {
                 // Else block
-                new_if_block->else_or_else_if = in_else_block();
+                new_if_block->else_or_else_if = Magnum::pointer<Block>(in_else_block());
             }
             return new_if_block;
         } else {
-            new_if_block->statements.push_back(in_statement());
+            new_if_block->statements.emplace_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete if-block");
@@ -540,7 +539,7 @@ Block* Parser::in_else_block()
 {
     check_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
     m_names_table.open_scope();
-    auto* new_else_block = m_statements.make<Block>();
+    auto* new_else_block = new Block();
     ++token;
 
     while(token != m_input_end) {
@@ -558,7 +557,7 @@ Block* Parser::in_else_block()
             ++token;
             return new_else_block;
         } else {
-            new_else_block->statements.push_back(in_statement());
+            new_else_block->statements.emplace_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete else-block");
@@ -571,7 +570,7 @@ WhileLoop* Parser::in_while_loop()
     ++token;
     m_names_table.open_scope();
     // First, parse the condition
-    auto* new_while_loop = m_statements.make<WhileLoop>(parse_expression());
+    auto* new_while_loop = new WhileLoop(parse_expression());
     check_token_is(TokenType::Keyword_Do,
                    "keyword `do` following `while` condition", *token);
 
@@ -592,7 +591,7 @@ WhileLoop* Parser::in_while_loop()
             ++token;
             return new_while_loop;
         } else {
-            new_while_loop->statements.push_back(in_statement());
+            new_while_loop->statements.emplace_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete while-loop-block");
@@ -604,7 +603,7 @@ ReturnStatement* Parser::in_return_statement()
     check_token_is(TokenType::Keyword_Return, "`return` keyword", *token);
 
     ++token;
-    auto* return_stmt = m_statements.make<ReturnStatement>(parse_expression());
+    auto* return_stmt = new ReturnStatement(parse_expression());
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
                    *token);
     ++token;
@@ -630,7 +629,8 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        funct->return_type = m_range_types.make<RangeType>(token->text);
+        funct->return_type =
+            m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -648,7 +648,8 @@ void Parser::in_function_definition()
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
     }
-    auto* new_funct = m_functions.make<BBFunction>(token->text);
+    auto* new_funct = new BBFunction(token->text);
+    m_function_list.emplace_back(new_funct);
     ++token;
     check_token_is(TokenType::Open_Parentheses,
                    "`(` to follow name of function in definition", *token);
@@ -659,8 +660,8 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            LValue* param = in_lvalue_declaration();
-            new_funct->parameters.push_back(param);
+            LValue* param =
+                new_funct->parameters.emplace_back(in_lvalue_declaration()).get();
             m_names_table.add_lvalue(param);
 
             ++token;
@@ -694,7 +695,7 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type != TokenType::Keyword_End) {
             // Found a statement, parse it
-            new_funct->body.statements.push_back(in_statement());
+            new_funct->body.statements.emplace_back(in_statement());
         } else {
             // End of function
             m_names_table.close_scope();
@@ -707,7 +708,6 @@ void Parser::in_function_definition()
             check_token_is(TokenType::End_Statement,
                            "end of statement (a.k.a. `;`) or an end label", *token);
             m_names_table.add_function(new_funct);
-            m_function_list.push_back(new_funct);
             ++token;
             return;
         }
@@ -747,9 +747,10 @@ void Parser::in_range_type_definition(const std::string& type_name)
         print_error(token->line_num, "Upper limit of range is lower than the lower limit");
     }
 
-    auto* new_type = m_range_types.make<RangeType>(type_name, lower_limit, upper_limit);
+    auto* new_type =
+        m_range_type_list.emplace_back(
+            Magnum::pointer<RangeType>(type_name, lower_limit, upper_limit)).get();
     m_names_table.add_type(new_type);
-    m_range_type_list.push_back(new_type);
 }
 
 void Parser::in_type_definition()
@@ -794,7 +795,7 @@ void Parser::run()
             in_type_definition();
             break;
         case TokenType::Keyword_Let:
-            m_global_var_list.push_back(in_initialization());
+            m_global_var_list.push_back(Magnum::pointer<Initialization>(in_initialization()));
             break;
         default:
             print_error_expected("start of a variable/type declaration or a "
@@ -808,11 +809,11 @@ void Parser::run()
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {
     output << "Global Variables:\n";
-    for(const auto* decl : parser.m_global_var_list) {
+    for(const auto& decl : parser.m_global_var_list) {
         decl->print(output);
     }
     output << "\nFunctions:\n";
-    for(const auto *function_definition : parser.m_function_list) {
+    for(const auto& function_definition : parser.m_function_list) {
         function_definition->print(output);
         output << "\n";
     }

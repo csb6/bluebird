@@ -48,8 +48,8 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 
 CodeGenerator::CodeGenerator(const char* source_filename,
-                             const std::vector<Function*>& functions,
-                             const std::vector<Initialization*>& global_vars)
+                             std::vector<Magnum::Pointer<Function>>& functions,
+                             std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_ir_builder(m_context), m_module(source_filename, m_context),
       m_functions(functions), m_global_vars(global_vars)
 {
@@ -231,7 +231,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
 {
     auto* init = static_cast<Initialization*>(statement);
-    LValue* lvalue = init->lvalue;
+    LValue* lvalue = init->lvalue.get();
 
     auto prev_insert_point = m_ir_builder.saveIP();
     // All allocas need to be in the entry block
@@ -323,13 +323,13 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
         // Else-if block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
-        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if),
+        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if.get()),
                     successor);
     } else if(ifblock->else_or_else_if->kind() == StatementKind::Block) {
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
-        in_block(curr_funct, ifblock->else_or_else_if, successor);
+        in_block(curr_funct, ifblock->else_or_else_if.get(), successor);
     }
     // Finally, insert the branch instruction right before the two branching blocks
     m_ir_builder.restoreIP(cond_br_point);
@@ -349,8 +349,8 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
 void CodeGenerator::in_block(llvm::Function* curr_funct,
                              Block* block, llvm::BasicBlock* successor)
 {
-    for(Statement* stmt : block->statements) {
-        in_statement(curr_funct, stmt);
+    for(auto& stmt : block->statements) {
+        in_statement(curr_funct, stmt.get());
     }
     if(m_ir_builder.GetInsertBlock()->getTerminator() == nullptr) {
         // Only jump to successor if a ret wasn't already inserted
@@ -383,8 +383,8 @@ void CodeGenerator::in_while_loop(llvm::Function* curr_funct, WhileLoop* whilelo
 
 void CodeGenerator::declare_globals()
 {
-    for(Initialization* global : m_global_vars) {
-        LValue* lvalue = global->lvalue;
+    for(auto& global : m_global_vars) {
+        LValue* lvalue = global->lvalue.get();
         auto* type = llvm::IntegerType::get(m_context, lvalue->type->bit_size());
         llvm::Constant* init_val;
         if(global->expression == nullptr) {
@@ -420,9 +420,9 @@ void CodeGenerator::declare_function_headers()
     // Reused between iterations to reduce allocations
     std::vector<llvm::Type*> parameter_types;
     std::vector<llvm::StringRef> parameter_names;
-    for(const Function *ast_function : m_functions) {
+    for(const auto& ast_function : m_functions) {
         if(ast_function->kind() == FunctionKind::Builtin) {
-            auto* builtin = static_cast<const BuiltinFunction*>(ast_function);
+            auto* builtin = static_cast<const BuiltinFunction*>(ast_function.get());
             if(!builtin->is_used)
                 continue;
         }
@@ -430,7 +430,7 @@ void CodeGenerator::declare_function_headers()
         parameter_types.reserve(ast_function->parameters.size());
         parameter_names.reserve(ast_function->parameters.size());
 
-        for(const LValue* ast_param : ast_function->parameters) {
+        for(const auto& ast_param : ast_function->parameters) {
             parameter_types.push_back(
                 llvm::Type::getIntNTy(m_context, ast_param->type->bit_size()));
             parameter_names.push_back(ast_param->name);
@@ -464,11 +464,11 @@ void CodeGenerator::declare_function_headers()
 
 void CodeGenerator::define_functions()
 {
-    for(const Function *fcn : m_functions) {
+    for(auto& fcn : m_functions) {
         if(fcn->kind() != FunctionKind::Normal)
             // Builtin functions have no body
             continue;
-        auto* function = static_cast<const BBFunction*>(fcn);
+        auto* function = static_cast<BBFunction*>(fcn.get());
         llvm::Function* curr_funct = m_module.getFunction(function->name);
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
@@ -483,11 +483,12 @@ void CodeGenerator::define_functions()
         for(auto& arg : curr_funct->args()) {
             llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
                 arg.getType(), nullptr, arg.getName());
-            m_lvalues[*ast_arg_it++] = alloc;
+            m_lvalues[ast_arg_it->get()] = alloc;
+            ++ast_arg_it;
             m_ir_builder.CreateStore(&arg, alloc);
         }
-        for(auto *statement : function->body.statements) {
-            in_statement(curr_funct, statement);
+        for(auto& statement : function->body.statements) {
+            in_statement(curr_funct, statement.get());
         }
         if(fcn->return_type == &Type::Void) {
             // All blocks must end in a ret instruction of some kind
