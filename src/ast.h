@@ -283,6 +283,7 @@ struct Statement {
     virtual ~Statement() noexcept = default;
 
     virtual StatementKind kind() const = 0;
+    virtual unsigned int  line_num() const = 0;
     virtual void          print(std::ostream&) const = 0;
     // Returns true if always returns, no matter code path
     virtual bool          check_types(class Checker&) = 0;
@@ -295,6 +296,7 @@ struct BasicStatement final : public Statement {
     explicit BasicStatement(Expression* expr) : expression(expr) {}
 
     StatementKind kind() const override { return StatementKind::Basic; }
+    unsigned int  line_num() const override { return expression->line_num(); }
     void          print(std::ostream&) const override;
     bool          check_types(Checker&) override;
 };
@@ -308,6 +310,7 @@ struct Initialization final : public Statement {
     explicit Initialization(LValue* lval) : lvalue(lval) {}
 
     StatementKind kind() const override { return StatementKind::Initialization; }
+    unsigned int  line_num() const override { return expression->line_num(); }
     void          print(std::ostream& output) const override;
     bool          check_types(Checker&) override;
 };
@@ -320,6 +323,7 @@ struct Assignment final : public Statement {
     Assignment(Expression* expr, LValue* lv) : expression(expr), lvalue(lv) {}
 
     StatementKind kind() const override { return StatementKind::Assignment; }
+    unsigned int  line_num() const override { return expression->line_num(); }
     void          print(std::ostream& output) const override;
     bool          check_types(Checker&) override;
 };
@@ -327,8 +331,12 @@ struct Assignment final : public Statement {
 // A group of statements contained in a scope
 struct Block : public Statement {
     std::vector<Magnum::Pointer<Statement>> statements;
+    unsigned int line;
+
+    explicit Block(unsigned int l) : line(l) {}
 
     StatementKind kind() const override { return StatementKind::Block; }
+    unsigned int  line_num() const override { return line; };
     void          print(std::ostream&) const override;
     bool          check_types(Checker&) override;
 };
@@ -338,7 +346,8 @@ struct IfBlock final : public Block {
     Magnum::Pointer<Expression> condition;
     Magnum::Pointer<Block> else_or_else_if{nullptr};
 
-    explicit IfBlock(Expression* cond) : condition(cond) {}
+    explicit IfBlock(Expression* cond)
+        : Block(cond->line_num()), condition(cond) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
@@ -349,7 +358,8 @@ struct IfBlock final : public Block {
 struct WhileLoop final : public Block {
     Magnum::Pointer<Expression> condition;
 
-    explicit WhileLoop(Expression* cond) : condition(cond) {}
+    explicit WhileLoop(Expression* cond)
+        : Block(cond->line_num()), condition(cond) {}
 
     StatementKind kind() const override { return StatementKind::While; }
     void          print(std::ostream&) const override;
@@ -362,6 +372,7 @@ struct ReturnStatement final : public Statement {
     explicit ReturnStatement(Expression* expr) : expression(expr) {}
 
     StatementKind kind() const override { return StatementKind::Return; }
+    unsigned int  line_num() const override { return expression->line_num(); }
     void          print(std::ostream&) const override;
     bool          check_types(Checker&) override;
 };
@@ -381,6 +392,7 @@ struct Function {
 
     virtual void         print(std::ostream&) const = 0;
     virtual FunctionKind kind() const = 0;
+    virtual unsigned int line_num() const = 0;
 };
 
 // A procedure written in Bluebird containing statements and
@@ -388,10 +400,12 @@ struct Function {
 struct BBFunction final : public Function {
     Block body;
 
-    explicit BBFunction(const std::string& n) : Function(n) {}
+    explicit BBFunction(const std::string& n, unsigned int line = 0)
+        : Function(n), body(line) {}
 
     void         print(std::ostream&) const override;
     FunctionKind kind() const override { return FunctionKind::Normal; }
+    unsigned int line_num() const override { return body.line_num(); }
 };
 
 // A function with no body (written in Bluebird, that is); forward
@@ -403,5 +417,6 @@ struct BuiltinFunction final : public Function {
 
     void         print(std::ostream&) const override;
     FunctionKind kind() const override { return FunctionKind::Builtin; }
+    unsigned int line_num() const override { return 0; }
 };
 #endif

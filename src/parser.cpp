@@ -539,7 +539,7 @@ Block* Parser::in_else_block()
 {
     check_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
     m_names_table.open_scope();
-    auto* new_else_block = new Block();
+    auto* new_else_block = new Block(token->line_num);
     ++token;
 
     while(token != m_input_end) {
@@ -648,7 +648,7 @@ void Parser::in_function_definition()
         print_error(token->line_num, "Name `" + token->text + "` is"
                     " already in use");
     }
-    auto* new_funct = new BBFunction(token->text);
+    auto* new_funct = new BBFunction(token->text, token->line_num);
     m_function_list.emplace_back(new_funct);
     m_names_table.add_function(new_funct);
     ++token;

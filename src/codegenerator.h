@@ -16,8 +16,7 @@
 */
 #ifndef BLUEBIRD_CODEGEN_H
 #define BLUEBIRD_CODEGEN_H
-// Internal LLVM code has lots of warnings that we don't
-// care about, so ignore them
+// Internal LLVM code has lots of warnings that we don't care about
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wall"

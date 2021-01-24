@@ -461,7 +461,6 @@ void CodeGenerator::declare_function_headers()
             parameter_names.push_back(ast_param->name);
         }
 
-        // TODO: add support for return types other than range types
         auto* return_type = llvm::Type::getVoidTy(m_context);
         if(ast_function->return_type != &Type::Void) {
             return_type = to_llvm_type(ast_function->return_type);
