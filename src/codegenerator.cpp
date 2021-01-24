@@ -41,6 +41,96 @@
 #include <iostream>
 #include <string>
 
+DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
+                               const char* source_filename)
+    : m_dbg_builder(module), m_is_active(is_active)
+{
+    if(is_active) {
+        m_dbg_unit = m_dbg_builder.createCompileUnit(
+            llvm::dwarf::DW_LANG_C, m_dbg_builder.createFile(source_filename, "."),
+            "Bluebird Compiler", false, "", 0);
+        m_file = m_dbg_builder.createFile(m_dbg_unit->getFilename(),
+                                          m_dbg_unit->getDirectory());
+        // dbg_unit is root scope
+        m_scopes.push_back(m_dbg_unit);
+    }
+}
+
+llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
+{
+    switch(ast_type->category()) {
+    case TypeCategory::Range: {
+        auto* type = static_cast<const RangeType*>(ast_type);
+        // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
+        unsigned encoding = llvm::dwarf::DW_ATE_signed;
+        if(!type->range.is_signed)
+            encoding = llvm::dwarf::DW_ATE_unsigned;
+        return m_dbg_builder.createBasicType(
+            ast_type->name, ast_type->bit_size(), encoding);
+    }
+    default:
+        // TODO: add support for determining LLVM debug type for other AST types
+        if(ast_type == &Type::Void) {
+            // TODO: see if this is correct way to represent void in DWARF
+            return nullptr;
+        } else {
+            ast_type->print(std::cerr);
+            assert(false);
+        }
+    }
+}
+
+llvm::DISubroutineType* DebugGenerator::to_dbg_type(const Function* ast_funct)
+{
+    llvm::SmallVector<llvm::Metadata*, 8> type_list;
+    // Return type is always at index 0
+    type_list.push_back(to_dbg_type(ast_funct->return_type));
+    for(auto& arg : ast_funct->parameters) {
+        type_list.push_back(to_dbg_type(arg->type));
+    }
+
+    return m_dbg_builder.createSubroutineType(m_dbg_builder.getOrCreateTypeArray(type_list));
+}
+
+void DebugGenerator::addFunction(const Function* ast_funct, llvm::Function* funct)
+{
+    if(m_is_active) {
+        llvm::DISubprogram* dbg_data = m_dbg_builder.createFunction(
+            m_file, ast_funct->name, "", m_file, ast_funct->line_num(),
+            to_dbg_type(ast_funct), ast_funct->line_num(), llvm::DINode::FlagZero,
+            llvm::DISubprogram::SPFlagDefinition);
+        funct->setSubprogram(dbg_data);
+        m_scopes.push_back(dbg_data);
+    }
+}
+
+void DebugGenerator::closeFunction(llvm::Function* funct)
+{
+    if(m_is_active) {
+        m_dbg_builder.finalizeSubprogram(funct->getSubprogram());
+    }
+}
+
+void DebugGenerator::closeScope()
+{
+    if(m_is_active)
+        m_scopes.pop_back();
+}
+
+void DebugGenerator::setLocation(const Statement* stmt, llvm::IRBuilder<>& ir_builder)
+{
+    if(m_is_active) {
+        ir_builder.SetCurrentDebugLocation(
+            llvm::DebugLoc::get(stmt->line_num(), 1, m_scopes.back()));
+    }
+}
+
+void DebugGenerator::finalize()
+{
+    if(m_is_active)
+        m_dbg_builder.finalize();
+}
+
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
@@ -60,19 +150,14 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
     }
 }
 
-
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
-                             std::vector<Magnum::Pointer<Initialization>>& global_vars)
+                             std::vector<Magnum::Pointer<Initialization>>& global_vars,
+                             bool debug_mode)
     : m_ir_builder(m_context), m_module(source_filename, m_context),
-      m_functions(functions), m_global_vars(global_vars), m_dbg_builder(m_module)
+      m_functions(functions), m_global_vars(global_vars),
+      m_dbg_gen(debug_mode, m_module, source_filename)
 {
-    m_dbg_unit = m_dbg_builder.createCompileUnit(
-        llvm::dwarf::DW_LANG_C, m_dbg_builder.createFile(source_filename, "."),
-        "Bluebird Compiler", false, "", 0);
-    m_dbg_file = m_dbg_builder.createFile(m_dbg_unit->getFilename(),
-                                          m_dbg_unit->getDirectory());
-
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
@@ -274,6 +359,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_lvalues[lvalue] = alloc;
 
     if(init->expression != nullptr) {
+        m_dbg_gen.setLocation(statement, m_ir_builder);
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
 }
@@ -283,6 +369,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     switch(statement->kind()) {
     case StatementKind::Basic: {
         auto* curr_statement = static_cast<BasicStatement*>(statement);
+        m_dbg_gen.setLocation(statement, m_ir_builder);
         curr_statement->expression->codegen(*this);
         break;
     }
@@ -311,6 +398,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 {
     LValue* lvalue = assgn->lvalue;
     if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
+        m_dbg_gen.setLocation(assgn, m_ir_builder);
         llvm::Value* alloc = match->second;
         m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
     } else {
@@ -322,6 +410,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)
 {
+    m_dbg_gen.setLocation(stmt, m_ir_builder);
     m_ir_builder.CreateRet(stmt->expression->codegen(*this));
 }
 
@@ -349,12 +438,14 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
         // Else-if block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
+        m_dbg_gen.setLocation(ifblock->else_or_else_if.get(), m_ir_builder);
         in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if.get()),
                     successor);
     } else if(ifblock->else_or_else_if->kind() == StatementKind::Block) {
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
+        m_dbg_gen.setLocation(ifblock->else_or_else_if.get(), m_ir_builder);
         in_block(curr_funct, ifblock->else_or_else_if.get(), successor);
     }
     // Finally, insert the branch instruction right before the two branching blocks
@@ -447,6 +538,7 @@ void CodeGenerator::declare_function_headers()
     std::vector<llvm::Type*> parameter_types;
     std::vector<llvm::StringRef> parameter_names;
     for(const auto& ast_function : m_functions) {
+        // TODO: maybe add debug info. for builtin functions?
         if(ast_function->kind() == FunctionKind::Builtin) {
             auto* builtin = static_cast<const BuiltinFunction*>(ast_function.get());
             if(!builtin->is_used)
@@ -496,6 +588,7 @@ void CodeGenerator::define_functions()
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
+        m_dbg_gen.addFunction(fcn.get(), curr_funct);
 
         auto ast_arg_it = fcn->parameters.begin();
         // When arguments are mutable, need to alloca them in the funct body in order
@@ -517,7 +610,8 @@ void CodeGenerator::define_functions()
             // All blocks must end in a ret instruction of some kind
             m_ir_builder.CreateRetVoid();
         }
-        llvm::verifyFunction(*curr_funct, &llvm::errs());
+        m_dbg_gen.closeScope();
+        m_dbg_gen.closeFunction(curr_funct);
     }
 }
 
@@ -574,12 +668,12 @@ void CodeGenerator::run()
     declare_globals();
     define_functions();
 
+    m_dbg_gen.finalize();
     m_module.print(llvm::errs(), nullptr);
     if(llvm::verifyModule(m_module, &llvm::errs())) {
         std::cerr << "ERROR: failed to properly generate code for this module\n";
         exit(1);
     }
-    m_dbg_builder.finalize();
 
     std::filesystem::path object_file{m_module.getSourceFileName()};
     object_file.replace_extension(".o");

@@ -35,11 +35,34 @@
 namespace Magnum = Corrade::Containers;
 
 namespace llvm {
+    class Module;
     class Value;
     class raw_fd_ostream;
     class TargetMachine;
     class DICompileUnit;
     class DIFile;
+    class DIType;
+    class DISubroutineType;
+    class DIScope;
+};
+
+class DebugGenerator {
+private:
+    llvm::DIBuilder m_dbg_builder;
+    llvm::DICompileUnit* m_dbg_unit;
+    llvm::DIFile* m_file;
+    bool m_is_active;
+    std::vector<llvm::DIScope*> m_scopes;
+
+    llvm::DIType* to_dbg_type(const struct Type* ast_type);
+    llvm::DISubroutineType* to_dbg_type(const struct Function* ast_funct);
+public:
+    DebugGenerator(bool is_active, llvm::Module&, const char* source_filename);
+    void addFunction(const Function*, llvm::Function*);
+    void closeFunction(llvm::Function*);
+    void closeScope();
+    void setLocation(const struct Statement*, llvm::IRBuilder<>&);
+    void finalize();
 };
 
 class CodeGenerator {
@@ -49,13 +72,11 @@ private:
     llvm::Module m_module;
     llvm::TargetMachine* m_target_machine;
 
-    std::vector<Magnum::Pointer<struct Function>>& m_functions;
+    std::vector<Magnum::Pointer<Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
     std::unordered_map<const struct LValue*, llvm::Value*> m_lvalues;
 
-    llvm::DIBuilder m_dbg_builder;
-    llvm::DICompileUnit* m_dbg_unit;
-    llvm::DIFile* m_dbg_file;
+    DebugGenerator m_dbg_gen;
 
     // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp
@@ -72,11 +93,11 @@ private:
     void declare_builtin_functions();
     void declare_function_headers();
     void define_functions();
-    llvm::Type* to_llvm_type(const struct Type* ast_type);
+    llvm::Type* to_llvm_type(const Type* ast_type);
     llvm::AllocaInst* prepend_alloca(llvm::Function*, llvm::Type*,
                                      const std::string& name);
     // Generate code for initializing lvalues
-    void add_lvalue_init(llvm::Function*, struct Statement*);
+    void add_lvalue_init(llvm::Function*, Statement*);
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
     void in_return_statement(struct ReturnStatement*);
@@ -94,7 +115,8 @@ private:
 public:
     CodeGenerator(const char* source_filename,
                   std::vector<Magnum::Pointer<Function>>&,
-                  std::vector<Magnum::Pointer<Initialization>>&);
+                  std::vector<Magnum::Pointer<Initialization>>&,
+                  bool debug_mode = false);
     void run();
 };
 #endif
