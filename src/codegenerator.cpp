@@ -248,23 +248,30 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     return call_instr;
 }
 
-void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
+llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
+                                                llvm::Type* type, const std::string& name)
 {
-    auto* init = static_cast<Initialization*>(statement);
-    LValue* lvalue = init->lvalue.get();
-
     auto prev_insert_point = m_ir_builder.saveIP();
     // All allocas need to be in the entry block
     // Allocas will be prepended to the entry block (so they all occur
     // before any are assigned values. This prevents LLVM passes from
     // creating new basic blocks and splitting up the allocas into different blocks)
-    llvm::BasicBlock* entry = &function->getEntryBlock();
+    llvm::BasicBlock* entry = &funct->getEntryBlock();
     m_ir_builder.SetInsertPoint(entry, entry->begin());
 
-    llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
-        to_llvm_type(lvalue->type), nullptr, lvalue->name.c_str());
-    m_lvalues[lvalue] = alloc;
+    llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(type, 0, name.c_str());
     m_ir_builder.restoreIP(prev_insert_point);
+    return alloc;
+}
+
+void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
+{
+    auto* init = static_cast<Initialization*>(statement);
+    LValue* lvalue = init->lvalue.get();
+
+    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(lvalue->type),
+                                             lvalue->name);
+    m_lvalues[lvalue] = alloc;
 
     if(init->expression != nullptr) {
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
@@ -498,8 +505,8 @@ void CodeGenerator::define_functions()
         //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
         //  instead using it directly, since it will already be in a register
         for(auto& arg : curr_funct->args()) {
-            llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(
-                arg.getType(), nullptr, arg.getName());
+            llvm::AllocaInst* alloc = prepend_alloca(curr_funct, arg.getType(),
+                                                     arg.getName());
             m_lvalues[ast_arg_it->get()] = alloc;
             ++ast_arg_it;
             m_ir_builder.CreateStore(&arg, alloc);

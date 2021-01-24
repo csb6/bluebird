@@ -74,6 +74,8 @@ private:
     void declare_function_headers();
     void define_functions();
     llvm::Type* to_llvm_type(const struct Type* ast_type);
+    llvm::AllocaInst* prepend_alloca(llvm::Function*, llvm::Type*,
+                                     const std::string& name);
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);
