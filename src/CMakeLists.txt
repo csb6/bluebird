@@ -22,5 +22,6 @@ target_sources(bluebird PRIVATE
   token.cpp
   checker.cpp
   codegenerator.cpp
+  codegenerator-obj.cpp
   multiprecision.cpp
 )

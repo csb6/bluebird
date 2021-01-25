@@ -35,9 +35,7 @@
 namespace Magnum = Corrade::Containers;
 
 namespace llvm {
-    class Module;
     class Value;
-    class raw_fd_ostream;
     class TargetMachine;
 };
 
@@ -105,6 +103,9 @@ private:
                   llvm::BasicBlock* successor);
     void in_while_loop(llvm::Function*, struct WhileLoop*);
 
+    // These three functions are defined in codegenerator-obj.cpp;
+    // All other member functions are defined in codegenerator.cpp
+    void setup_llvm_targets();
     void emit(const std::filesystem::path& object_file);
     void link(const std::filesystem::path& object_file,
               const std::filesystem::path& exe_file = "a.out");

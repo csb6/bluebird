@@ -30,11 +30,6 @@ static void print_error(const Expression* expr, const char* message)
               << ":\n" << message;
 }
 
-static void print_error(unsigned int line_num, const char* message)
-{
-    std::cerr << "ERROR: line " << line_num << ":\n " << message << "\n";
-}
-
 template<typename Other>
 static void print_type_mismatch(const Expression* expr,
                                 const Other* other, const Type* other_type,
