@@ -74,6 +74,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
         } else {
             ast_type->print(std::cerr);
             assert(false);
+            exit(1);
         }
     }
 }
@@ -153,6 +154,7 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         // Note that literal types should never reach here (see the literal
         // codegen() functions)
         assert(false);
+        exit(1);
     }
 }
 
@@ -234,6 +236,7 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateNot(operand, "bitnottmp");
     default:
         assert(false && "Unknown unary operator");
+        exit(1);
     }
 }
 
@@ -316,6 +319,7 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateXor(left_ir, right_ir, "bitxortmp");
     default:
         assert(false && "Unknown binary operator");
+        exit(1);
     }
 }
 

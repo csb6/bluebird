@@ -37,10 +37,12 @@ Todo:
 [X] Change build system to CMake to be more portable across Windows/Unix, set
     platform-specific linker/compiler flags more easily
 [X] Add support for module-global variables
+[X] Add debug support for functions and local variables
+[ ] Add debug support for expressions and global variables
 [ ] Add support for arrays of integers/characters
 [ ] Figure out how strings should work
 [ ] Add standard interface for adding builtin functions/types
-[ ] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
+[X] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
     depend specifically on RangeTypes
 [X] Add while-loops
 [X] Add support for using parameters within a function definition
