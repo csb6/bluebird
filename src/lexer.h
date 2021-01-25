@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2021  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -16,11 +16,9 @@
 */
 #ifndef LEXER_CLASS_H
 #define LEXER_CLASS_H
-#include <string>
 #include <vector>
 #include <unordered_map>
 #include "token.h"
-#include <iosfwd>
 
 class Lexer {
 private:

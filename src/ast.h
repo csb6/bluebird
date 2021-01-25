@@ -18,8 +18,6 @@
 #define AST_CLASS_H
 #include "token.h"
 #include <CorradePointer.h>
-#include <iosfwd>
-#include <string>
 #include <vector>
 #include "multiprecision.h"
 

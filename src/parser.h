@@ -18,11 +18,8 @@
 #define PARSER_CLASS_H
 #include "token.h"
 #include "ast.h"
-#include <vector>
-#include <string>
 #include <optional>
 #include <unordered_map>
-#include <iosfwd>
 
 struct SymbolInfo {
     NameType kind;

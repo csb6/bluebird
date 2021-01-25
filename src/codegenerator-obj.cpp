@@ -1,3 +1,19 @@
+/* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
+    Copyright (C) 2020-2021  Cole Blakley
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 #include "codegenerator.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
@@ -6,7 +22,6 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/TargetRegistry.h>
-#include <llvm/Target/TargetOptions.h>
 #include <llvm/Target/TargetMachine.h>
 #include <iostream>
 #include <lld/Common/Driver.h>
@@ -35,8 +50,7 @@ void CodeGenerator::setup_llvm_targets()
 
     m_target_machine = target->createTargetMachine(
         target_triple,
-        "generic",
-        "",
+        "generic", "",
         options, llvm::Reloc::PIC_, {}, {});
 
     m_module.setDataLayout(m_target_machine->createDataLayout());
