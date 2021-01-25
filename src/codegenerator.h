@@ -60,6 +60,15 @@ public:
 };
 
 class CodeGenerator {
+public:
+    enum class Mode {
+        // No debug symbols, no optimizations
+        Default,
+        // Debug symbols, no optimizations
+        Debug,
+        // Optimizations, no debug symbols
+        Optimize
+    };
 private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
@@ -71,6 +80,7 @@ private:
     std::unordered_map<const LValue*, llvm::Value*> m_lvalues;
 
     DebugGenerator m_dbg_gen;
+    Mode m_build_mode;
 
     // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp
@@ -103,6 +113,8 @@ private:
                   llvm::BasicBlock* successor);
     void in_while_loop(llvm::Function*, struct WhileLoop*);
 
+    void optimize();
+
     // These three functions are defined in codegenerator-obj.cpp;
     // All other member functions are defined in codegenerator.cpp
     void setup_llvm_targets();
@@ -113,7 +125,7 @@ public:
     CodeGenerator(const char* source_filename,
                   std::vector<Magnum::Pointer<Function>>&,
                   std::vector<Magnum::Pointer<Initialization>>&,
-                  bool debug_mode = false);
+                  Mode build_mode = Mode::Default);
     void run();
 };
 #endif

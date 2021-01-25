@@ -22,6 +22,9 @@
 #pragma GCC diagnostic ignored "-Wall"
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/Verifier.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Transforms/Utils/Mem2Reg.h>
 #pragma GCC diagnostic pop
 
 #include "ast.h"
@@ -149,10 +152,11 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
                              std::vector<Magnum::Pointer<Initialization>>& global_vars,
-                             bool debug_mode)
+                             Mode build_mode)
     : m_ir_builder(m_context), m_module(source_filename, m_context),
       m_functions(functions), m_global_vars(global_vars),
-      m_dbg_gen(debug_mode, m_module, source_filename)
+      m_dbg_gen(build_mode == Mode::Debug, m_module, source_filename),
+      m_build_mode(build_mode)
 {
     setup_llvm_targets();
 }
@@ -593,6 +597,22 @@ void CodeGenerator::define_functions()
     }
 }
 
+void CodeGenerator::optimize()
+{
+    if(m_build_mode != Mode::Optimize)
+        return;
+    llvm::FunctionPassManager funct_opt;
+    // mem2reg
+    funct_opt.addPass(llvm::PromotePass());
+
+    llvm::FunctionAnalysisManager funct_mng;
+    llvm::PassBuilder pass_builder;
+    pass_builder.registerFunctionAnalyses(funct_mng);
+    for(llvm::Function& funct : m_module) {
+        funct_opt.run(funct, funct_mng);
+    }
+}
+
 void CodeGenerator::run()
 {
     declare_function_headers();
@@ -600,6 +620,9 @@ void CodeGenerator::run()
     define_functions();
 
     m_dbg_gen.finalize();
+
+    optimize();
+
     m_module.print(llvm::errs(), nullptr);
     if(llvm::verifyModule(m_module, &llvm::errs())) {
         std::cerr << "ERROR: failed to properly generate code for this module\n";

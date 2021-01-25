@@ -41,13 +41,18 @@ int main(int argc, char **argv)
         std::cerr << "Usage: ./compiler [-g | --debug] source_file\n";
         return 1;
     }
-    bool debug_mode = false;
+    CodeGenerator::Mode build_mode = CodeGenerator::Mode::Default;
     int arg_index = 1;
     while(argv[arg_index][0] == '-') {
         if(strcmp(argv[arg_index], "--debug") == 0
            || strcmp(argv[arg_index], "-g") == 0) {
             // Build executables with debug info
-            debug_mode = true;
+            build_mode = CodeGenerator::Mode::Debug;
+            ++arg_index;
+        } else if(strcmp(argv[arg_index], "--optimize") == 0
+                  || strcmp(argv[arg_index], "-O") == 0) {
+            // Build executables with optimizations enabled
+            build_mode = CodeGenerator::Mode::Optimize;
             ++arg_index;
         } else {
             std::cerr << "Error: unknown option '" << argv[arg_index] << "'\n";
@@ -71,7 +76,7 @@ int main(int argc, char **argv)
     checker.run();
 
     CodeGenerator codegen{source_filename, parser.functions(),
-                          parser.global_vars(), debug_mode};
+                          parser.global_vars(), build_mode};
     codegen.run();
 
     std::cout << parser;

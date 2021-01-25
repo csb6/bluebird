@@ -45,7 +45,7 @@ include_directories(src third_party third_party/mini-gmp)
 add_subdirectory(src)
 add_subdirectory(third_party/mini-gmp)
 
-llvm_map_components_to_libnames(LLVM_LIBS core native option)
+llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
 list(APPEND LLVM_LIBS lldDriver lldCommon lldCore lldYAML lldReaderWriter)
 
 #Try to link only parts of lld that generate this platform's executables
