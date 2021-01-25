@@ -38,10 +38,20 @@ const std::string load_source_file(const char *filename)
 int main(int argc, char **argv)
 {
     if(argc < 2) {
-        std::cout << "Usage: ./compiler source_file\n";
+        std::cout << "Usage: ./compiler [-g | --debug] source_file\n";
         return 1;
     }
-    const std::string source_file{load_source_file(argv[1])};
+    bool debug_mode = false;
+    int arg_index = 1;
+    if(argc >= 3) {
+        if(strcmp(argv[arg_index], "--debug") == 0
+           || strcmp(argv[arg_index], "-g") == 0) {
+            debug_mode = true;
+            ++arg_index;
+        }
+    }
+    const char* source_filename = argv[arg_index];
+    const std::string source_file{load_source_file(source_filename)};
 
     Lexer lexer{source_file.begin(), source_file.end()};
     lexer.run();
@@ -52,7 +62,8 @@ int main(int argc, char **argv)
     Checker checker{parser.functions(), parser.types(), parser.global_vars()};
     checker.run();
 
-    CodeGenerator codegen{argv[1], parser.functions(), parser.global_vars()};
+    CodeGenerator codegen{source_filename, parser.functions(),
+                          parser.global_vars(), debug_mode};
     codegen.run();
 
     std::cout << parser;
