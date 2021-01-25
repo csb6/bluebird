@@ -38,16 +38,24 @@ const std::string load_source_file(const char *filename)
 int main(int argc, char **argv)
 {
     if(argc < 2) {
-        std::cout << "Usage: ./compiler [-g | --debug] source_file\n";
+        std::cerr << "Usage: ./compiler [-g | --debug] source_file\n";
         return 1;
     }
     bool debug_mode = false;
     int arg_index = 1;
-    if(argc >= 3) {
+    while(argv[arg_index][0] == '-') {
         if(strcmp(argv[arg_index], "--debug") == 0
            || strcmp(argv[arg_index], "-g") == 0) {
+            // Build executables with debug info
             debug_mode = true;
             ++arg_index;
+        } else {
+            std::cerr << "Error: unknown option '" << argv[arg_index] << "'\n";
+            return 1;
+        }
+        if(arg_index >= argc) {
+            std::cerr << "Error: Missing source filename\n";
+            return 1;
         }
     }
     const char* source_filename = argv[arg_index];
