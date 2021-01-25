@@ -33,7 +33,6 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Attributes.h>
-#include <llvm/IR/DebugInfoMetadata.h>
 #include <lld/Common/Driver.h>
 #pragma GCC diagnostic pop
 
@@ -71,7 +70,6 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
     default:
         // TODO: add support for determining LLVM debug type for other AST types
         if(ast_type == &Type::Void) {
-            // TODO: see if this is correct way to represent void in DWARF
             return nullptr;
         } else {
             ast_type->print(std::cerr);
@@ -92,7 +90,8 @@ llvm::DISubroutineType* DebugGenerator::to_dbg_type(const Function* ast_funct)
     return m_dbg_builder.createSubroutineType(m_dbg_builder.getOrCreateTypeArray(type_list));
 }
 
-void DebugGenerator::addFunction(const Function* ast_funct, llvm::Function* funct)
+void DebugGenerator::addFunction(llvm::IRBuilder<>& ir_builder,
+                                 const Function* ast_funct, llvm::Function* funct)
 {
     if(m_is_active) {
         llvm::DISubprogram* dbg_data = m_dbg_builder.createFunction(
@@ -101,13 +100,8 @@ void DebugGenerator::addFunction(const Function* ast_funct, llvm::Function* func
             llvm::DISubprogram::SPFlagDefinition);
         funct->setSubprogram(dbg_data);
         m_scopes.push_back(dbg_data);
-    }
-}
-
-void DebugGenerator::closeFunction(llvm::Function* funct)
-{
-    if(m_is_active) {
-        m_dbg_builder.finalizeSubprogram(funct->getSubprogram());
+        // Tells debugger to skip over function prologue asm instructions
+        ir_builder.SetCurrentDebugLocation(llvm::DebugLoc::get(0, 0, nullptr));
     }
 }
 
@@ -117,11 +111,23 @@ void DebugGenerator::closeScope()
         m_scopes.pop_back();
 }
 
-void DebugGenerator::setLocation(const Statement* stmt, llvm::IRBuilder<>& ir_builder)
+void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_builder)
 {
     if(m_is_active) {
         ir_builder.SetCurrentDebugLocation(
-            llvm::DebugLoc::get(stmt->line_num(), 1, m_scopes.back()));
+            llvm::DebugLoc::get(line_num, 1, m_scopes.back()));
+    }
+}
+
+void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
+                                const LValue* var, unsigned int line_num)
+{
+    if(m_is_active) {
+        llvm::DILocalVariable* dbg_var = m_dbg_builder.createAutoVariable(
+            m_scopes.back(), var->name, m_file, line_num, to_dbg_type(var->type));
+        m_dbg_builder.insertDeclare(
+            llvm_var, dbg_var, m_dbg_builder.createExpression(),
+            llvm::DebugLoc::get(line_num, 1, m_scopes.back()), block);
     }
 }
 
@@ -359,7 +365,8 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     m_lvalues[lvalue] = alloc;
 
     if(init->expression != nullptr) {
-        m_dbg_gen.setLocation(statement, m_ir_builder);
+        m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
+        m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
         m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
     }
 }
@@ -369,7 +376,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     switch(statement->kind()) {
     case StatementKind::Basic: {
         auto* curr_statement = static_cast<BasicStatement*>(statement);
-        m_dbg_gen.setLocation(statement, m_ir_builder);
+        m_dbg_gen.setLocation(curr_statement->line_num(), m_ir_builder);
         curr_statement->expression->codegen(*this);
         break;
     }
@@ -398,7 +405,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 {
     LValue* lvalue = assgn->lvalue;
     if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
-        m_dbg_gen.setLocation(assgn, m_ir_builder);
+        m_dbg_gen.setLocation(assgn->line_num(), m_ir_builder);
         llvm::Value* alloc = match->second;
         m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
     } else {
@@ -410,7 +417,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)
 {
-    m_dbg_gen.setLocation(stmt, m_ir_builder);
+    m_dbg_gen.setLocation(stmt->line_num(), m_ir_builder);
     m_ir_builder.CreateRet(stmt->expression->codegen(*this));
 }
 
@@ -438,14 +445,14 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
         // Else-if block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
-        m_dbg_gen.setLocation(ifblock->else_or_else_if.get(), m_ir_builder);
+        m_dbg_gen.setLocation(ifblock->else_or_else_if->line_num(), m_ir_builder);
         in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if.get()),
                     successor);
     } else if(ifblock->else_or_else_if->kind() == StatementKind::Block) {
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
-        m_dbg_gen.setLocation(ifblock->else_or_else_if.get(), m_ir_builder);
+        m_dbg_gen.setLocation(ifblock->else_or_else_if->line_num(), m_ir_builder);
         in_block(curr_funct, ifblock->else_or_else_if.get(), successor);
     }
     // Finally, insert the branch instruction right before the two branching blocks
@@ -588,7 +595,7 @@ void CodeGenerator::define_functions()
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
         m_ir_builder.SetInsertPoint(funct_body);
-        m_dbg_gen.addFunction(fcn.get(), curr_funct);
+        m_dbg_gen.addFunction(m_ir_builder, fcn.get(), curr_funct);
 
         auto ast_arg_it = fcn->parameters.begin();
         // When arguments are mutable, need to alloca them in the funct body in order
@@ -611,7 +618,6 @@ void CodeGenerator::define_functions()
             m_ir_builder.CreateRetVoid();
         }
         m_dbg_gen.closeScope();
-        m_dbg_gen.closeFunction(curr_funct);
     }
 }
 

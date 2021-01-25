@@ -39,11 +39,6 @@ namespace llvm {
     class Value;
     class raw_fd_ostream;
     class TargetMachine;
-    class DICompileUnit;
-    class DIFile;
-    class DIType;
-    class DISubroutineType;
-    class DIScope;
 };
 
 class DebugGenerator {
@@ -58,10 +53,11 @@ private:
     llvm::DISubroutineType* to_dbg_type(const struct Function* ast_funct);
 public:
     DebugGenerator(bool is_active, llvm::Module&, const char* source_filename);
-    void addFunction(const Function*, llvm::Function*);
-    void closeFunction(llvm::Function*);
+    void addFunction(llvm::IRBuilder<>&, const Function*, llvm::Function*);
     void closeScope();
-    void setLocation(const struct Statement*, llvm::IRBuilder<>&);
+    void setLocation(unsigned int line_num, llvm::IRBuilder<>&);
+    void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct LValue*,
+                    unsigned int line_num);
     void finalize();
 };
 
@@ -74,7 +70,7 @@ private:
 
     std::vector<Magnum::Pointer<Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
-    std::unordered_map<const struct LValue*, llvm::Value*> m_lvalues;
+    std::unordered_map<const LValue*, llvm::Value*> m_lvalues;
 
     DebugGenerator m_dbg_gen;
 
@@ -97,7 +93,7 @@ private:
     llvm::AllocaInst* prepend_alloca(llvm::Function*, llvm::Type*,
                                      const std::string& name);
     // Generate code for initializing lvalues
-    void add_lvalue_init(llvm::Function*, Statement*);
+    void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
     void in_return_statement(struct ReturnStatement*);
