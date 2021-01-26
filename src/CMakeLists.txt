@@ -23,5 +23,6 @@ target_sources(bluebird PRIVATE
   checker.cpp
   codegenerator.cpp
   codegenerator-obj.cpp
+  optimizer.cpp
   multiprecision.cpp
 )

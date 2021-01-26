@@ -113,8 +113,6 @@ private:
                   llvm::BasicBlock* successor);
     void in_while_loop(llvm::Function*, struct WhileLoop*);
 
-    void optimize();
-
     // These three functions are defined in codegenerator-obj.cpp;
     // All other member functions are defined in codegenerator.cpp
     void setup_llvm_targets();

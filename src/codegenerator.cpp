@@ -22,9 +22,7 @@
 #pragma GCC diagnostic ignored "-Wall"
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/Verifier.h>
-#include <llvm/IR/PassManager.h>
-#include <llvm/Passes/PassBuilder.h>
-#include <llvm/Transforms/Utils/Mem2Reg.h>
+#include "optimizer.h"
 #pragma GCC diagnostic pop
 
 #include "ast.h"
@@ -597,22 +595,6 @@ void CodeGenerator::define_functions()
     }
 }
 
-void CodeGenerator::optimize()
-{
-    if(m_build_mode != Mode::Optimize)
-        return;
-    llvm::FunctionPassManager funct_opt;
-    // mem2reg
-    funct_opt.addPass(llvm::PromotePass());
-
-    llvm::FunctionAnalysisManager funct_mng;
-    llvm::PassBuilder pass_builder;
-    pass_builder.registerFunctionAnalyses(funct_mng);
-    for(llvm::Function& funct : m_module) {
-        funct_opt.run(funct, funct_mng);
-    }
-}
-
 void CodeGenerator::run()
 {
     declare_function_headers();
@@ -621,7 +603,9 @@ void CodeGenerator::run()
 
     m_dbg_gen.finalize();
 
-    optimize();
+    if(m_build_mode == Mode::Optimize) {
+        optimize(m_module);
+    }
 
     m_module.print(llvm::errs(), nullptr);
     if(llvm::verifyModule(m_module, &llvm::errs())) {
