@@ -92,6 +92,11 @@ void IntLiteral::print(std::ostream& output) const
     output << value;
 }
 
+void BoolLiteral::print(std::ostream& output) const
+{
+    output << value;
+}
+
 void FloatLiteral::print(std::ostream& output) const
 {
     output << std::setprecision(10);
@@ -113,7 +118,7 @@ BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
 const Type* BinaryExpression::type() const
 {
     if(is_bool_op(op)) {
-        return &Type::Bool;
+        return &Type::Boolean;
     } else {
         // If a literal and a typed expression of some sort
         // are in this expression, want to return the type of
@@ -256,13 +261,14 @@ void BuiltinFunction::print(std::ostream& output) const
     output << "Built-In Function: " << name << "\n";
 }
 
-const Type Type::Void{"VoidType"};
-const Type Type::String{"StringLiteral"};
-const Type Type::Float{"FloatLiteral"};
-const Type Type::Bool{"Boolean"};
+Type Type::Void{"VoidType"};
+Type Type::String{"StringLiteral"};
+Type Type::Float{"FloatLiteral"};
+Type Type::Boolean{"Boolean"};
 
 const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};
+const LiteralType LiteralType::Bool{"BoolLiteral"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
 RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};

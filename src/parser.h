@@ -54,7 +54,7 @@ public:
 
     // All add functions assume the name isn't already used for something else
     void add_lvalue(LValue*);
-    void add_type(RangeType*);
+    void add_type(Type*);
     void add_function(Function*);
 
     void add_unresolved(LValue*);

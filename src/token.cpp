@@ -65,6 +65,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Return:
         output << "Keyword `return`";
         break;
+    case TokenType::Keyword_True:
+        output << "Keyword `true`";
+        break;
+    case TokenType::Keyword_False:
+        output << "Keyword `false`";
+        break;
     case TokenType::End_Statement:
         output << "End Statement Marker (a.k.a `;`)";
         break;

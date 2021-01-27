@@ -87,6 +87,7 @@ private:
     friend struct StringLiteral;
     friend struct CharLiteral;
     friend struct IntLiteral;
+    friend struct BoolLiteral;
     friend struct FloatLiteral;
     friend struct LValueExpression;
     friend struct UnaryExpression;

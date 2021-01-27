@@ -99,6 +99,8 @@ static void check_literal_types(Expression* literal, const Other* other,
         case ExpressionKind::CharLiteral: {
             auto* char_literal = static_cast<CharLiteral*>(literal);
             if(other_type != &RangeType::Character) {
+                // TODO: allow user-defined character types to be used with character
+                // literals
                 print_error(char_literal, " Character Literal ");
                 char_literal->print(std::cerr);
                 std::cerr << " cannot be used with the non-character type:\n  ";
@@ -113,7 +115,22 @@ static void check_literal_types(Expression* literal, const Other* other,
             print_error(literal, " Expected a literal type, but instead found expression: ");
             literal->print(std::cerr);
             std::cerr << "\n Which has type:\n  ";
-            range_type->print(std::cerr);
+            literal->type()->print(std::cerr);
+            std::cerr << "\n";
+            exit(1);
+        }
+    } else if(other_type == &Type::Boolean) {
+        // TODO: add support for user-created boolean types, which should be usable
+        // with Boolean literals
+        if(literal->kind() == ExpressionKind::BoolLiteral) {
+            auto* bool_literal = static_cast<BoolLiteral*>(literal);
+            bool_literal->actual_type = other_type;
+        } else {
+            print_error(literal, " Expected a boolean literal, but instead found"
+                        " expression: ");
+            literal->print(std::cerr);
+            std::cerr << "\n Which has type:\n  ";
+            literal->type()->print(std::cerr);
             std::cerr << "\n";
             exit(1);
         }
@@ -210,10 +227,16 @@ bool Assignment::check_types(Checker&)
     return false;
 }
 
+static bool is_bool_condition(const Expression* condition)
+{
+    const Type* cond_type = condition->type();
+    return cond_type == &Type::Boolean || cond_type == &LiteralType::Bool;
+}
+
 bool IfBlock::check_types(Checker& checker)
 {
     condition->check_types();
-    if(condition->type() != &Type::Bool) {
+    if(!is_bool_condition(condition.get())) {
         nonbool_condition_error(condition.get(), "if-statement");
         exit(1);
     }
@@ -246,7 +269,7 @@ bool Block::check_types(Checker& checker)
 bool WhileLoop::check_types(Checker& checker)
 {
     condition->check_types();
-    if(condition->type() != &Type::Bool) {
+    if(!is_bool_condition(condition.get())) {
         nonbool_condition_error(condition.get(), "while-loop");
         exit(1);
     }

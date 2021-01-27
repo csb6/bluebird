@@ -45,7 +45,9 @@ Lexer::Lexer(std::string::const_iterator input_begin,
          {"or", TokenType::Op_Or},
          {"not", TokenType::Op_Not},
          {"thru", TokenType::Op_Thru},
-         {"upto", TokenType::Op_Upto}
+         {"upto", TokenType::Op_Upto},
+         {"true", TokenType::Keyword_True},
+         {"false", TokenType::Keyword_False}
       }
 {}
 

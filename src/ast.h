@@ -34,7 +34,7 @@ enum class NameType : char {
 
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExpressionKind : char {
-    StringLiteral, CharLiteral, IntLiteral, FloatLiteral,
+    StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
     LValue, Binary, Unary, FunctionCall
 };
 
@@ -67,20 +67,21 @@ std::ostream& operator<<(std::ostream& output, const Range&);
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type Void, String, Float, Bool;
+    static Type Void, String, Float, Boolean;
     std::string name;
 
     Type() = default;
     explicit Type(const std::string &n) : name(n) {}
     virtual ~Type() noexcept = default;
 
-    virtual unsigned short bit_size() const { return 0; }
+    // TODO: factor Boolean type into own struct that has bit size of 1
+    virtual unsigned short bit_size() const { return 1; }
     virtual TypeCategory   category() const { return TypeCategory::Normal; }
     virtual void           print(std::ostream&) const;
 };
 
 struct LiteralType final : public Type {
-    static const LiteralType Char, Int;
+    static const LiteralType Char, Int, Bool;
 
     using Type::Type;
 
@@ -168,6 +169,22 @@ struct IntLiteral final : public Expression {
         : value(v), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::IntLiteral; }
+    const Type*    type() const override { return actual_type; }
+    unsigned int   line_num() const override { return line; }
+    void           print(std::ostream&) const override;
+
+    void         check_types() override {}
+    llvm::Value* codegen(CodeGenerator&) override;
+};
+
+struct BoolLiteral final : public Expression {
+    bool value;
+    unsigned int line;
+    const Type* actual_type = &LiteralType::Bool;
+
+    BoolLiteral(unsigned int line_n, bool v) : value(v), line(line_n) {}
+
+    ExpressionKind kind() const override { return ExpressionKind::BoolLiteral; }
     const Type*    type() const override { return actual_type; }
     unsigned int   line_num() const override { return line; }
     void           print(std::ostream&) const override;

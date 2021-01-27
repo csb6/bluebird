@@ -46,26 +46,30 @@ DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
 
 llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
 {
-    switch(ast_type->category()) {
-    case TypeCategory::Range: {
+    // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
+     // TODO: add support for determining LLVM debug type for other AST types
+    unsigned encoding;
+    auto bit_size = ast_type->bit_size();
+    if(ast_type->category() == TypeCategory::Range) {
         auto* type = static_cast<const RangeType*>(ast_type);
-        // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
-        unsigned encoding = llvm::dwarf::DW_ATE_signed;
-        if(!type->range.is_signed)
+        if(type->range.is_signed)
+            encoding = llvm::dwarf::DW_ATE_signed;
+        else
             encoding = llvm::dwarf::DW_ATE_unsigned;
-        return m_dbg_builder.createBasicType(
-            ast_type->name, ast_type->bit_size(), encoding);
+    } else if(ast_type == &Type::Void) {
+        return nullptr;
+    } else if(ast_type == &Type::Boolean) {
+        encoding = llvm::dwarf::DW_ATE_boolean;
+        // While the correct bit_size is 1, lldb crashes if bit_size < 8;
+        // lldb expects at least a full byte, it seems
+        bit_size = 8;
+    } else {
+        // TODO: add proper error handling
+        assert(false);
+        exit(1);
     }
-    default:
-        // TODO: add support for determining LLVM debug type for other AST types
-        if(ast_type == &Type::Void) {
-            return nullptr;
-        } else {
-            ast_type->print(std::cerr);
-            assert(false);
-            exit(1);
-        }
-    }
+
+    return m_dbg_builder.createBasicType(ast_type->name, bit_size, encoding);
 }
 
 llvm::DISubroutineType* DebugGenerator::to_dbg_type(const Function* ast_funct)
@@ -135,10 +139,9 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
-    switch(ast_type->category()) {
-    case TypeCategory::Range:
+    if(ast_type->category() == TypeCategory::Range || ast_type == &Type::Boolean) {
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
-    default:
+    } else {
         // TODO: add support for determining LLVM type for other AST types.
         // Note that literal types should never reach here (see the literal
         // codegen() functions)
@@ -177,6 +180,12 @@ llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
                                   llvm::APInt(type()->bit_size(), value.str(), 10));
 }
 
+llvm::Value* BoolLiteral::codegen(CodeGenerator& gen)
+{
+    return llvm::ConstantInt::get(gen.m_context,
+                                  llvm::APInt(type()->bit_size(), value));
+}
+
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
 {
     return llvm::ConstantFP::get(gen.m_context, llvm::APFloat(value));
@@ -212,14 +221,11 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 
 llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
-    bool type_is_signed;
+    bool type_is_signed = false;
     if(left->type()->category() == TypeCategory::Range) {
         type_is_signed = static_cast<const RangeType*>(left->type())->is_signed();
     } else if(right->type()->category() == TypeCategory::Range) {
         type_is_signed = static_cast<const RangeType*>(right->type())->is_signed();
-    } else {
-        // TODO: add proper error printing code here
-        assert(false);
     }
     llvm::Value* left_ir = left->codegen(gen);
     llvm::Value* right_ir = right->codegen(gen);

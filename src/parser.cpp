@@ -119,9 +119,8 @@ static void check_token_is(TokenType type, std::string_view description, Token t
 
 static Expression* fold_constants(Token op, Expression* right)
 {
-    if(right->kind() != ExpressionKind::IntLiteral) {
-        return new UnaryExpression(op.type, right);
-    } else {
+    switch(right->kind()) {
+    case ExpressionKind::IntLiteral: {
         auto* r_int = static_cast<IntLiteral*>(right);
         switch(op.type) {
         case TokenType::Op_Minus:
@@ -132,16 +131,28 @@ static Expression* fold_constants(Token op, Expression* right)
             break;
         default:
             print_error_expected("unary operator that works on integer literals", op);
-            
         }
         return r_int;
+    }
+    case ExpressionKind::BoolLiteral: {
+        auto* r_bool = static_cast<BoolLiteral*>(right);
+        if(op.type == TokenType::Op_Not) {
+            r_bool->value = !r_bool->value;
+        } else {
+            print_error_expected("logical unary operator (e.g. `not`)", op);
+        }
+        return r_bool;
+    }
+    default:
+        return new UnaryExpression(op.type, right);
     }
 }
 
 static Expression* fold_constants(Expression* left, const Token& op, Expression* right)
 {
-    if(left->kind() == ExpressionKind::IntLiteral
-       && right->kind() == ExpressionKind::IntLiteral) {
+    const auto left_kind = left->kind();
+    const auto right_kind = right->kind();
+    if(left_kind == ExpressionKind::IntLiteral && right_kind == ExpressionKind::IntLiteral) {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
         auto* l_int = static_cast<IntLiteral*>(left);
         auto* r_int = static_cast<IntLiteral*>(right);
@@ -183,6 +194,23 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
         }
         delete right;
         return left;
+    } else if(left_kind == ExpressionKind::BoolLiteral
+              && right_kind == ExpressionKind::BoolLiteral) {
+        // Fold into a single literal
+        auto* l_bool = static_cast<BoolLiteral*>(left);
+        auto* r_bool = static_cast<BoolLiteral*>(right);
+        switch(op.type) {
+        case TokenType::Op_And:
+            l_bool->value &= r_bool->value;
+            break;
+        case TokenType::Op_Or:
+            l_bool->value |= r_bool->value;
+            break;
+        default:
+            print_error_expected("logical binary operator", op);
+        }
+        delete right;
+        return left;
     }
     return new BinaryExpression(left, op.type, right);
 }
@@ -192,6 +220,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
 {
     m_names_table.add_type(&RangeType::Integer);
     m_names_table.add_type(&RangeType::Character);
+    m_names_table.add_type(&Type::Boolean);
 
     {
         // function putchar(c : Character): Integer
@@ -236,6 +265,10 @@ Expression* Parser::in_literal()
         return new IntLiteral(current->line_num, current->text);
     case TokenType::Float_Literal:
         return new FloatLiteral(current->line_num, std::stod(current->text));
+    case TokenType::Keyword_True:
+        return new BoolLiteral(current->line_num, true);
+    case TokenType::Keyword_False:
+        return new BoolLiteral(current->line_num, false);
     default:
         print_error_expected("literal", *current);
         return nullptr;
@@ -876,7 +909,7 @@ void SymbolTable::add_lvalue(LValue* lval)
     m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
 }
 
-void SymbolTable::add_type(RangeType* type)
+void SymbolTable::add_type(Type* type)
 {
     m_scopes[m_curr_scope].symbols[type->name] = SymbolInfo{NameType::Type, type};
 }
