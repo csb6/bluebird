@@ -118,7 +118,7 @@ BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
 const Type* BinaryExpression::type() const
 {
     if(is_bool_op(op)) {
-        return &Type::Boolean;
+        return &EnumType::Boolean;
     } else {
         // If a literal and a typed expression of some sort
         // are in this expression, want to return the type of
@@ -261,10 +261,11 @@ void BuiltinFunction::print(std::ostream& output) const
     output << "Built-In Function: " << name << "\n";
 }
 
-Type Type::Void{"VoidType"};
-Type Type::String{"StringLiteral"};
-Type Type::Float{"FloatLiteral"};
-Type Type::Boolean{"Boolean"};
+const Type Type::Void{"VoidType"};
+const Type Type::String{"StringLiteral"};
+const Type Type::Float{"FloatLiteral"};
+
+EnumType EnumType::Boolean{"Boolean"};
 
 const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};

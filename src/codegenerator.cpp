@@ -58,7 +58,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
             encoding = llvm::dwarf::DW_ATE_unsigned;
     } else if(ast_type == &Type::Void) {
         return nullptr;
-    } else if(ast_type == &Type::Boolean) {
+    } else if(ast_type->category() == TypeCategory::Boolean) {
         encoding = llvm::dwarf::DW_ATE_boolean;
         // While the correct bit_size is 1, lldb crashes if bit_size < 8;
         // lldb expects at least a full byte, it seems
@@ -139,7 +139,8 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
-    if(ast_type->category() == TypeCategory::Range || ast_type == &Type::Boolean) {
+    const auto type_category = ast_type->category();
+    if(type_category == TypeCategory::Range || type_category == TypeCategory::Boolean) {
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     } else {
         // TODO: add support for determining LLVM type for other AST types.

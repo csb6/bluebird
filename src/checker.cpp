@@ -119,7 +119,7 @@ static void check_literal_types(Expression* literal, const Other* other,
             std::cerr << "\n";
             exit(1);
         }
-    } else if(other_type == &Type::Boolean) {
+    } else if(other_type->category() == TypeCategory::Boolean) {
         // TODO: add support for user-created boolean types, which should be usable
         // with Boolean literals
         if(literal->kind() == ExpressionKind::BoolLiteral) {
@@ -230,7 +230,8 @@ bool Assignment::check_types(Checker&)
 static bool is_bool_condition(const Expression* condition)
 {
     const Type* cond_type = condition->type();
-    return cond_type == &Type::Boolean || cond_type == &LiteralType::Bool;
+    return cond_type->category() == TypeCategory::Boolean
+        || cond_type == &LiteralType::Bool;
 }
 
 bool IfBlock::check_types(Checker& checker)

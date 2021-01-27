@@ -43,7 +43,7 @@ enum class StatementKind : char {
 };
 
 enum class TypeCategory : char {
-    Range, Normal, Literal
+    Range, Normal, Literal, Boolean
 };
 
 enum class FunctionKind : char {
@@ -67,14 +67,15 @@ std::ostream& operator<<(std::ostream& output, const Range&);
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static Type Void, String, Float, Boolean;
+    static const Type Void, String, Float;
     std::string name;
 
     Type() = default;
     explicit Type(const std::string &n) : name(n) {}
     virtual ~Type() noexcept = default;
 
-    // TODO: factor Boolean type into own struct that has bit size of 1
+    // TODO: fix bug where this is called for some boolean literals
+    //  (Type::bit_size should never be called)
     virtual unsigned short bit_size() const { return 1; }
     virtual TypeCategory   category() const { return TypeCategory::Normal; }
     virtual void           print(std::ostream&) const;
@@ -86,6 +87,18 @@ struct LiteralType final : public Type {
     using Type::Type;
 
     TypeCategory category() const override { return TypeCategory::Literal; }
+};
+
+// Type with limited set of named, enumerated values
+struct EnumType final : public Type {
+    static EnumType Boolean;
+    // TODO: change kind when non-bool enum types added
+    TypeCategory kind = TypeCategory::Boolean;
+
+    using Type::Type;
+
+    unsigned short bit_size() const override { return 1; }
+    TypeCategory   category() const override { return kind; }
 };
 
 // Type with integer bounds

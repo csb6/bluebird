@@ -220,7 +220,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
 {
     m_names_table.add_type(&RangeType::Integer);
     m_names_table.add_type(&RangeType::Character);
-    m_names_table.add_type(&Type::Boolean);
+    m_names_table.add_type(&EnumType::Boolean);
 
     {
         // function putchar(c : Character): Integer
