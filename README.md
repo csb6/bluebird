@@ -1,6 +1,6 @@
 # Bluebird
 
-Bluebird is a work-in-progess imperative programming language modeled after C++ and Ada.
+Bluebird is an imperative programming language modeled after C++ and Ada.
 
 The goal is to create a language that supports generic programming with
 very strong typing.
@@ -22,8 +22,8 @@ it should work on any platform that LLVM targets.
 - Logical, comparison, bitwise, and arithmetic operators, as well as parentheses for grouping
 - Detailed error checking, including typechecking and checks to ensure functions that
   return will return no matter the code path taken
-- Automatic resolution of variable and function names, preventing the need for forward declarations within a file
-- Debugging support (uses DWARF format, which should work with at least gdb and lldb)
+- Out-of-order declarations of type and function names, preventing the need for forward declarations
+- Debugging support (uses the DWARF format, which should work with at least gdb and lldb)
 - Several code optimization passes
 
 ## Goals
@@ -67,7 +67,7 @@ function fizzbuzz() is
             print_num(n);
         end if;
     end for;
-end fizzbuzz; // 'fizzbuzz' label at end is optional
+end fizzbuzz; // end labels are optional
 ```
 
 ## Semantics
@@ -157,7 +157,7 @@ Compiler options are always placed first, before the source file name.
 Note that debug and optimization modes are mutually exclusive;
 the last given flag will override any prior debug/optimization flags.
 
-(no options given): Build with no optimizations or debug symbols
+- `(no options given)`: Build with no optimizations or debug symbols
 - `-g` or `--debug`: Build with debug symbols, no optimizations
 - `-O`: Build with optimizations, no debug symbols
 
