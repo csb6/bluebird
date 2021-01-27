@@ -50,7 +50,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
      // TODO: add support for determining LLVM debug type for other AST types
     unsigned encoding;
     auto bit_size = ast_type->bit_size();
-    if(ast_type->category() == TypeCategory::Range) {
+    if(ast_type->kind() == TypeKind::Range) {
         auto* type = static_cast<const RangeType*>(ast_type);
         if(type->range.is_signed)
             encoding = llvm::dwarf::DW_ATE_signed;
@@ -58,7 +58,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
             encoding = llvm::dwarf::DW_ATE_unsigned;
     } else if(ast_type == &Type::Void) {
         return nullptr;
-    } else if(ast_type->category() == TypeCategory::Boolean) {
+    } else if(ast_type->kind() == TypeKind::Boolean) {
         encoding = llvm::dwarf::DW_ATE_boolean;
         // While the correct bit_size is 1, lldb crashes if bit_size < 8;
         // lldb expects at least a full byte, it seems
@@ -139,8 +139,8 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
-    const auto type_category = ast_type->category();
-    if(type_category == TypeCategory::Range || type_category == TypeCategory::Boolean) {
+    const auto type_kind = ast_type->kind();
+    if(type_kind == TypeKind::Range || type_kind == TypeKind::Boolean) {
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     } else {
         // TODO: add support for determining LLVM type for other AST types.
@@ -223,9 +223,9 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 {
     bool type_is_signed = false;
-    if(left->type()->category() == TypeCategory::Range) {
+    if(left->type()->kind() == TypeKind::Range) {
         type_is_signed = static_cast<const RangeType*>(left->type())->is_signed();
-    } else if(right->type()->category() == TypeCategory::Range) {
+    } else if(right->type()->kind() == TypeKind::Range) {
         type_is_signed = static_cast<const RangeType*>(right->type())->is_signed();
     }
     llvm::Value* left_ir = left->codegen(gen);

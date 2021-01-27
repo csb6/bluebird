@@ -42,7 +42,7 @@ enum class StatementKind : char {
     Basic, Initialization, Assignment, IfBlock, Block, While, Return
 };
 
-enum class TypeCategory : char {
+enum class TypeKind : char {
     Range, Normal, Literal, Boolean
 };
 
@@ -77,7 +77,7 @@ struct Type {
     // TODO: fix bug where this is called for some boolean literals
     //  (Type::bit_size should never be called)
     virtual unsigned short bit_size() const { return 1; }
-    virtual TypeCategory   category() const { return TypeCategory::Normal; }
+    virtual TypeKind       kind() const { return TypeKind::Normal; }
     virtual void           print(std::ostream&) const;
 };
 
@@ -86,19 +86,19 @@ struct LiteralType final : public Type {
 
     using Type::Type;
 
-    TypeCategory category() const override { return TypeCategory::Literal; }
+    TypeKind kind() const override { return TypeKind::Literal; }
 };
 
 // Type with limited set of named, enumerated values
 struct EnumType final : public Type {
     static EnumType Boolean;
-    // TODO: change kind when non-bool enum types added
-    TypeCategory kind = TypeCategory::Boolean;
+    // TODO: change category when non-bool enum types added
+    TypeKind category = TypeKind::Boolean;
 
     using Type::Type;
 
     unsigned short bit_size() const override { return 1; }
-    TypeCategory   category() const override { return kind; }
+    TypeKind       kind() const override { return category; }
 };
 
 // Type with integer bounds
@@ -114,7 +114,7 @@ struct RangeType final : public Type {
         : Type(n), range(lower_limit, upper_limit) {}
 
     unsigned short bit_size() const override { return range.bit_size; }
-    TypeCategory   category() const override { return TypeCategory::Range; }
+    TypeKind       kind() const override { return TypeKind::Range; }
     void           print(std::ostream&) const override;
     bool           is_signed() const { return range.is_signed; }
 };

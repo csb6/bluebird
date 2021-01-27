@@ -75,7 +75,7 @@ template<typename Other>
 static void check_literal_types(Expression* literal, const Other* other,
                                 const Type* other_type)
 {
-    if(other_type->category() == TypeCategory::Range) {
+    if(other_type->kind() == TypeKind::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const Range& range = range_type->range;
         switch(literal->kind()) {
@@ -119,7 +119,7 @@ static void check_literal_types(Expression* literal, const Other* other,
             std::cerr << "\n";
             exit(1);
         }
-    } else if(other_type->category() == TypeCategory::Boolean) {
+    } else if(other_type->kind() == TypeKind::Boolean) {
         // TODO: add support for user-created boolean types, which should be usable
         // with Boolean literals
         if(literal->kind() == ExpressionKind::BoolLiteral) {
@@ -153,9 +153,9 @@ void BinaryExpression::check_types()
     const Type* right_type = right->type();
     // Check that the types of both sides of the operator match
     if(left_type != right_type) {
-        if(right_type->category() == TypeCategory::Literal) {
+        if(right_type->kind() == TypeKind::Literal) {
             check_literal_types(right.get(), left.get(), left_type);
-        } else if(left_type->category() == TypeCategory::Literal) {
+        } else if(left_type->kind() == TypeKind::Literal) {
             check_literal_types(left.get(), right.get(), right_type);
         } else {
             print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
@@ -180,7 +180,7 @@ void FunctionCall::check_types()
         // Make sure each arg type matches corresponding parameter type
         const LValue* param = function->parameters[i].get();
         if(arg->type() != param->type) {
-            if(arg->type()->category() == TypeCategory::Literal) {
+            if(arg->type()->kind() == TypeKind::Literal) {
                 check_literal_types(arg, param, param->type);
             } else {
                 print_type_mismatch(arg, param, param->type, "Expected function parameter",
@@ -203,7 +203,7 @@ bool Initialization::check_types(Checker&)
         return false;
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        if(expression->type()->category() == TypeCategory::Literal) {
+        if(expression->type()->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), lvalue.get(), lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
@@ -217,7 +217,7 @@ bool Assignment::check_types(Checker&)
 {
     expression->check_types();
     if(expression->type() != lvalue->type) {
-        if(expression->type()->category() == TypeCategory::Literal) {
+        if(expression->type()->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), lvalue, lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue, lvalue->type);
@@ -230,7 +230,7 @@ bool Assignment::check_types(Checker&)
 static bool is_bool_condition(const Expression* condition)
 {
     const Type* cond_type = condition->type();
-    return cond_type->category() == TypeCategory::Boolean
+    return cond_type->kind() == TypeKind::Boolean
         || cond_type == &LiteralType::Bool;
 }
 
@@ -285,7 +285,7 @@ bool ReturnStatement::check_types(Checker& checker)
     const Type* return_type = expression->type();
     const BBFunction* curr_funct = checker.m_curr_funct;
     if(curr_funct->return_type != return_type) {
-        if(return_type->category() == TypeCategory::Literal) {
+        if(return_type->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), curr_funct, curr_funct->return_type);
         } else {
             print_error(expression.get(), " Wrong return type: ");
