@@ -5,10 +5,26 @@ Bluebird is a work-in-progess imperative programming language modeled after C++ 
 The goal is to create a language that supports generic programming with
 very strong typing.
 
-It is still in the early stages, but right now it has a lexer, a parser, and
-a semantic analyzer. Code generation currently generates to object files, and it
-creates executables on macOS only (for now). All stages of the compiler are still
-a work-in-progress.
+It is still in the early stages, but right now it has a lexer, a parser,
+a semantic analyzer, a code generator, and an optimizer. All stages of the compiler are still
+a work-in-progress. At the moment, the compiler has only been built on macOS, but
+it should work on any platform that LLVM targets.
+
+## Currently Implemented Features
+
+- Functions, variables, constants, and assignment
+- Module-global variables
+- If, else-if, and else statements
+- While loops
+- Recursion (with tail-call elimination in optimized builds)
+- Type definitions for integer types, with ranges specified (no runtime range checks yet)
+- Boolean type and an 8-bit character type
+- Logical, comparison, bitwise, and arithmetic operators, as well as parentheses for grouping
+- Detailed error checking, including typechecking and checks to ensure functions that
+  return will return no matter the code path taken
+- Automatic resolution of variable and function names, preventing the need for forward declarations within a file
+- Debugging support (uses DWARF format, which should work with at least gdb and lldb)
+- Several code optimization passes
 
 ## Goals
 
@@ -31,18 +47,6 @@ with support for casting when needed
 system for the language itself
 - Easy way to create C and C++ bindings
 - Compiler tools for interacting with each stage of the compiler, potentially with a GUI
-
-## Currently Implemented Features
-
-- Functions, variables, constants, and assignment
-- Module-global variables
-- If, else-if, and else statements
-- While loops
-- Type definitions for integer types, with ranges specified (no runtime range checks yet)
-- Simple 8-bit character type
-- Logical, comparison, bitwise, and arithmetic operators, as well as parentheses for grouping
-- Detailed error checking in the lexing and parsing stages
-- Automatic resolution of variable and function names, preventing the need for forward declarations within a file
 
 ## Syntax
 
@@ -142,6 +146,20 @@ after the build finishes. Pass it a filename to compile something
 (e.g. `bluebird ../examples/arithmetic.bird`). An object file with the same name (but
 a `.o` extension instead of a `.bird` extension) as well as an `a.out` executable
 should be produced.
+
+If you encounter a compiler bug, crash, or miscompilation, please leave a Github issue.
+
+#### Compiler options
+
+Compiler options are always placed first, before the source file name.
+(e.g. `bluebird --debug ../examples/arithmetic.bird`)
+
+Note that debug and optimization modes are mutually exclusive;
+the last given flag will override any prior debug/optimization flags.
+
+(no options given): Build with no optimizations or debug symbols
+- `-g` or `--debug`: Build with debug symbols, no optimizations
+- `-O`: Build with optimizations, no debug symbols
 
 ## License
 
