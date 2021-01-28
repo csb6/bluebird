@@ -14,50 +14,19 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include "codegenerator.h"
+#include "objectgenerator.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wall"
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/LegacyPassManager.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Target/TargetMachine.h>
 #include <iostream>
 #include <lld/Common/Driver.h>
 #pragma GCC diagnostic pop
 
-// Contains parts of code generator that deal with generating and
-// linking object files; these are essential to the code generator
-// but not changed as often as the AST-walking code, so it is better
-// to keep it in a separate compilation unit to make incremental builds
-// more effective
-
-void CodeGenerator::setup_llvm_targets()
-{
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-    const std::string target_triple{llvm::sys::getDefaultTargetTriple()};
-
-    std::string error;
-    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-    if(!error.empty()) {
-        std::cerr << "Codegen error: " << error << "\n";
-        exit(1);
-    }
-    const llvm::TargetOptions options;
-
-    m_target_machine = target->createTargetMachine(
-        target_triple,
-        "generic", "",
-        options, llvm::Reloc::PIC_, {}, {});
-
-    m_module.setDataLayout(m_target_machine->createDataLayout());
-    m_module.setTargetTriple(target_triple);
-}
-
-void CodeGenerator::emit(const std::filesystem::path& object_file)
+void emit(llvm::Module& module, llvm::TargetMachine* target_machine,
+          const std::filesystem::path& object_file)
 {
     std::error_code file_error;
     llvm::raw_fd_ostream output{object_file.string(), file_error};
@@ -68,15 +37,14 @@ void CodeGenerator::emit(const std::filesystem::path& object_file)
 
     // We need this for some reason? Not really sure how to get around using it
     llvm::legacy::PassManager pass_manager;
-    // TODO: add optimization passes
-    m_target_machine->addPassesToEmitFile(pass_manager, output, nullptr,
-                                          llvm::CodeGenFileType::CGFT_ObjectFile);
-    pass_manager.run(m_module);
+    target_machine->addPassesToEmitFile(pass_manager, output, nullptr,
+                                        llvm::CodeGenFileType::CGFT_ObjectFile);
+    pass_manager.run(module);
     output.flush();
 }
 
-void CodeGenerator::link(const std::filesystem::path& object_file,
-                         const std::filesystem::path& exe_file)
+void link(const std::filesystem::path& object_file,
+          const std::filesystem::path& exe_file)
 {
 #ifdef __APPLE__
     const char* args[] = { "lld", "-sdk_version", "10.14", "-o", exe_file.c_str(),

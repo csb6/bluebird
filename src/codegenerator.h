@@ -29,7 +29,6 @@
 
 #include <vector>
 #include <unordered_map>
-#include <filesystem>
 #include <CorradePointer.h>
 
 namespace Magnum = Corrade::Containers;
@@ -113,13 +112,6 @@ private:
     void in_block(llvm::Function*, struct Block*,
                   llvm::BasicBlock* successor);
     void in_while_loop(llvm::Function*, struct WhileLoop*);
-
-    // These three functions are defined in codegenerator-obj.cpp;
-    // All other member functions are defined in codegenerator.cpp
-    void setup_llvm_targets();
-    void emit(const std::filesystem::path& object_file);
-    void link(const std::filesystem::path& object_file,
-              const std::filesystem::path& exe_file = "a.out");
 public:
     CodeGenerator(const char* source_filename,
                   std::vector<Magnum::Pointer<Function>>&,

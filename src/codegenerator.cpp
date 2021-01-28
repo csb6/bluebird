@@ -22,7 +22,11 @@
 #pragma GCC diagnostic ignored "-Wall"
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/Verifier.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Target/TargetMachine.h>
 #include "optimizer.h"
+#include "objectgenerator.h"
 #pragma GCC diagnostic pop
 
 #include "ast.h"
@@ -160,7 +164,26 @@ CodeGenerator::CodeGenerator(const char* source_filename,
       m_dbg_gen(build_mode == Mode::Debug, m_module, source_filename),
       m_build_mode(build_mode)
 {
-    setup_llvm_targets();
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    const std::string target_triple{llvm::sys::getDefaultTargetTriple()};
+
+    std::string error;
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+    if(!error.empty()) {
+        std::cerr << "Codegen error: " << error << "\n";
+        exit(1);
+    }
+    const llvm::TargetOptions options;
+
+    m_target_machine = target->createTargetMachine(
+        target_triple,
+        "generic", "",
+        options, llvm::Reloc::PIC_, {}, {});
+
+    m_module.setDataLayout(m_target_machine->createDataLayout());
+    m_module.setTargetTriple(target_triple);
 }
 
 llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
@@ -619,6 +642,6 @@ void CodeGenerator::run()
     std::filesystem::path object_file{m_module.getSourceFileName()};
     object_file.replace_extension(".o");
     object_file = object_file.filename();
-    emit(object_file);
+    emit(m_module, m_target_machine, object_file);
     link(object_file);
 }

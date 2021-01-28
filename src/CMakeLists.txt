@@ -22,7 +22,7 @@ target_sources(bluebird PRIVATE
   token.cpp
   checker.cpp
   codegenerator.cpp
-  codegenerator-obj.cpp
+  objectgenerator.cpp
   optimizer.cpp
   multiprecision.cpp
 )
