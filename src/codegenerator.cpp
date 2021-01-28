@@ -308,8 +308,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
                   << name << "`\n";
         exit(1);
     }
-    std::vector<llvm::Value*> args;
-    args.reserve(arguments.size());
+    llvm::SmallVector<llvm::Value*, 6> args;
     for(auto& arg : arguments) {
         args.push_back(arg->codegen(gen));
     }
@@ -523,8 +522,8 @@ void CodeGenerator::declare_builtin_functions()
 void CodeGenerator::declare_function_headers()
 {
     // Reused between iterations to reduce allocations
-    std::vector<llvm::Type*> parameter_types;
-    std::vector<llvm::StringRef> parameter_names;
+    llvm::SmallVector<llvm::Type*, 6> parameter_types;
+    llvm::SmallVector<llvm::StringRef, 6> parameter_names;
     for(const auto& ast_function : m_functions) {
         // TODO: maybe add debug info. for builtin functions?
         if(ast_function->kind() == FunctionKind::Builtin) {
@@ -532,9 +531,6 @@ void CodeGenerator::declare_function_headers()
             if(!builtin->is_used)
                 continue;
         }
-        // First, create a function declaration
-        parameter_types.reserve(ast_function->parameters.size());
-        parameter_names.reserve(ast_function->parameters.size());
 
         for(const auto& ast_param : ast_function->parameters) {
             parameter_types.push_back(to_llvm_type(ast_param->type));
