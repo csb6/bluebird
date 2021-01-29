@@ -41,6 +41,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Type:
         output << "Keyword `type`";
         break;
+    case TokenType::Keyword_Of:
+        output << "Keyword `of`";
+        break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses";
         break;
@@ -153,7 +156,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "Open bracket";
         break;
     case TokenType::Closed_Bracket:
-        output << "Open bracket";
+        output << "Closed bracket";
         break;
     case TokenType::Op_Assign:
         output << "Assignment operator";

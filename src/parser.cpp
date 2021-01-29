@@ -426,8 +426,8 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
         new_lvalue->type =
-            m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
-        m_names_table.add_unresolved(new_lvalue.get());
+            m_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
+            m_names_table.add_unresolved(new_lvalue.get());
     } else {
         switch(match.value().kind) {
         case NameType::DeclaredType:
@@ -660,7 +660,7 @@ void Parser::in_return_type(Function* funct)
     } else {
         // Type wasn't declared yet; add provisionally to name table
         funct->return_type =
-            m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
+            m_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -744,7 +744,7 @@ void Parser::in_function_definition()
     }
 }
 
-void Parser::in_range_type_definition(const std::string& type_name)
+void Parser::in_range(multi_int& low_out, multi_int& high_out)
 {
     Magnum::Pointer<Expression> expr = parse_expression();
     if(expr->kind() != ExpressionKind::Binary) {
@@ -767,19 +767,46 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
     // TODO: Support arbitrary expressions made of arithmetic
     //  operators/parentheses/negations/bitwise operators
-    multi_int lower_limit{left_expr->value};
-    multi_int upper_limit{right_expr->value};
-    if(range_expr->op == TokenType::Op_Upto) {
-        upper_limit -= 1;
-    }
-
-    if(upper_limit < lower_limit) {
+    if(right_expr->value < left_expr->value) {
         print_error(token->line_num, "Upper limit of range is lower than the lower limit");
     }
+    low_out = left_expr->value;
+    high_out = right_expr->value;
+    if(range_expr->op == TokenType::Op_Upto) {
+        high_out -= 1;
+    }
+}
+
+void Parser::in_range_type_definition(const std::string& type_name)
+{
+    multi_int lower_limit, upper_limit;
+    in_range(lower_limit, upper_limit);
 
     auto* new_type =
-        m_range_type_list.emplace_back(
+        m_type_list.emplace_back(
             Magnum::pointer<RangeType>(type_name, lower_limit, upper_limit)).get();
+    m_names_table.add_type(new_type);
+}
+
+void Parser::in_array_type_definition(const std::string& type_name)
+{
+    multi_int lower_limit, upper_limit;
+    // TODO: also allow for type names here
+    in_range(lower_limit, upper_limit);
+
+    check_token_is(TokenType::Closed_Bracket, "closing bracket `]`", *token);
+    ++token;
+    check_token_is(TokenType::Keyword_Of, "keyword `of`", *token);
+    ++token;
+    const auto match = m_names_table.find(token->text);
+    if(match && match.value().kind != NameType::Type) {
+        // TODO: support unresolved array element types
+        print_error_expected("defined type", *token);
+    }
+    ++token;
+    auto* new_type = m_type_list.emplace_back(
+        Magnum::pointer<ArrayType>(type_name, lower_limit, upper_limit,
+                                   match.value().type)).get();
     m_names_table.add_type(new_type);
 }
 
@@ -804,9 +831,12 @@ void Parser::in_type_definition()
         // Handle discrete types
         ++token; // Eat keyword `range`
         in_range_type_definition(type_name);
+    } else if(token->type == TokenType::Open_Bracket) {
+        ++token;
+        in_array_type_definition(type_name);
     } else {
-        // TODO: handle arrays/record types here
-        print_error_expected("keyword range", *token);
+        // TODO: handle record types, etc. here
+        print_error_expected("type definition", *token);
     }
 
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);

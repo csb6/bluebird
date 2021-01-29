@@ -19,7 +19,7 @@
 #include <iostream>
 
 Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
-                 std::vector<Magnum::Pointer<RangeType>>& types,
+                 std::vector<Magnum::Pointer<Type>>& types,
                  std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_functions(functions), m_types(types), m_global_vars(global_vars)
 {}

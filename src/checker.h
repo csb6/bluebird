@@ -31,7 +31,7 @@ namespace Magnum = Corrade::Containers;
 class Checker {
 private:
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
-    std::vector<Magnum::Pointer<struct RangeType>>& m_types;
+    std::vector<Magnum::Pointer<struct Type>>& m_types;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
 
     // Data about the current things being typechecked/analyzed
@@ -40,7 +40,7 @@ private:
     friend struct ReturnStatement;
 public:
     Checker(std::vector<Magnum::Pointer<Function>>&,
-            std::vector<Magnum::Pointer<RangeType>>&,
+            std::vector<Magnum::Pointer<Type>>&,
             std::vector<Magnum::Pointer<Initialization>>& global_vars);
     /* Analyze the full contents of all functions, types, and global variables
        of a module */

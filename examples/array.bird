@@ -1,0 +1,5 @@
+type IntArray is [1 thru 64] of Integer;
+
+function main() is
+
+end;

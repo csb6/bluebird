@@ -107,7 +107,7 @@ private:
     SymbolTable m_names_table;
 
     std::vector<Magnum::Pointer<Function>> m_function_list;
-    std::vector<Magnum::Pointer<RangeType>> m_range_type_list;
+    std::vector<Magnum::Pointer<Type>> m_type_list;
     std::vector<Magnum::Pointer<Initialization>> m_global_var_list;
     std::vector<Magnum::Pointer<Function>> m_temp_function_list;
 
@@ -133,7 +133,9 @@ private:
     // Parse function definitions
     void in_function_definition();
     // Parse type definitions
+    void in_range(multi_int& low_out, multi_int& high_out);
     void in_range_type_definition(const std::string& type_name);
+    void in_array_type_definition(const std::string& type_name);
     void in_type_definition();
 public:
     /* Setup the parser and the related data structures. AST will
@@ -143,7 +145,7 @@ public:
     /* Generate the AST */
     void run();
     auto& functions() { return m_function_list; }
-    auto& types() { return m_range_type_list; }
+    auto& types() { return m_type_list; }
     auto& global_vars() { return m_global_var_list; }
     auto& names_table() { return m_names_table; }
 
