@@ -21,8 +21,23 @@
 #include <optional>
 #include <unordered_map>
 
+/* This file contains a class that parses a stream of tokens into an AST.
+   As it builds the AST, it maintains a symbol table and handles out-of-order
+   definitions of types and functions, which are then resolved once the
+   entire module has been parsed. It contains a variety of syntactic checks.
+
+   The parser uses the recursive descent strategy, additionally using a Pratt parser
+   for expressions. The operator precedence table can be found in this file's
+   implementation (parser.cpp).
+
+   By the end of this stage, the AST should be nearly complete, with all function
+   calls, type usages, and variable usages resolved to their definitions.
+*/
+
+/* Holds the results of a query into the SymbolTable, indicating what kind
+   of value (if any) was found to be associated with a particular name */
 struct SymbolInfo {
-    NameType kind;
+    NameType kind; // See ast.h
     union {
         Type* type;
         LValue* lvalue = nullptr;
@@ -36,19 +51,28 @@ struct SymbolInfo {
     SymbolInfo(NameType name, Function* f) : kind(name), function(f) {}
 };
 
+/* A collection of symbols that may be a parent to other scopes. Symbols
+   in this scope are only viewable from this scope and its child scopes.
+   None of this scope's ancestors have symbols with the same name (i.e.
+   shadowing is not allowed) */
 struct Scope {
     using symbol_iterator = std::unordered_map<std::string, SymbolInfo>::iterator;
     int parent_index;
     std::unordered_map<std::string, SymbolInfo> symbols{};
+    // These 'unresolved' lists are maintained for each scope until the end of
+    // this module's parsing process, at which point their definitions are resolved
     std::vector<LValue*> lvalues_type_unresolved{};
     std::vector<Function*> unresolved_return_type_functs{};
     std::vector<FunctionCall*> unresolved_funct_calls{};
 };
 
+/* Holds a tree of scopes which can be queried and added to */
 class SymbolTable {
 public:
     SymbolTable();
+    /* Pushes a new scope */
     void open_scope();
+    /* Change current scope to be parent scope */
     void close_scope();
     std::optional<SymbolInfo> find(const std::string& name) const;
 
@@ -65,6 +89,7 @@ public:
 private:
     // Scope tree
     std::vector<Scope> m_scopes;
+    // Index into m_scopes (starts at 0)
     int m_curr_scope;
 
     std::optional<SymbolInfo> find(const std::string& name, NameType) const;
@@ -72,6 +97,8 @@ private:
     search_for_funct_definition(const std::string& name) const;
 };
 
+/* Contains the recursive descent and Pratt parser, generates and owns the AST 
+   and related data structures */
 class Parser {
 public:
     using TokenIterator = std::vector<Token>::const_iterator;
@@ -87,13 +114,13 @@ private:
     // Helpers
     LValue* in_lvalue_declaration();
     void in_return_type(Function*);
-    // Handle each type of expression
+    // Parse each type of expression
     Expression* in_literal();
     Expression* in_lvalue_expression();
     Expression* in_parentheses();
     Expression* in_expression();
     Expression* in_function_call();
-    // Handle each type of statement
+    // Parse each type of statement
     Statement* in_statement();
     BasicStatement* in_basic_statement();
     Initialization* in_initialization();
@@ -102,14 +129,17 @@ private:
     Block* in_else_block();
     WhileLoop* in_while_loop();
     ReturnStatement* in_return_statement();
-    // Handle each function definition
+    // Parse function definitions
     void in_function_definition();
-    // Types
+    // Parse type definitions
     void in_range_type_definition(const std::string& type_name);
     void in_type_definition();
 public:
+    /* Setup the parser and the related data structures. AST will
+       be generated from the given token stream */
     Parser(TokenIterator input_begin,
            TokenIterator input_end);
+    /* Generate the AST */
     void run();
     auto& functions() { return m_function_list; }
     auto& types() { return m_range_type_list; }

@@ -38,11 +38,23 @@ namespace llvm {
     class TargetMachine;
 };
 
+/* This file contains a class that can generate LLVM IR (and optionally debug
+   info.) from a given AST. It expects the AST to be fully type-checked and
+   for all types/function calls to be resolved to definitions. In other words,
+   it expects the AST to have been run through the Checker beforehand.
+
+   Ideally, the implementation of the file could be swapped out with a different
+   code generator (such as GCC) without changing earlier stages of the compiler.
+*/
+
+/* Helper for building up debug information as the LLVM IR is
+   being generated */
 class DebugGenerator {
 private:
     llvm::DIBuilder m_dbg_builder;
     llvm::DICompileUnit* m_dbg_unit;
     llvm::DIFile* m_file;
+    // true if currently in debug mode
     bool m_is_active;
     std::vector<llvm::DIScope*> m_scopes;
 
@@ -50,16 +62,26 @@ private:
     llvm::DISubroutineType* to_dbg_type(const struct Function* ast_funct);
 public:
     DebugGenerator(bool is_active, llvm::Module&, const char* source_filename);
+    /* Register a new function in the debugger. Also opens a new scope. */
     void addFunction(llvm::IRBuilder<>&, const Function*, llvm::Function*);
+    /* Mark the current scope as finished, pop it from the stack of scopes */
     void closeScope();
+    /* Associate the current instruction with a source code line number */
     void setLocation(unsigned int line_num, llvm::IRBuilder<>&);
+    /* Register a local (auto duration) variable in the debugger's current
+       scope */
     void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct LValue*,
                     unsigned int line_num);
+    /* Resolve all entities in the debugger. Needs to be done before module
+       is printed/generated */
     void finalize();
 };
 
+/* Generates, emits, and links into an executable an LLVM module using
+   the AST as input */
 class CodeGenerator {
 public:
+    // Choosen via command-line flags in main()
     enum class Mode {
         // No debug symbols, no optimizations
         Default,
@@ -113,10 +135,14 @@ private:
                   llvm::BasicBlock* successor);
     void in_while_loop(llvm::Function*, struct WhileLoop*);
 public:
+    /* Setup code generation for a given AST */
     CodeGenerator(const char* source_filename,
                   std::vector<Magnum::Pointer<Function>>&,
-                  std::vector<Magnum::Pointer<Initialization>>&,
+                  std::vector<Magnum::Pointer<Initialization>>& global_vars,
                   Mode build_mode = Mode::Default);
+    /* Generate LLVM IR, optionally optimize it, emit the
+       module into an object file, and then link the object file into
+       an executable */
     void run();
 };
 #endif

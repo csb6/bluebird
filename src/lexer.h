@@ -20,23 +20,30 @@
 #include <unordered_map>
 #include "token.h"
 
+/* This file contains a class that transforms a stream of characters into
+   tokens. It checks for invalid or misplaced tokens as it generates them.
+   Keywords and identifier names will be distinguished in this stage, as both
+   are separate kinds of tokens. */
+
 class Lexer {
 private:
     std::vector<Token> m_tokens;
     std::string::const_iterator m_input_begin;
     std::string::const_iterator m_input_end;
+    // Maps token strings to keywords
     std::unordered_map<std::string, TokenType> m_identifier_table;
-
-    friend std::ostream& operator<<(std::ostream&, const Lexer&);
 public:
-    explicit Lexer(std::string::const_iterator input_begin,
-                   std::string::const_iterator input_end);
+    /* Setup the lexer/its data structures */
+    Lexer(std::string::const_iterator input_begin,
+          std::string::const_iterator input_end);
+    /* Run the lexer of the given character stream */
     void run();
-    void print_tokens();
     // Iterators for accessing the tokens
     auto begin() { return m_tokens.begin(); }
     auto end() { return m_tokens.end(); }
     auto begin() const { return m_tokens.begin(); }
     auto end() const { return m_tokens.end(); }
+
+    friend std::ostream& operator<<(std::ostream&, const Lexer&);
 };
 #endif

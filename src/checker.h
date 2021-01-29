@@ -21,6 +21,13 @@
 
 namespace Magnum = Corrade::Containers;
 
+/* This file contains a class that performs semantic analysis on
+   a given AST, including typechecking, type resolution for
+   various kinds of universal literals, and checks to ensure that
+   returning functions return on all code paths. The AST should remain mostly
+   unchanged after being run through this stage (besides the Literal nodes).
+*/
+
 class Checker {
 private:
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
@@ -34,7 +41,9 @@ private:
 public:
     Checker(std::vector<Magnum::Pointer<Function>>&,
             std::vector<Magnum::Pointer<RangeType>>&,
-            std::vector<Magnum::Pointer<Initialization>>&);
+            std::vector<Magnum::Pointer<Initialization>>& global_vars);
+    /* Analyze the full contents of all functions, types, and global variables
+       of a module */
     void run();
 };
 #endif
