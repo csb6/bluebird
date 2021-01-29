@@ -61,6 +61,7 @@ class multi_int {
     friend bool operator> (const multi_int&, const multi_int&);
     friend bool operator<=(const multi_int&, const multi_int&);
     friend bool operator>=(const multi_int&, const multi_int&);
+    friend unsigned long int to_int(multi_int&&);
     friend std::ostream& operator<<(std::ostream&, const multi_int&);
  private:
     mpz_t m_number;

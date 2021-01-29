@@ -43,7 +43,7 @@ enum class StatementKind : char {
 };
 
 enum class TypeKind : char {
-    Range, Normal, Literal, Boolean
+    Range, Normal, Literal, Boolean, Array
 };
 
 enum class FunctionKind : char {
@@ -60,7 +60,9 @@ struct Range {
     Range() : is_signed(true), bit_size(0) {}
     Range(const multi_int& lower, const multi_int& upper);
 
-    bool contains(const multi_int&) const;
+    bool              contains(const multi_int&) const;
+    // The number of integers the range contains 
+    unsigned long int size() const;
 };
 std::ostream& operator<<(std::ostream& output, const Range&);
 
@@ -117,6 +119,22 @@ struct RangeType final : public Type {
     TypeKind       kind() const override { return TypeKind::Range; }
     void           print(std::ostream&) const override;
     bool           is_signed() const { return range.is_signed; }
+};
+
+struct ArrayType final : public Type {
+    Range index_range;
+    Type* element_type;
+
+    using Type::Type;
+    ArrayType(const std::string &n,
+              const multi_int& index_start,
+              const multi_int& index_end, Type* el_type)
+        : Type(n), index_range(index_start, index_end), element_type(el_type) {}
+
+    // Gives element type's bit size, not the array itself
+    unsigned short bit_size() const override { return element_type->bit_size(); }
+    TypeKind       kind() const override { return TypeKind::Array; }
+    void           print(std::ostream&) const override;
 };
 
 // An abstract object or non-standalone group of expressions

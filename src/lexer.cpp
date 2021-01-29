@@ -100,6 +100,12 @@ void Lexer::run()
                 case ')':
                     m_tokens.emplace_back(line_num, TokenType::Closed_Parentheses);
                     break;
+                case '[':
+                    m_tokens.emplace_back(line_num, TokenType::Open_Bracket);
+                    break;
+                case ']':
+                    m_tokens.emplace_back(line_num, TokenType::Closed_Bracket);
+                    break;
                 // Arithmetic operators
                 case '+':
                     m_tokens.emplace_back(line_num, TokenType::Op_Plus);

@@ -27,6 +27,14 @@ void RangeType::print(std::ostream& output) const
     output << "Type: " << name << " Range: " << range << "\n";
 }
 
+void ArrayType::print(std::ostream& output) const
+{
+    output << "Type: " << name
+           << " Array(" << index_range.lower_bound << ", "
+           << index_range.upper_bound << ") of ";
+    element_type->print(output);
+}
+
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       is_signed(lower.is_negative())
@@ -51,6 +59,15 @@ Range::Range(const multi_int& lower, const multi_int& upper)
 bool Range::contains(const multi_int& value) const
 {
     return value >= lower_bound && value <= upper_bound;
+}
+
+unsigned long int Range::size() const
+{
+    multi_int low_copy{lower_bound};
+    low_copy.negate();
+    low_copy += upper_bound;
+    low_copy += 1;
+    return to_int(std::move(low_copy));
 }
 
 std::ostream& operator<<(std::ostream& output, const Range& range)

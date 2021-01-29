@@ -149,6 +149,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Comma:
         output << "Comma marker";
         break;
+    case TokenType::Open_Bracket:
+        output << "Open bracket";
+        break;
+    case TokenType::Closed_Bracket:
+        output << "Open bracket";
+        break;
     case TokenType::Op_Assign:
         output << "Assignment operator";
         break;

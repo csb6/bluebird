@@ -153,6 +153,7 @@ multi_int operator-(const multi_int& a)
     mpz_neg(result.m_number, a.m_number);
     return result;
 }
+
 /*
 multi_int operator+(const multi_int& a, const multi_int& b)
 {
@@ -210,6 +211,11 @@ bool operator<=(const multi_int& a, const multi_int& b)
 bool operator>=(const multi_int& a, const multi_int& b)
 {
     return a > b || a == b;
+}
+
+unsigned long int to_int(multi_int&& n)
+{
+    return mpz_get_ui(n.m_number);
 }
 
 std::ostream& operator<<(std::ostream& output, const multi_int& n)
