@@ -218,6 +218,15 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
                                              std::move(right));
 }
 
+// Constructs a new object inside the given list of smart pointers, returning
+// a non-owning pointer to the new object
+template<typename T, typename ListT, typename ...Params>
+static ListT* create(std::vector<Magnum::Pointer<ListT>>& type_list, Params... params)
+{
+    return type_list.emplace_back(
+        Magnum::pointer<T>(std::forward<Params>(params)...)).get();
+}
+
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     : m_input_begin(input_begin), m_input_end(input_end)
 {
@@ -333,8 +342,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_function_call->function =
-            m_temp_function_list.emplace_back(Magnum::pointer<BBFunction>(token->text)).get();
+        new_function_call->function = create<BBFunction>(m_temp_function_list, token->text);
         m_names_table.add_unresolved(new_function_call.get());
     } else {
         SymbolInfo match_value{match.value()};
@@ -425,9 +433,8 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue->type =
-            m_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
-            m_names_table.add_unresolved(new_lvalue.get());
+        new_lvalue->type = create<RangeType>(m_type_list, token->text);
+        m_names_table.add_unresolved(new_lvalue.get());
     } else {
         switch(match.value().kind) {
         case NameType::DeclaredType:
@@ -659,8 +666,7 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        funct->return_type =
-            m_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
+        funct->return_type = create<RangeType>(m_type_list, token->text);
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -691,8 +697,8 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            LValue* param =
-                new_funct->parameters.emplace_back(in_lvalue_declaration()).get();
+            LValue* param = create<LValue>(new_funct->parameters,
+                                           in_lvalue_declaration());
             m_names_table.add_lvalue(param);
 
             ++token;
@@ -782,9 +788,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
     multi_int lower_limit, upper_limit;
     in_range(lower_limit, upper_limit);
 
-    auto* new_type =
-        m_type_list.emplace_back(
-            Magnum::pointer<RangeType>(type_name, lower_limit, upper_limit)).get();
+    Type* new_type = create<RangeType>(m_type_list, type_name, lower_limit, upper_limit);
     m_names_table.add_type(new_type);
 }
 
@@ -804,9 +808,8 @@ void Parser::in_array_type_definition(const std::string& type_name)
         print_error_expected("defined type", *token);
     }
     ++token;
-    auto* new_type = m_type_list.emplace_back(
-        Magnum::pointer<ArrayType>(type_name, lower_limit, upper_limit,
-                                   match.value().type)).get();
+    Type* new_type = create<ArrayType>(m_type_list, type_name, lower_limit, upper_limit,
+                                       match.value().type);
     m_names_table.add_type(new_type);
 }
 
