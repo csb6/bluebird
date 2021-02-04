@@ -51,26 +51,45 @@ DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
 llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
 {
     // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
-     // TODO: add support for determining LLVM debug type for other AST types
+    // TODO: add support for determining LLVM debug type for other AST types
     unsigned encoding;
     auto bit_size = ast_type->bit_size();
-    if(ast_type->kind() == TypeKind::Range) {
+    switch(ast_type->kind()) {
+    case TypeKind::Range: {
         auto* type = static_cast<const RangeType*>(ast_type);
         if(type->range.is_signed)
             encoding = llvm::dwarf::DW_ATE_signed;
         else
             encoding = llvm::dwarf::DW_ATE_unsigned;
-    } else if(ast_type == &Type::Void) {
-        return nullptr;
-    } else if(ast_type->kind() == TypeKind::Boolean) {
+        break;
+    }
+    case TypeKind::Boolean:
         encoding = llvm::dwarf::DW_ATE_boolean;
         // While the correct bit_size is 1, lldb crashes if bit_size < 8;
         // lldb expects at least a full byte, it seems
         bit_size = 8;
-    } else {
-        // TODO: add proper error handling
-        assert(false);
-        exit(1);
+        break;
+    case TypeKind::Array: {
+        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        multi_int start{arr_type->index_range.lower_bound};
+        multi_int end{arr_type->index_range.upper_bound};
+        llvm::Metadata* subscript =
+            m_dbg_builder.getOrCreateSubrange(to_int(std::move(start)),
+                                              to_int(std::move(end)));
+        llvm::DINodeArray array = m_dbg_builder.getOrCreateArray(subscript);
+        // TODO: check if alignment of zero (arg #2) is always correct
+        return m_dbg_builder.createArrayType(
+            arr_type->index_range.size() * arr_type->bit_size(), 0,
+            to_dbg_type(arr_type->element_type), array);
+    }
+    default:
+        if(ast_type == &Type::Void) {
+            return nullptr;
+        } else {
+            // TODO: add proper error handling
+            assert(false);
+            exit(1);
+        }
     }
 
     return m_dbg_builder.createBasicType(ast_type->name, bit_size, encoding);
@@ -143,10 +162,18 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
-    const auto type_kind = ast_type->kind();
-    if(type_kind == TypeKind::Range || type_kind == TypeKind::Boolean) {
+    switch(ast_type->kind()) {
+    case TypeKind::Range:
+    case TypeKind::Boolean:
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
-    } else {
+    case TypeKind::Array: {
+        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        // TODO: when adding indexing support, add offset so element 0 lines
+        // up with the array type's start index value
+        return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
+                                    arr_type->index_range.size());
+    }
+    default:
         // TODO: add support for determining LLVM type for other AST types.
         // Note that literal types should never reach here (see the literal
         // codegen() functions)
