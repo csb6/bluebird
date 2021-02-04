@@ -26,7 +26,7 @@ enum class TokenType : unsigned char {
     Keyword_True, Keyword_False, Keyword_Of,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
-    Comma, Open_Bracket, Closed_Bracket,
+    Comma, Open_Bracket, Closed_Bracket, Open_Curly, Closed_Curly,
     // Operators
     //  Arithmetic
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod, Op_Rem,

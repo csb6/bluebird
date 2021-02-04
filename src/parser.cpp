@@ -318,6 +318,8 @@ Magnum::Pointer<Expression> Parser::in_expression()
         }
     case TokenType::Open_Parentheses:
         return in_parentheses();
+    case TokenType::Open_Curly:
+        return in_init_list();
     // Handle unary operators (not, ~, -)
     case TokenType::Op_Not:
     case TokenType::Op_Bit_Not:
@@ -408,6 +410,25 @@ Magnum::Pointer<Expression> Parser::in_parentheses()
     return result;
 }
 
+Magnum::Pointer<Expression> Parser::in_init_list()
+{
+    check_token_is(TokenType::Open_Curly, "curly bracket", *token);
+    auto new_init_list = Magnum::pointer<InitList>(token->line_num);
+    ++token;
+    while(token != m_input_end) {
+        if(token->type == TokenType::Closed_Curly) {
+            ++token;
+            return new_init_list;
+        } else if(token->type == TokenType::Comma) {
+            ++token;
+        } else {
+            new_init_list->values.emplace_back(parse_expression(TokenType::Comma));
+        }
+    }
+    print_error(token->line_num, "Initializer list definition ended early");
+    return {};
+}
+
 // Creates LValue, but does not add to symbol table
 Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
@@ -471,6 +492,11 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         ++token;
         new_statement->expression = parse_expression();
         ++token;
+        if(new_statement->expression->kind() == ExpressionKind::InitList) {
+            // Initialization lists need a backpointer to the lvalue they are used with
+            auto* init_list = static_cast<InitList*>(new_statement->expression.get());
+            init_list->lvalue = new_statement->lvalue.get();
+        }
     }
     m_names_table.add_lvalue(new_statement->lvalue.get());
     return new_statement;
@@ -493,6 +519,11 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
     std::advance(token, 2); // skip varname and `=` operator
     Magnum::Pointer<Expression> expr{parse_expression()};
     ++token;
+    if(expr->kind() == ExpressionKind::InitList) {
+        // Initialization lists need a backpointer to the lvalue they are used with
+        auto* init_list = static_cast<InitList*>(expr.get());
+        init_list->lvalue = lval_match->lvalue;
+    }
     return Magnum::pointer<Assignment>(std::move(expr), lval_match->lvalue);
 }
 
@@ -697,8 +728,8 @@ void Parser::in_function_definition()
     while(token != m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            LValue* param = create<LValue>(new_funct->parameters,
-                                           in_lvalue_declaration());
+            LValue* param = new_funct->parameters.emplace_back(
+                in_lvalue_declaration()).get();
             m_names_table.add_lvalue(param);
 
             ++token;

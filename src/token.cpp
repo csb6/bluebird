@@ -158,6 +158,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Closed_Bracket:
         output << "Closed bracket";
         break;
+    case TokenType::Open_Curly:
+        output << "Open curly bracket";
+        break;
+    case TokenType::Closed_Curly:
+        output << "Closed curly bracket";
+        break;
     case TokenType::Op_Assign:
         output << "Assignment operator";
         break;

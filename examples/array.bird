@@ -1,5 +1,10 @@
-type IntArray is [1 thru 64] of Integer;
+type Positive is range 1 thru 100;
+
+type IntArray is [1 thru 64] of Positive;
 
 function main() is
-  let a: IntArray;
+  let i: Positive = 90;
+  let a: IntArray = { i };
+  let b: IntArray = {};
+  let c: IntArray = {1, i, 3, 5, 8 + 9, 900};
 end;

@@ -369,6 +369,15 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     return call_instr;
 }
 
+llvm::Value* InitList::codegen(CodeGenerator&)
+{
+    // TODO: fully implement codegen for initializer lists (it gets ugly
+    //  due to the need to support local/global variables as items, need to
+    //  create an anonymous global array in other cases, etc.)
+    assert(false);
+    exit(1);
+}
+
 llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
                                                 llvm::Type* type, const std::string& name)
 {

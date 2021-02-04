@@ -121,6 +121,7 @@ private:
     Magnum::Pointer<Expression> in_parentheses();
     Magnum::Pointer<Expression> in_expression();
     Magnum::Pointer<Expression> in_function_call();
+    Magnum::Pointer<Expression> in_init_list();
     // Parse each type of statement
     Magnum::Pointer<Statement>       in_statement();
     Magnum::Pointer<BasicStatement>  in_basic_statement();

@@ -162,6 +162,25 @@ void FunctionCall::print(std::ostream& output) const
     output << ')';
 }
 
+const Type* InitList::type() const
+{
+    if(lvalue == nullptr) {
+        return &Type::Void;
+    } else {
+        return lvalue->type;
+    }
+}
+
+void InitList::print(std::ostream& output) const
+{
+    output << "{ ";
+    for(const auto& each : values) {
+        each->print(output);
+        output << ", ";
+    }
+    output << "}";
+}
+
 void BasicStatement::print(std::ostream& output) const
 {
     if(expression) {

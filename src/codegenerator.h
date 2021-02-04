@@ -114,6 +114,7 @@ private:
     friend struct UnaryExpression;
     friend struct BinaryExpression;
     friend struct FunctionCall;
+    friend struct InitList;
 
     void declare_globals();
     void declare_builtin_functions();

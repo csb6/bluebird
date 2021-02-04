@@ -35,7 +35,7 @@ enum class NameType : char {
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExpressionKind : char {
     StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
-    LValue, Binary, Unary, FunctionCall
+    LValue, Binary, Unary, FunctionCall, InitList
 };
 
 enum class StatementKind : char {
@@ -314,6 +314,24 @@ struct FunctionCall final : public Expression {
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
+
+struct InitList final : public Expression {
+    std::vector<Magnum::Pointer<Expression>> values;
+    unsigned int line;
+    // Expects lvalue to be set by the containing statement before end of parsing
+    const LValue *lvalue = nullptr;
+
+    InitList(unsigned int line_n) : line(line_n) {}
+
+    ExpressionKind kind() const override { return ExpressionKind::InitList; }
+    const Type*    type() const override;
+    unsigned int   line_num() const override { return line; }
+    void           print(std::ostream&) const override;
+
+    void         check_types() override;
+    llvm::Value* codegen(CodeGenerator&) override;
+};
+
 
 // A named object that holds a value and can be assigned at least once
 struct LValue {
