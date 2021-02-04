@@ -69,10 +69,6 @@ void LValueExpression::print(std::ostream& output) const
     output << name;
 }
 
-UnaryExpression::UnaryExpression(TokenType oper, Expression* r)
-    : op(oper), right(r)
-{}
-
 void StringLiteral::print(std::ostream& output) const
 {
     output << '"';
@@ -109,11 +105,6 @@ void UnaryExpression::print(std::ostream& output) const
     right->print(output);
     output << ')';
 }
-
-BinaryExpression::BinaryExpression(Expression* l, TokenType oper,
-                                   Expression* r)
-    : left(l), op(oper), right(r)
-{}
 
 const Type* BinaryExpression::type() const
 {

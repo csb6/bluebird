@@ -117,11 +117,12 @@ static void check_token_is(TokenType type, std::string_view description, Token t
     }
 }
 
-static Expression* fold_constants(Token op, Expression* right)
+static Magnum::Pointer<Expression>
+fold_constants(Token op, Magnum::Pointer<Expression>&& right)
 {
     switch(right->kind()) {
     case ExpressionKind::IntLiteral: {
-        auto* r_int = static_cast<IntLiteral*>(right);
+        auto* r_int = static_cast<IntLiteral*>(right.get());
         switch(op.type) {
         case TokenType::Op_Minus:
             r_int->value.negate();
@@ -132,30 +133,32 @@ static Expression* fold_constants(Token op, Expression* right)
         default:
             print_error_expected("unary operator that works on integer literals", op);
         }
-        return r_int;
+        return std::move(right);
     }
     case ExpressionKind::BoolLiteral: {
-        auto* r_bool = static_cast<BoolLiteral*>(right);
+        auto* r_bool = static_cast<BoolLiteral*>(right.get());
         if(op.type == TokenType::Op_Not) {
             r_bool->value = !r_bool->value;
         } else {
             print_error_expected("logical unary operator (e.g. `not`)", op);
         }
-        return r_bool;
+        return std::move(right);
     }
     default:
-        return new UnaryExpression(op.type, right);
+        return Magnum::pointer<UnaryExpression>(op.type, std::move(right));
     }
 }
 
-static Expression* fold_constants(Expression* left, const Token& op, Expression* right)
+static Magnum::Pointer<Expression>
+fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
+               Magnum::Pointer<Expression>&& right)
 {
     const auto left_kind = left->kind();
     const auto right_kind = right->kind();
     if(left_kind == ExpressionKind::IntLiteral && right_kind == ExpressionKind::IntLiteral) {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
-        auto* l_int = static_cast<IntLiteral*>(left);
-        auto* r_int = static_cast<IntLiteral*>(right);
+        auto* l_int = static_cast<IntLiteral*>(left.get());
+        auto* r_int = static_cast<IntLiteral*>(right.get());
         switch(op.type) {
         case TokenType::Op_Plus:
             l_int->value += r_int->value;
@@ -188,17 +191,17 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:
             // Can't do folds here, need to preserve left/right sides for a range
-            return new BinaryExpression(left, op.type, right);
+            return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
+                                                     std::move(right));
         default:
             print_error_expected("binary operator that works on integer literals", op);
         }
-        delete right;
-        return left;
+        return std::move(left);
     } else if(left_kind == ExpressionKind::BoolLiteral
               && right_kind == ExpressionKind::BoolLiteral) {
         // Fold into a single literal
-        auto* l_bool = static_cast<BoolLiteral*>(left);
-        auto* r_bool = static_cast<BoolLiteral*>(right);
+        auto* l_bool = static_cast<BoolLiteral*>(left.get());
+        auto* r_bool = static_cast<BoolLiteral*>(right.get());
         switch(op.type) {
         case TokenType::Op_And:
             l_bool->value &= r_bool->value;
@@ -209,10 +212,10 @@ static Expression* fold_constants(Expression* left, const Token& op, Expression*
         default:
             print_error_expected("logical binary operator", op);
         }
-        delete right;
-        return left;
+        return std::move(left);
     }
-    return new BinaryExpression(left, op.type, right);
+    return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
+                                             std::move(right));
 }
 
 Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
@@ -234,9 +237,9 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
 }
 
 // Pratt parser
-Expression* Parser::parse_expression(TokenType right_token)
+Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_token)
 {
-    Expression* left_side = in_expression();
+    Magnum::Pointer<Expression> left_side{in_expression()};
     const Precedence right_precedence = precedence_of(right_token);
     Precedence curr_precedence = precedence_of(token->type);
     while(right_precedence < curr_precedence && token->type != TokenType::End_Statement) {
@@ -245,37 +248,36 @@ Expression* Parser::parse_expression(TokenType right_token)
             print_error_expected("binary operator", *token);
         }
         ++token;
-        Expression* right_side = parse_expression(op->type);
-        left_side = fold_constants(left_side, *op, right_side);
+        left_side = fold_constants(std::move(left_side), *op, parse_expression(op->type));
         curr_precedence = precedence_of(token->type);
     }
     return left_side;
 }
 
-Expression* Parser::in_literal()
+Magnum::Pointer<Expression> Parser::in_literal()
 {
     const TokenIterator current = token++;
 
     switch(current->type) {
     case TokenType::String_Literal:
-        return new StringLiteral(current->line_num, current->text);
+        return Magnum::pointer<StringLiteral>(current->line_num, current->text);
     case TokenType::Char_Literal:
-        return new CharLiteral(current->line_num, current->text[0]);
+        return Magnum::pointer<CharLiteral>(current->line_num, current->text[0]);
     case TokenType::Int_Literal:
-        return new IntLiteral(current->line_num, current->text);
+        return Magnum::pointer<IntLiteral>(current->line_num, current->text);
     case TokenType::Float_Literal:
-        return new FloatLiteral(current->line_num, std::stod(current->text));
+        return Magnum::pointer<FloatLiteral>(current->line_num, std::stod(current->text));
     case TokenType::Keyword_True:
-        return new BoolLiteral(current->line_num, true);
+        return Magnum::pointer<BoolLiteral>(current->line_num, true);
     case TokenType::Keyword_False:
-        return new BoolLiteral(current->line_num, false);
+        return Magnum::pointer<BoolLiteral>(current->line_num, false);
     default:
         print_error_expected("literal", *current);
-        return nullptr;
+        return {};
     }
 }
 
-Expression* Parser::in_lvalue_expression()
+Magnum::Pointer<Expression> Parser::in_lvalue_expression()
 {
     const TokenIterator current = token++;
     check_token_is(TokenType::Name, "variable/constant name", *current);
@@ -285,20 +287,18 @@ Expression* Parser::in_lvalue_expression()
     if(!match) {
         print_error(current->line_num,
                     "Unknown variable/constant `" + current->text + "`");
-        return nullptr;
+        return {};
     } else if(match.value().kind != NameType::LValue) {
         print_error("Expected name of variable/constant, but `"
                     + current->text + "` is already being used as a name");
-        return nullptr;
+        return {};
     } else {
-        auto* new_lvalue_expr =
-            new LValueExpression(current->line_num, current->text, match.value().lvalue);
-        new_lvalue_expr->name = current->text;
-        return new_lvalue_expr;
+        return Magnum::pointer<LValueExpression>(
+            current->line_num, current->text, match.value().lvalue);
     }
 }
 
-Expression* Parser::in_expression()
+Magnum::Pointer<Expression> Parser::in_expression()
 {
     switch(token->type) {
     case TokenType::Name:
@@ -322,12 +322,12 @@ Expression* Parser::in_expression()
     }
 }
 
-Expression* Parser::in_function_call()
+Magnum::Pointer<Expression> Parser::in_function_call()
 {
     check_token_is(TokenType::Name, "function name", *token);
 
     // First, assign the function call's name
-    auto* new_function_call = new FunctionCall(token->line_num, token->text);
+    auto new_function_call = Magnum::pointer<FunctionCall>(token->line_num, token->text);
     const auto match = m_names_table.find(token->text);
     bool is_resolved = false;
     if(!match) {
@@ -335,7 +335,7 @@ Expression* Parser::in_function_call()
         // to be filled in (hopefully) later
         new_function_call->function =
             m_function_list.emplace_back(Magnum::pointer<BBFunction>(token->text)).get();
-        m_names_table.add_unresolved(new_function_call);
+        m_names_table.add_unresolved(new_function_call.get());
     } else {
         SymbolInfo match_value{match.value()};
         switch(match_value.kind) {
@@ -343,7 +343,7 @@ Expression* Parser::in_function_call()
             // A temp declaration (one without definition) has been declared, but haven't
             // resolved its definition yet
             new_function_call->function = match_value.function;
-            m_names_table.add_unresolved(new_function_call);
+            m_names_table.add_unresolved(new_function_call.get());
             break;
         case NameType::Funct:
             // Found a function with a full definition
@@ -376,24 +376,22 @@ Expression* Parser::in_function_call()
         case TokenType::Closed_Parentheses:
             ++token;
             return new_function_call;
-        default: {
-            auto* arg = parse_expression(TokenType::Comma);
+        default:
+            new_function_call->arguments.push_back(parse_expression(TokenType::Comma));
             ++arg_count;
-            new_function_call->arguments.emplace_back(arg);
-        }
         }
     }
     print_error(token->line_num, "Function call definition ended early");
-    return nullptr;
+    return {};
 }
 
-Expression* Parser::in_parentheses()
+Magnum::Pointer<Expression> Parser::in_parentheses()
 {
     check_token_is(TokenType::Open_Parentheses,
                    "opening parentheses for an expression group", *token);
 
     ++token;
-    Expression* result = parse_expression(TokenType::Closed_Parentheses);
+    Magnum::Pointer<Expression> result{parse_expression(TokenType::Closed_Parentheses)};
     if(token->type != TokenType::Closed_Parentheses) {
         print_error_expected("closing parentheses for an expression group", *token);
     }
@@ -403,14 +401,14 @@ Expression* Parser::in_parentheses()
 }
 
 // Creates LValue, but does not add to symbol table
-LValue* Parser::in_lvalue_declaration()
+Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
     check_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
         print_error(token->line_num, "`" + token->text
                     + "` cannot be used as an lvalue name. It is already defined as a name");
     }
-    auto* new_lvalue = new LValue(token->text);
+    auto new_lvalue = Magnum::pointer<LValue>(token->text);
 
     ++token;
     check_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
@@ -429,14 +427,14 @@ LValue* Parser::in_lvalue_declaration()
         // to be filled in (hopefully) later
         new_lvalue->type =
             m_range_type_list.emplace_back(Magnum::pointer<RangeType>(token->text)).get();
-        m_names_table.add_unresolved(new_lvalue);
+        m_names_table.add_unresolved(new_lvalue.get());
     } else {
         switch(match.value().kind) {
         case NameType::DeclaredType:
             // A temp type (one that lacks a definition) has already been declared, but
             // the actual definition of it hasn't been resolved yet
             new_lvalue->type = match.value().type;
-            m_names_table.add_unresolved(new_lvalue);
+            m_names_table.add_unresolved(new_lvalue.get());
             break;
         case NameType::Type:
             new_lvalue->type = match.value().type;
@@ -450,11 +448,11 @@ LValue* Parser::in_lvalue_declaration()
     return new_lvalue;
 }
 
-Initialization* Parser::in_initialization()
+Magnum::Pointer<Initialization> Parser::in_initialization()
 {
     check_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
     ++token;
-    auto *new_statement = new Initialization(in_lvalue_declaration());
+    auto new_statement = Magnum::pointer<Initialization>(in_lvalue_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -464,15 +462,14 @@ Initialization* Parser::in_initialization()
         print_error_expected("assignment operator or ';'", *token);
     } else {
         ++token;
-        Expression* init_val = parse_expression();
+        new_statement->expression = parse_expression();
         ++token;
-        new_statement->expression = Magnum::pointer<Expression>(init_val);
     }
     m_names_table.add_lvalue(new_statement->lvalue.get());
     return new_statement;
 }
 
-Assignment* Parser::in_assignment()
+Magnum::Pointer<Assignment> Parser::in_assignment()
 {
     auto lval_match = m_names_table.find(token->text);
     if(!lval_match) {
@@ -487,12 +484,12 @@ Assignment* Parser::in_assignment()
     }
 
     std::advance(token, 2); // skip varname and `=` operator
-    Expression* expr = parse_expression();
+    Magnum::Pointer<Expression> expr{parse_expression()};
     ++token;
-    return new Assignment(expr, lval_match->lvalue);
+    return Magnum::pointer<Assignment>(std::move(expr), lval_match->lvalue);
 }
 
-Statement* Parser::in_statement()
+Magnum::Pointer<Statement> Parser::in_statement()
 {
     switch(token->type) {
     case TokenType::Keyword_If:
@@ -512,23 +509,23 @@ Statement* Parser::in_statement()
     };
 }
 
-BasicStatement* Parser::in_basic_statement()
+Magnum::Pointer<BasicStatement> Parser::in_basic_statement()
 {
-    auto* new_statement = new BasicStatement(parse_expression());
+    auto new_statement = Magnum::pointer<BasicStatement>(parse_expression());
 
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
     return new_statement;
 }
 
-IfBlock* Parser::in_if_block()
+Magnum::Pointer<IfBlock> Parser::in_if_block()
 {
     check_token_is(TokenType::Keyword_If, "keyword `if`", *token);
     ++token;
 
     m_names_table.open_scope();
     // First, parse the if-condition
-    auto* new_if_block = new IfBlock(parse_expression());
+    auto new_if_block = Magnum::pointer<IfBlock>(parse_expression());
     check_token_is(TokenType::Keyword_Do,
                    "keyword `do` following `if` condition", *token);
 
@@ -554,25 +551,25 @@ IfBlock* Parser::in_if_block()
             if(std::next(token)->type == TokenType::Keyword_If) {
                 // Else-if block
                 ++token;
-                new_if_block->else_or_else_if = Magnum::pointer<IfBlock>(in_if_block());
+                new_if_block->else_or_else_if = in_if_block();
             } else {
                 // Else block
-                new_if_block->else_or_else_if = Magnum::pointer<Block>(in_else_block());
+                new_if_block->else_or_else_if = in_else_block();
             }
             return new_if_block;
         } else {
-            new_if_block->statements.emplace_back(in_statement());
+            new_if_block->statements.push_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete if-block");
-    return nullptr;
+    return {};
 }
 
-Block* Parser::in_else_block()
+Magnum::Pointer<Block> Parser::in_else_block()
 {
     check_token_is(TokenType::Keyword_Else, "keyword `else`", *token);
     m_names_table.open_scope();
-    auto* new_else_block = new Block(token->line_num);
+    auto new_else_block = Magnum::pointer<Block>(token->line_num);
     ++token;
 
     while(token != m_input_end) {
@@ -590,20 +587,20 @@ Block* Parser::in_else_block()
             ++token;
             return new_else_block;
         } else {
-            new_else_block->statements.emplace_back(in_statement());
+            new_else_block->statements.push_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete else-block");
-    return nullptr;
+    return {};
 }
 
-WhileLoop* Parser::in_while_loop()
+Magnum::Pointer<WhileLoop> Parser::in_while_loop()
 {
     check_token_is(TokenType::Keyword_While, "keyword `while`", *token);
     ++token;
     m_names_table.open_scope();
     // First, parse the condition
-    auto* new_while_loop = new WhileLoop(parse_expression());
+    auto new_while_loop = Magnum::pointer<WhileLoop>(parse_expression());
     check_token_is(TokenType::Keyword_Do,
                    "keyword `do` following `while` condition", *token);
 
@@ -624,19 +621,19 @@ WhileLoop* Parser::in_while_loop()
             ++token;
             return new_while_loop;
         } else {
-            new_while_loop->statements.emplace_back(in_statement());
+            new_while_loop->statements.push_back(in_statement());
         }
     }
     print_error(token->line_num, "Incomplete while-loop-block");
-    return nullptr;
+    return {};
 }
 
-ReturnStatement* Parser::in_return_statement()
+Magnum::Pointer<ReturnStatement> Parser::in_return_statement()
 {
     check_token_is(TokenType::Keyword_Return, "`return` keyword", *token);
 
     ++token;
-    auto* return_stmt = new ReturnStatement(parse_expression());
+    auto return_stmt = Magnum::pointer<ReturnStatement>(parse_expression());
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
                    *token);
     ++token;
@@ -749,7 +746,7 @@ void Parser::in_function_definition()
 
 void Parser::in_range_type_definition(const std::string& type_name)
 {
-    Magnum::Pointer<Expression> expr = Magnum::pointer(parse_expression());
+    Magnum::Pointer<Expression> expr = parse_expression();
     if(expr->kind() != ExpressionKind::Binary) {
         print_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
@@ -828,7 +825,7 @@ void Parser::run()
             in_type_definition();
             break;
         case TokenType::Keyword_Let:
-            m_global_var_list.push_back(Magnum::pointer<Initialization>(in_initialization()));
+            m_global_var_list.push_back(in_initialization());
             break;
         default:
             print_error_expected("start of a variable/type declaration or a "

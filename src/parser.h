@@ -110,25 +110,25 @@ private:
     std::vector<Magnum::Pointer<RangeType>> m_range_type_list;
     std::vector<Magnum::Pointer<Initialization>> m_global_var_list;
 
-    Expression* parse_expression(TokenType right_token = TokenType::Keyword_Is);
+    Magnum::Pointer<Expression> parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
-    LValue* in_lvalue_declaration();
+    Magnum::Pointer<LValue> in_lvalue_declaration();
     void in_return_type(Function*);
     // Parse each type of expression
-    Expression* in_literal();
-    Expression* in_lvalue_expression();
-    Expression* in_parentheses();
-    Expression* in_expression();
-    Expression* in_function_call();
+    Magnum::Pointer<Expression> in_literal();
+    Magnum::Pointer<Expression> in_lvalue_expression();
+    Magnum::Pointer<Expression> in_parentheses();
+    Magnum::Pointer<Expression> in_expression();
+    Magnum::Pointer<Expression> in_function_call();
     // Parse each type of statement
-    Statement* in_statement();
-    BasicStatement* in_basic_statement();
-    Initialization* in_initialization();
-    Assignment* in_assignment();
-    IfBlock* in_if_block();
-    Block* in_else_block();
-    WhileLoop* in_while_loop();
-    ReturnStatement* in_return_statement();
+    Magnum::Pointer<Statement>       in_statement();
+    Magnum::Pointer<BasicStatement>  in_basic_statement();
+    Magnum::Pointer<Initialization>  in_initialization();
+    Magnum::Pointer<Assignment>      in_assignment();
+    Magnum::Pointer<IfBlock>         in_if_block();
+    Magnum::Pointer<Block>           in_else_block();
+    Magnum::Pointer<WhileLoop>       in_while_loop();
+    Magnum::Pointer<ReturnStatement> in_return_statement();
     // Parse function definitions
     void in_function_definition();
     // Parse type definitions

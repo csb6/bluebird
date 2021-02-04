@@ -245,7 +245,8 @@ struct UnaryExpression final : public Expression {
     TokenType op;
     Magnum::Pointer<Expression> right;
 
-    UnaryExpression(TokenType, Expression*);
+    UnaryExpression(TokenType tok, Magnum::Pointer<Expression>&& expr)
+        : op(tok), right(std::forward<Magnum::Pointer<Expression>>(expr)) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Unary; }
     const Type*    type() const override { return right->type(); }
@@ -262,7 +263,10 @@ struct BinaryExpression final : public Expression {
     TokenType op;
     Magnum::Pointer<Expression> right;
 
-    BinaryExpression(Expression* l, TokenType oper, Expression* r);
+    BinaryExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
+                     Magnum::Pointer<Expression>&& r)
+        : left(std::forward<Magnum::Pointer<Expression>>(l)), op(oper),
+          right(std::forward<Magnum::Pointer<Expression>>(r)) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Binary; }
     const Type*    type() const override;
@@ -321,7 +325,8 @@ struct Statement {
 struct BasicStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
-    explicit BasicStatement(Expression* expr) : expression(expr) {}
+    explicit BasicStatement(Magnum::Pointer<Expression>&& expr)
+        : expression(std::forward<Magnum::Pointer<Expression>>(expr)) {}
 
     StatementKind kind() const override { return StatementKind::Basic; }
     unsigned int  line_num() const override { return expression->line_num(); }
@@ -335,7 +340,8 @@ struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
     Magnum::Pointer<LValue> lvalue;
 
-    explicit Initialization(LValue* lval) : lvalue(lval) {}
+    explicit Initialization(Magnum::Pointer<LValue>&& lval)
+        : lvalue(std::forward<Magnum::Pointer<LValue>>(lval)) {}
 
     StatementKind kind() const override { return StatementKind::Initialization; }
     unsigned int  line_num() const override { return expression->line_num(); }
@@ -348,7 +354,8 @@ struct Assignment final : public Statement {
     Magnum::Pointer<Expression> expression;
     LValue* lvalue;
 
-    Assignment(Expression* expr, LValue* lv) : expression(expr), lvalue(lv) {}
+    Assignment(Magnum::Pointer<Expression>&& expr, LValue* lv)
+        : expression(std::forward<Magnum::Pointer<Expression>>(expr)), lvalue(lv) {}
 
     StatementKind kind() const override { return StatementKind::Assignment; }
     unsigned int  line_num() const override { return expression->line_num(); }
@@ -374,8 +381,9 @@ struct IfBlock final : public Block {
     Magnum::Pointer<Expression> condition;
     Magnum::Pointer<Block> else_or_else_if{nullptr};
 
-    explicit IfBlock(Expression* cond)
-        : Block(cond->line_num()), condition(cond) {}
+    explicit IfBlock(Magnum::Pointer<Expression>&& cond)
+        : Block(cond->line_num()),
+          condition(std::forward<Magnum::Pointer<Expression>>(cond)) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
@@ -386,8 +394,9 @@ struct IfBlock final : public Block {
 struct WhileLoop final : public Block {
     Magnum::Pointer<Expression> condition;
 
-    explicit WhileLoop(Expression* cond)
-        : Block(cond->line_num()), condition(cond) {}
+    explicit WhileLoop(Magnum::Pointer<Expression>&& cond)
+        : Block(cond->line_num()),
+          condition(std::forward<Magnum::Pointer<Expression>>(cond)) {}
 
     StatementKind kind() const override { return StatementKind::While; }
     void          print(std::ostream&) const override;
@@ -397,7 +406,8 @@ struct WhileLoop final : public Block {
 struct ReturnStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
-    explicit ReturnStatement(Expression* expr) : expression(expr) {}
+    explicit ReturnStatement(Magnum::Pointer<Expression>&& expr)
+        : expression(std::forward<Magnum::Pointer<Expression>>(expr)) {}
 
     StatementKind kind() const override { return StatementKind::Return; }
     unsigned int  line_num() const override { return expression->line_num(); }
