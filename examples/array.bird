@@ -1,6 +1,6 @@
 type Positive is range 1 thru 100;
 
-type IntArray is [1 thru 64] of Positive;
+type IntArray is [1 thru 5] of Positive;
 
 function main() is
   let i: Positive = 90;

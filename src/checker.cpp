@@ -199,30 +199,40 @@ void InitList::check_types()
                     " a variable or constant of array/record types, not as part"
                     " of a larger expression\n");
         exit(1);
-    } else {
-        if(lvalue->type->kind() == TypeKind::Array) {
-            auto* arr_type = static_cast<ArrayType*>(lvalue->type);
-            for(auto& value : values) {
-                value->check_types();
-                auto* val_type = value->type();
-                if(val_type != arr_type->element_type) {
-                    if(val_type->kind() == TypeKind::Literal) {
-                        check_literal_types(value.get(), lvalue, arr_type->element_type);
-                    } else {
-                        print_type_mismatch(value.get(), lvalue, arr_type->element_type,
-                                            "Expected initializer list item",
-                                            "Actual item");
-                        exit(1);
-                    }
-                }
-            }
-        } else {
-            // TODO: add support for record type initializer lists
-            // Non-aggregate types cannot have initializer lists
-            print_error(this, "Initializer lists can only be used to initialize/assign"
-                        "a variable or constant of array/record types");
+    }
+
+    if(lvalue->type->kind() == TypeKind::Array) {
+        auto* arr_type = static_cast<ArrayType*>(lvalue->type);
+        // TODO: zero-initialize all other indices
+        if(values.size() > arr_type->index_range.size()) {
+            print_error(this, " Array ");
+            lvalue->type->print(std::cerr);
+            std::cerr << " expects at most " << arr_type->index_range.size()
+                      << " values, but this initializer list provides "
+                      << values.size() << " value(s)\n";
             exit(1);
         }
+
+        for(auto& value : values) {
+            value->check_types();
+            auto* val_type = value->type();
+            if(val_type != arr_type->element_type) {
+                if(val_type->kind() == TypeKind::Literal) {
+                    check_literal_types(value.get(), lvalue, arr_type->element_type);
+                } else {
+                    print_type_mismatch(value.get(), lvalue, arr_type->element_type,
+                                        "Expected initializer list item",
+                                        "Actual item");
+                    exit(1);
+                }
+            }
+        }
+    } else {
+        // TODO: add support for record type initializer lists
+        // Non-aggregate types cannot have initializer lists
+        print_error(this, "Initializer lists can only be used to initialize/assign"
+                    "a variable or constant of array/record types");
+        exit(1);
     }
 }
 
