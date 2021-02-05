@@ -6,5 +6,5 @@ function main() is
   let i: Positive = 90;
   let a: IntArray = { i };
   let b: IntArray = {};
-  let c: IntArray = {1, i, 3, 5, 8 + 9, 900};
+  let c: IntArray = {1, i, 3, 5, 8 + 9, 3};
 end;

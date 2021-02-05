@@ -123,6 +123,7 @@ private:
     llvm::Type* to_llvm_type(const Type* ast_type);
     llvm::AllocaInst* prepend_alloca(llvm::Function*, llvm::Type*,
                                      const std::string& name);
+    void store_expr_result(struct Expression*, llvm::Value* alloc);
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);

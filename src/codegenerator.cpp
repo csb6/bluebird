@@ -369,13 +369,32 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     return call_instr;
 }
 
-llvm::Value* InitList::codegen(CodeGenerator&)
+// Always returns nullptr; should only be called by store_expr_result()
+llvm::Value* InitList::codegen(CodeGenerator& gen)
 {
-    // TODO: fully implement codegen for initializer lists (it gets ugly
-    //  due to the need to support local/global variables as items, need to
-    //  create an anonymous global array in other cases, etc.)
-    assert(false);
-    exit(1);
+    const auto match = gen.m_lvalues.find(lvalue);
+    if(match == gen.m_lvalues.end()) {
+        std::cerr << "Codegen error: Could not find lvalue `"
+                  << lvalue->name << "` in lvalue table\n";
+        exit(1);
+    }
+    llvm::Value* alloc = match->second;
+    gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
+
+    auto* zero = llvm::ConstantInt::get(gen.m_context, llvm::APInt(32, 0));
+    llvm::Value* indexes[] = { zero, nullptr };
+    llvm::Type* array_type = gen.to_llvm_type(lvalue->type);
+    for(uint64_t i = 0; i < values.size(); ++i) {
+        // index 0: 0 bytes past the array ptr; index i: index into array
+        indexes[1] = llvm::ConstantInt::get(
+            gen.m_context, llvm::APInt(lvalue->type->bit_size(), i));
+        // Get a pointer to to the current array element
+        auto* element_ptr = gen.m_ir_builder.CreateInBoundsGEP(
+            array_type, alloc, indexes, "elem_ptr");
+        // Store the value at that array element
+        gen.m_ir_builder.CreateStore(values[i]->codegen(gen), element_ptr);
+    }
+    return nullptr;
 }
 
 llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
@@ -394,6 +413,16 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
     return alloc;
 }
 
+void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
+{
+    llvm::Value* input_instr = expr->codegen(*this);
+    if(input_instr != nullptr) {
+        // For nullptr case, see InitList::codegen (which makes this store
+        // instruction redundant in that case)
+        m_ir_builder.CreateStore(input_instr, alloc);
+    }
+}
+
 void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
 {
     auto* init = static_cast<Initialization*>(statement);
@@ -406,7 +435,7 @@ void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* stateme
     if(init->expression != nullptr) {
         m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
         m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
-        m_ir_builder.CreateStore(init->expression->codegen(*this), alloc);
+        store_expr_result(init->expression.get(), alloc);
     }
 }
 
@@ -446,7 +475,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
     if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
         m_dbg_gen.setLocation(assgn->line_num(), m_ir_builder);
         llvm::Value* alloc = match->second;
-        m_ir_builder.CreateStore(assgn->expression->codegen(*this), alloc);
+        store_expr_result(assgn->expression.get(), alloc);
     } else {
         std::cerr << "Codegen error: Could not find lvalue `"
                   << assgn->lvalue->name << "` in lvalue table\n";
