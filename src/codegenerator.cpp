@@ -71,15 +71,15 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
         break;
     case TypeKind::Array: {
         auto* arr_type = static_cast<const ArrayType*>(ast_type);
-        multi_int start{arr_type->index_range.lower_bound};
-        multi_int end{arr_type->index_range.upper_bound};
+        multi_int start{arr_type->index_type->range.lower_bound};
+        multi_int end{arr_type->index_type->range.upper_bound};
         llvm::Metadata* subscript =
             m_dbg_builder.getOrCreateSubrange(to_int(std::move(start)),
                                               to_int(std::move(end)));
         llvm::DINodeArray array = m_dbg_builder.getOrCreateArray(subscript);
         // TODO: check if alignment of zero (arg #2) is always correct
         return m_dbg_builder.createArrayType(
-            arr_type->index_range.size() * arr_type->bit_size(), 0,
+            arr_type->index_type->range.size() * arr_type->bit_size(), 0,
             to_dbg_type(arr_type->element_type), array);
     }
     default:
@@ -171,7 +171,7 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         // TODO: when adding indexing support, add offset so element 0 lines
         // up with the array type's start index value
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
-                                    arr_type->index_range.size());
+                                    arr_type->index_type->range.size());
     }
     default:
         // TODO: add support for determining LLVM type for other AST types.
@@ -367,6 +367,32 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     if(type() != &Type::Void)
         call_instr->setName("call" + name);
     return call_instr;
+}
+
+llvm::Value* IndexOp::codegen(CodeGenerator& gen)
+{
+    assert(base_expr->kind() == ExpressionKind::LValue);
+    const LValue* lval = static_cast<LValueExpression*>(base_expr.get())->lvalue;
+    auto match = gen.m_lvalues.find(lval);
+    if(match == gen.m_lvalues.end()) {
+        std::cerr << "Codegen error: Could not find lvalue `"
+                  << lval->name << "` in lvalue table\n";
+        exit(1);
+    }
+    llvm::Value* alloc = match->second;
+    auto* zero = llvm::ConstantInt::get(gen.m_context, llvm::APInt(32, 0));
+    llvm::Value* indexes[] = { zero, index_expr->codegen(gen) };
+    assert(indexes[1] != nullptr);
+    assert(indexes[1]->getType()->isIntegerTy());
+    auto* array_type = llvm::cast<llvm::ArrayType>(gen.to_llvm_type(lval->type));
+
+    gen.m_dbg_gen.setLocation(line_num(), gen.m_ir_builder);
+    auto* ptr = gen.m_ir_builder.CreateInBoundsGEP(array_type, alloc, indexes,
+                                                   "arr_elem_ptr");
+    // TODO: return ptr when writing into the array; return a loaded value when
+    // reading from the array. Maybe have helper called from client functions that
+    // creates a load from a pointer if the object isn't already a pointerTy?
+    return gen.m_ir_builder.CreateLoad(array_type->getElementType(), ptr, "arr_elem");
 }
 
 // Always returns nullptr; should only be called by store_expr_result()

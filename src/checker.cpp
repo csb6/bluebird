@@ -191,6 +191,40 @@ void FunctionCall::check_types()
     }
 }
 
+void IndexOp::check_types()
+{
+    if(base_expr->kind() != ExpressionKind::LValue) {
+        print_error(this, " Cannot index into the expression:\n  ");
+        base_expr->print(std::cerr);
+        std::cerr << "\n of ";
+        base_expr->type()->print(std::cerr);
+        exit(1);
+    }
+    base_expr->check_types();
+    auto* base_type = base_expr->type();
+    if(base_type->kind() != TypeKind::Array) {
+        print_error(this, " Object ");
+        base_expr->print(std::cerr);
+        std::cerr << " of ";
+        base_type->print(std::cerr);
+        std::cerr << " is not an array type and so cannot be indexed using `[ ]`\n";
+        exit(1);
+    }
+    auto* arr_type = static_cast<const ArrayType*>(base_type);
+    index_expr->check_types();
+    const Type* index_expr_type = index_expr->type();
+    if(index_expr_type != arr_type->index_type) {
+        if(index_expr_type->kind() == TypeKind::Literal) {
+            check_literal_types(index_expr.get(), base_expr.get(), arr_type->index_type);
+        } else {
+            print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
+                                "Expected array index",
+                                "Actual");
+            exit(1);
+        }
+    }
+}
+
 void InitList::check_types()
 {
     if(lvalue == nullptr) {
@@ -204,10 +238,10 @@ void InitList::check_types()
     if(lvalue->type->kind() == TypeKind::Array) {
         auto* arr_type = static_cast<ArrayType*>(lvalue->type);
         // TODO: zero-initialize all other indices
-        if(values.size() > arr_type->index_range.size()) {
+        if(values.size() > arr_type->index_type->range.size()) {
             print_error(this, " Array ");
             lvalue->type->print(std::cerr);
-            std::cerr << " expects at most " << arr_type->index_range.size()
+            std::cerr << " expects at most " << arr_type->index_type->range.size()
                       << " values, but this initializer list provides "
                       << values.size() << " value(s)\n";
             exit(1);

@@ -29,9 +29,9 @@ void RangeType::print(std::ostream& output) const
 
 void ArrayType::print(std::ostream& output) const
 {
-    output << "Type: " << name
-           << " Array(" << index_range.lower_bound << ", "
-           << index_range.upper_bound << ") of ";
+    output << "Type: " << name << " Array(";
+    index_type->print(output);
+    output << ") of ";
     element_type->print(output);
 }
 
@@ -160,6 +160,26 @@ void FunctionCall::print(std::ostream& output) const
         output << ", ";
     }
     output << ')';
+}
+
+const Type* IndexOp::type() const
+{
+    const Type* base_type = base_expr->type();
+    if(base_type->kind() == TypeKind::Array) {
+        auto* arr_type = static_cast<const ArrayType*>(base_type);
+        return arr_type->element_type;
+    } else {
+        return &Type::Void;
+    }
+}
+
+void IndexOp::print(std::ostream& output) const
+{
+    output << "(";
+    base_expr->print(output);
+    output << ")[";
+    index_expr->print(output);
+    output << "]";
 }
 
 const Type* InitList::type() const

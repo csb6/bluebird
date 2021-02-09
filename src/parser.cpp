@@ -313,6 +313,8 @@ Magnum::Pointer<Expression> Parser::in_expression()
     case TokenType::Name:
         if(std::next(token)->type == TokenType::Open_Parentheses) {
             return in_function_call();
+        } else if(std::next(token)->type == TokenType::Open_Bracket) {
+            return in_index_op();
         } else {
             return in_lvalue_expression();
         }
@@ -393,6 +395,26 @@ Magnum::Pointer<Expression> Parser::in_function_call()
     }
     print_error(token->line_num, "Function call definition ended early");
     return {};
+}
+
+Magnum::Pointer<Expression> Parser::in_index_op()
+{
+    const unsigned int line = token->line_num;
+    // For now, this will be a single LValueExpression, but in future will want
+    // to support anonymous objects (and other rvalues). Maybe one way to implement
+    // would be to parse a single expression (non-operator-containing) in in_expression(),
+    // then check if `[`, `(`, etc. as the next token, calling the correct parsing
+    // function based on this next token and using the expression as its left side
+    check_token_is(TokenType::Name, "name of array variable/constant", *token);
+    Magnum::Pointer<Expression> base_expr{in_lvalue_expression()};
+
+    check_token_is(TokenType::Open_Bracket, "array open bracket `[`", *token);
+    ++token;
+    auto new_expr = Magnum::pointer<IndexOp>(
+        line, std::move(base_expr), parse_expression(TokenType::Closed_Bracket));
+    check_token_is(TokenType::Closed_Bracket, "array closing bracket `]`", *token);
+    ++token;
+    return new_expr;
 }
 
 Magnum::Pointer<Expression> Parser::in_parentheses()
@@ -825,21 +847,27 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
 void Parser::in_array_type_definition(const std::string& type_name)
 {
-    multi_int lower_limit, upper_limit;
-    // TODO: also allow for type names here
-    in_range(lower_limit, upper_limit);
+    // TODO: also allow for a range expression as the index type
+    check_token_is(TokenType::Name, "name of the array's index type", *token);
+    auto match = m_names_table.find(token->text);
+    if(!match || match.value().kind != NameType::Type
+       || match.value().type->kind() != TypeKind::Range) {
+        print_error_expected("name of a range type", *token);
+    }
+    auto* index_type = static_cast<const RangeType*>(match.value().type);
+    ++token;
 
     check_token_is(TokenType::Closed_Bracket, "closing bracket `]`", *token);
     ++token;
     check_token_is(TokenType::Keyword_Of, "keyword `of`", *token);
     ++token;
-    const auto match = m_names_table.find(token->text);
-    if(match && match.value().kind != NameType::Type) {
+    match = m_names_table.find(token->text);
+    if(!match || (match && match.value().kind != NameType::Type)) {
         // TODO: support unresolved array element types
         print_error_expected("defined type", *token);
     }
     ++token;
-    Type* new_type = create<ArrayType>(m_type_list, type_name, lower_limit, upper_limit,
+    Type* new_type = create<ArrayType>(m_type_list, type_name, index_type,
                                        match.value().type);
     m_names_table.add_type(new_type);
 }

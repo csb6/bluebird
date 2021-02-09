@@ -1,0 +1,10 @@
+type IndexType is range 0 thru 9;
+type SmallArray is [IndexType] of Integer;
+
+function main() is
+   let a: SmallArray = {3, 4+9, 90};
+   let b: Integer = 90;
+   let c: IndexType = 4;
+   b + b;
+   a[7] + 3;
+end;

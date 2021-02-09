@@ -35,7 +35,7 @@ enum class NameType : char {
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExpressionKind : char {
     StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
-    LValue, Binary, Unary, FunctionCall, InitList
+    LValue, Binary, Unary, FunctionCall, IndexOp, InitList
 };
 
 enum class StatementKind : char {
@@ -122,14 +122,12 @@ struct RangeType final : public Type {
 };
 
 struct ArrayType final : public Type {
-    Range index_range;
+    const RangeType* index_type;
     Type* element_type;
 
     using Type::Type;
-    ArrayType(const std::string &n,
-              const multi_int& index_start,
-              const multi_int& index_end, Type* el_type)
-        : Type(n), index_range(index_start, index_end), element_type(el_type) {}
+    ArrayType(const std::string &n, const RangeType* ind_type, Type* el_type)
+        : Type(n), index_type(ind_type), element_type(el_type) {}
 
     // Gives element type's bit size, not the array itself
     unsigned short bit_size() const override { return element_type->bit_size(); }
@@ -305,7 +303,6 @@ struct FunctionCall final : public Expression {
     FunctionCall(unsigned int line_n, const std::string& name)
         : name(name), line(line_n) {}
 
-    // TODO: have this be the return type
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override;
     unsigned int   line_num() const override { return line; }
@@ -315,6 +312,29 @@ struct FunctionCall final : public Expression {
     llvm::Value* codegen(CodeGenerator&) override;
 };
 
+// An access into an array
+struct IndexOp final : public Expression {
+    // Evaluates into the object being indexed into 
+    Magnum::Pointer<Expression> base_expr;
+    // Some discrete type indexing into the base
+    Magnum::Pointer<Expression> index_expr;
+    unsigned int line;
+
+    IndexOp(unsigned int line_n, Magnum::Pointer<Expression>&& b,
+            Magnum::Pointer<Expression>&& ind)
+        : base_expr(std::forward<Magnum::Pointer<Expression>>(b)),
+          index_expr(std::forward<Magnum::Pointer<Expression>>(ind)), line(line_n) {}
+
+    ExpressionKind kind() const override { return ExpressionKind::InitList; }
+    const Type*    type() const override;
+    unsigned int   line_num() const override { return line; }
+    void           print(std::ostream&) const override;
+
+    void         check_types() override;
+    llvm::Value* codegen(CodeGenerator&) override;
+};
+
+// A bracketed list of values assigned all at once to an array/record
 struct InitList final : public Expression {
     std::vector<Magnum::Pointer<Expression>> values;
     unsigned int line;
