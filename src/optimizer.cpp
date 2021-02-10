@@ -17,41 +17,62 @@
 #include <llvm/Transforms/Scalar/TailRecursionElimination.h>
 #include <llvm/Transforms/Vectorize/SLPVectorizer.h>
 #include <llvm/Transforms/Scalar/SROA.h>
+#include <llvm/Transforms/IPO/PartialInlining.h>
+#include <llvm/Transforms/IPO/DeadArgumentElimination.h>
+#include <llvm/Transforms/IPO/SCCP.h>
+#include <llvm/Transforms/IPO/MergeFunctions.h>
+#include <llvm/Transforms/IPO/GlobalOpt.h>
 #pragma GCC diagnostic pop
 
 void optimize(llvm::Module& module)
 {
-    llvm::FunctionPassManager funct_opt;
+    llvm::FunctionPassManager funct_manager;
     // mem2reg
-    funct_opt.addPass(llvm::PromotePass());
-    // Aggressive Dead Code Elimination
-    funct_opt.addPass(llvm::ADCEPass());
+    funct_manager.addPass(llvm::PromotePass());
     // Aggressive Instruction Combine
-    funct_opt.addPass(llvm::AggressiveInstCombinePass());
+    funct_manager.addPass(llvm::AggressiveInstCombinePass());
     // Reassociate (reorder expressions to improve constant propagation)
-    funct_opt.addPass(llvm::ReassociatePass());
+    funct_manager.addPass(llvm::ReassociatePass());
     // Eliminate common subexpressions
-    funct_opt.addPass(llvm::GVN());
+    funct_manager.addPass(llvm::GVN());
     // Loop Simplification (needs to be followed by a simplifycfg pass)
-    funct_opt.addPass(llvm::LoopSimplifyPass());
-    funct_opt.addPass(llvm::SimplifyCFGPass());
+    funct_manager.addPass(llvm::LoopSimplifyPass());
+    funct_manager.addPass(llvm::SimplifyCFGPass());
+    // Aggressive Dead Code Elimination
+    funct_manager.addPass(llvm::ADCEPass());
     // Sink (move instructions to successor blocks where possible)
-    funct_opt.addPass(llvm::SinkingPass());
+    funct_manager.addPass(llvm::SinkingPass());
     // Tail Call Elimination
-    funct_opt.addPass(llvm::TailCallElimPass());
+    funct_manager.addPass(llvm::TailCallElimPass());
     // Change series of stores into vector-stores
-    funct_opt.addPass(llvm::SLPVectorizerPass());
+    funct_manager.addPass(llvm::SLPVectorizerPass());
     // Try to convert aggregates to multiple scalar allocas, then convert to SSA
     // where possible
-    funct_opt.addPass(llvm::SROA());
+    funct_manager.addPass(llvm::SROA());
 
-    llvm::FunctionAnalysisManager funct_mng;
+    llvm::ModulePassManager module_manager;
+    // Enables function passes to be used on a module
+    module_manager.addPass(llvm::ModuleToFunctionPassAdaptor{std::move(funct_manager)});
+    // Inlines parts of functions (e.g. if-statements if they surround a function body)
+    module_manager.addPass(llvm::PartialInlinerPass());
+    // Interprocedural constant propagation
+    module_manager.addPass(llvm::IPSCCPPass());
+    // Eliminates unused arguments and return values from functions
+    module_manager.addPass(llvm::DeadArgumentEliminationPass());
+    // Merge identical functions
+    module_manager.addPass(llvm::MergeFunctionsPass());
+    // Removes unused global variables
+    module_manager.addPass(llvm::GlobalOptPass());
+
+    llvm::FunctionAnalysisManager funct_analysis;
+    llvm::ModuleAnalysisManager module_analysis;
     llvm::PassBuilder pass_builder;
-    pass_builder.registerFunctionAnalyses(funct_mng);
-    for(llvm::Function& funct : module) {
-        if(!funct.empty()) {
-            // Optimize only functions with bodies
-            funct_opt.run(funct, funct_mng);
-        }
-    }
+    pass_builder.registerFunctionAnalyses(funct_analysis);
+    pass_builder.registerModuleAnalyses(module_analysis);
+    module_analysis.registerPass(
+        [&] { return llvm::FunctionAnalysisManagerModuleProxy(funct_analysis); });
+    funct_analysis.registerPass(
+        [&] { return llvm::ModuleAnalysisManagerFunctionProxy(module_analysis); });
+
+    module_manager.run(module, module_analysis);
 }
