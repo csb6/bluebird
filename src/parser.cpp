@@ -334,7 +334,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
         new_function_call->function =
-            m_function_list.emplace_back(Magnum::pointer<BBFunction>(token->text)).get();
+            m_temp_function_list.emplace_back(Magnum::pointer<BBFunction>(token->text)).get();
         m_names_table.add_unresolved(new_function_call.get());
     } else {
         SymbolInfo match_value{match.value()};

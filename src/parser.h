@@ -109,6 +109,7 @@ private:
     std::vector<Magnum::Pointer<Function>> m_function_list;
     std::vector<Magnum::Pointer<RangeType>> m_range_type_list;
     std::vector<Magnum::Pointer<Initialization>> m_global_var_list;
+    std::vector<Magnum::Pointer<Function>> m_temp_function_list;
 
     Magnum::Pointer<Expression> parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
