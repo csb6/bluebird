@@ -15,6 +15,8 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Scalar/Sink.h>
 #include <llvm/Transforms/Scalar/TailRecursionElimination.h>
+#include <llvm/Transforms/Vectorize/SLPVectorizer.h>
+#include <llvm/Transforms/Scalar/SROA.h>
 #pragma GCC diagnostic pop
 
 void optimize(llvm::Module& module)
@@ -37,11 +39,19 @@ void optimize(llvm::Module& module)
     funct_opt.addPass(llvm::SinkingPass());
     // Tail Call Elimination
     funct_opt.addPass(llvm::TailCallElimPass());
+    // Change series of stores into vector-stores
+    funct_opt.addPass(llvm::SLPVectorizerPass());
+    // Try to convert aggregates to multiple scalar allocas, then convert to SSA
+    // where possible
+    funct_opt.addPass(llvm::SROA());
 
     llvm::FunctionAnalysisManager funct_mng;
     llvm::PassBuilder pass_builder;
     pass_builder.registerFunctionAnalyses(funct_mng);
     for(llvm::Function& funct : module) {
-        funct_opt.run(funct, funct_mng);
+        if(!funct.empty()) {
+            // Optimize only functions with bodies
+            funct_opt.run(funct, funct_mng);
+        }
     }
 }

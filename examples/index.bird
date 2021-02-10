@@ -1,5 +1,12 @@
 type IndexType is range 0 thru 9;
 type SmallArray is [IndexType] of Integer;
+type SmallCharArray is [IndexType] of Character;
+
+function foo() is
+   let arr: SmallCharArray = { 'a', 'b', 'c', 'd', 'e' };
+   putchar(arr[2]);
+   putchar('\n');
+end;
 
 function main() is
    let a: SmallArray = {3, 4+9, 90};
@@ -7,4 +14,5 @@ function main() is
    let c: IndexType = 4;
    b + b;
    a[7] + 3;
+   foo();
 end;
