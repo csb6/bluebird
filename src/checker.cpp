@@ -141,7 +141,40 @@ static void check_literal_types(Expression* literal, const Other* other,
 }
 
 // TODO: check that unary operators are valid for their values
-void UnaryExpression::check_types() {}
+void UnaryExpression::check_types()
+{
+    right->check_types();
+    switch(right->type()->kind()) {
+    case TypeKind::Literal:
+        // Assumes all but float literals are constant folded before this stage
+        assert(false);
+        break;
+    case TypeKind::Boolean:
+        if(!is_bool_op(op)) {
+            print_error(right.get(), "The non-boolean operator `");
+            std::cerr << op << "` cannot be used with expression:\n ";
+            right->print(std::cerr);
+            std::cerr << "\nbecause the expression is a boolean type\n";
+            exit(1);
+        }
+        break;
+    case TypeKind::Range:
+        if(is_bool_op(op)) {
+            print_error(right.get(), "The boolean operator `");
+            std::cerr << op << "` cannot be used with expression:\n ";
+            right->print(std::cerr);
+            std::cerr << "\nbecause the expression is a range type, not a boolean type\n";
+            exit(1);
+        }
+        break;
+    default:
+        print_error(right.get(), "The unary operator `");
+        std::cerr << op << "` cannot be used with expression:\n ";
+        right->print(std::cerr);
+        std::cerr << "\n";
+        exit(1);
+    }
+}
 
 // TODO: check if this binary op is legal for this type
 void BinaryExpression::check_types()
