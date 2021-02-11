@@ -17,6 +17,10 @@
 #include <llvm/Transforms/Scalar/TailRecursionElimination.h>
 #include <llvm/Transforms/Vectorize/SLPVectorizer.h>
 #include <llvm/Transforms/Scalar/SROA.h>
+#include <llvm/Transforms/Scalar/LoopUnrollPass.h>
+#include <llvm/Transforms/Scalar/LICM.h>
+#include <llvm/Transforms/Scalar/SCCP.h>
+#include <llvm/Transforms/Scalar/IndVarSimplify.h>
 #include <llvm/Transforms/IPO/PartialInlining.h>
 #include <llvm/Transforms/IPO/DeadArgumentElimination.h>
 #include <llvm/Transforms/IPO/SCCP.h>
@@ -27,6 +31,8 @@
 void optimize(llvm::Module& module)
 {
     llvm::FunctionPassManager funct_manager;
+    llvm::LoopAnalysisManager loop_analysis;
+    llvm::FunctionAnalysisManager funct_analysis;
     // mem2reg
     funct_manager.addPass(llvm::PromotePass());
     // Aggressive Instruction Combine
@@ -35,8 +41,20 @@ void optimize(llvm::Module& module)
     funct_manager.addPass(llvm::ReassociatePass());
     // Eliminate common subexpressions
     funct_manager.addPass(llvm::GVN());
+    // Constant Propagation
+    funct_manager.addPass(llvm::SCCPPass());
+    // Aggressive Dead Code Elimination
+    funct_manager.addPass(llvm::ADCEPass());
     // Loop Simplification (needs to be followed by a simplifycfg pass)
     funct_manager.addPass(llvm::LoopSimplifyPass());
+    {
+        llvm::LoopPassManager loop_manager;
+        loop_manager.addPass(llvm::IndVarSimplifyPass());
+        loop_manager.addPass(llvm::LICMPass());
+        funct_manager.addPass(llvm::FunctionToLoopPassAdaptor{std::move(loop_manager)});
+    }
+    // Unroll loops where needed
+    funct_manager.addPass(llvm::LoopUnrollPass());
     funct_manager.addPass(llvm::SimplifyCFGPass());
     // Aggressive Dead Code Elimination
     funct_manager.addPass(llvm::ADCEPass());
@@ -51,6 +69,7 @@ void optimize(llvm::Module& module)
     funct_manager.addPass(llvm::SROA());
 
     llvm::ModulePassManager module_manager;
+    llvm::ModuleAnalysisManager module_analysis;
     // Enables function passes to be used on a module
     module_manager.addPass(llvm::ModuleToFunctionPassAdaptor{std::move(funct_manager)});
     // Inlines parts of functions (e.g. if-statements if they surround a function body)
@@ -64,15 +83,15 @@ void optimize(llvm::Module& module)
     // Removes unused global variables
     module_manager.addPass(llvm::GlobalOptPass());
 
-    llvm::FunctionAnalysisManager funct_analysis;
-    llvm::ModuleAnalysisManager module_analysis;
     llvm::PassBuilder pass_builder;
+    llvm::CGSCCAnalysisManager cg_analysis;
+
     pass_builder.registerFunctionAnalyses(funct_analysis);
     pass_builder.registerModuleAnalyses(module_analysis);
-    module_analysis.registerPass(
-        [&] { return llvm::FunctionAnalysisManagerModuleProxy(funct_analysis); });
-    funct_analysis.registerPass(
-        [&] { return llvm::ModuleAnalysisManagerFunctionProxy(module_analysis); });
+    pass_builder.registerLoopAnalyses(loop_analysis);
+    pass_builder.registerCGSCCAnalyses(cg_analysis);
+    pass_builder.crossRegisterProxies(loop_analysis, funct_analysis, cg_analysis,
+                                      module_analysis);
 
     module_manager.run(module, module_analysis);
 }

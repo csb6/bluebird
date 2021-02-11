@@ -1,5 +1,5 @@
 function main() is
-   let a: Integer = 90;
+   let a: Integer = 9;
    let b: Integer = 0;
    while b < a do
        b = b + 1;
