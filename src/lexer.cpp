@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "lexer.h"
+#include "error.h"
 #include <iostream>
-#include <ostream>
 
 enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
@@ -54,13 +54,17 @@ Lexer::Lexer(std::string::const_iterator input_begin,
 
 void print_error(unsigned int line_num, const char *text, char token)
 {
-    std::cerr << "Line " << line_num << ": " << text << token << "\n";
+#ifndef FUZZER_MODE
+    std::cerr << "ERROR: Line " << line_num << ": " << text << token << "\n";
+#endif
 }
 
 void print_error(unsigned int line_num, const char *text,
                  const std::string &token = "")
 {
-    std::cerr << "Line " << line_num << ": " << text << token << "\n";
+#ifndef FUZZER_MODE
+    std::cerr << "ERROR: Line " << line_num << ": " << text << token << "\n";
+#endif
 }
 
 void Lexer::run()
@@ -125,7 +129,7 @@ void Lexer::run()
                     case '/':
                         ++input_iter;
                         // Ignore single-line comments
-                        while(*input_iter != '\n')
+                        while(input_iter < m_input_end && *input_iter != '\n')
                             ++input_iter;
                         break;
                     case '*':
@@ -196,7 +200,7 @@ void Lexer::run()
                         ++input_iter;
                     } else {
                         print_error(line_num, "Invalid operator: !");
-                        exit(1);
+                        fatal_error();
                     }
                     break;
                 case ',':
@@ -250,7 +254,7 @@ void Lexer::run()
                 if(escaped == -1) {
                     print_error(line_num, "Unrecognized escape sequence: \\",
                                 *input_iter);
-                    exit(1);
+                    fatal_error();
                 }
                 token_text += escaped;
             } else if(curr == '"') {
@@ -271,7 +275,7 @@ void Lexer::run()
                 if(escaped == -1) {
                     print_error(line_num, "Unrecognized escape sequence: \\",
                                 *input_iter);
-                    exit(1);
+                    fatal_error();
                 }
                 curr = escaped;
             }
@@ -314,7 +318,7 @@ void Lexer::run()
 
     if(!token_text.empty()) {
         print_error(line_num, "Incomplete token: ", token_text);
-        exit(1);
+        fatal_error();
     }
 }
 

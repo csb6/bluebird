@@ -267,23 +267,29 @@ Magnum::Pointer<Expression> Parser::in_literal()
 {
     const TokenIterator current = token++;
 
-    switch(current->type) {
-    case TokenType::String_Literal:
-        return Magnum::pointer<StringLiteral>(current->line_num, current->text);
-    case TokenType::Char_Literal:
-        return Magnum::pointer<CharLiteral>(current->line_num, current->text[0]);
-    case TokenType::Int_Literal:
-        return Magnum::pointer<IntLiteral>(current->line_num, current->text);
-    case TokenType::Float_Literal:
-        return Magnum::pointer<FloatLiteral>(current->line_num, std::stod(current->text));
-    case TokenType::Keyword_True:
-        return Magnum::pointer<BoolLiteral>(current->line_num, true);
-    case TokenType::Keyword_False:
-        return Magnum::pointer<BoolLiteral>(current->line_num, false);
-    default:
-        print_error_expected("literal", *current);
-        return {};
+    try {
+        switch(current->type) {
+        case TokenType::String_Literal:
+            return Magnum::pointer<StringLiteral>(current->line_num, current->text);
+        case TokenType::Char_Literal:
+            return Magnum::pointer<CharLiteral>(current->line_num, current->text[0]);
+        case TokenType::Int_Literal:
+            return Magnum::pointer<IntLiteral>(current->line_num, current->text);
+        case TokenType::Float_Literal:
+            return Magnum::pointer<FloatLiteral>(current->line_num, std::stod(current->text));
+        case TokenType::Keyword_True:
+            return Magnum::pointer<BoolLiteral>(current->line_num, true);
+        case TokenType::Keyword_False:
+            return Magnum::pointer<BoolLiteral>(current->line_num, false);
+        default:
+            print_error_expected("literal", *current);
+        }
+    } catch(const std::invalid_argument&) {
+        print_error_expected("float literal", *current);
+    } catch(const std::out_of_range&) {
+        print_error_expected("float literal", *current);
     }
+    return {};
 }
 
 Magnum::Pointer<Expression> Parser::in_lvalue_expression()

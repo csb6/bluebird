@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-cmake_minimum_required(VERSION 3.16.4)
+cmake_minimum_required(VERSION 3.19.1)
 
 project(Bluebird)
 
@@ -60,3 +60,15 @@ elseif(CMAKE_SYSTEM MATCHES "Linux")
 endif()
 
 target_link_libraries(bluebird ${LLVM_LIBS})
+
+#libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message("Note: fuzzer target enabled")
+    add_executable(fuzzer src/fuzzer.cpp src/lexer.cpp src/token.cpp)
+    target_compile_options(fuzzer PRIVATE -fsanitize=fuzzer)
+    target_link_libraries(fuzzer PRIVATE -fsanitize=fuzzer)
+    # Set -DFUZZER_MODE (C++ macro definition)
+    target_compile_definitions(fuzzer PRIVATE FUZZER_MODE)
+else()
+    message("Note: fuzzer target not enabled (compiler is not Clang)")
+endif()
