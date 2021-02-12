@@ -26,15 +26,10 @@ public:
     Error& quote(char);
     Error& quote(Token);
     Error& put(const char* message, unsigned int indent = 0);
-    // TODO: Implement put() for Expression and Statement
-    Error& put(struct Expression*);
-    Error& put(struct Statement*);
+    Error& put(const struct Expression*);
+    Error& put(const struct Statement*);
     Error& newline();
-    // Calls newline(), then raise()
-    [[noreturn]] void end();
-    // Exits or throws exception
-    [[noreturn]] void raise();
-    // Calls put(), then newline(), then raise()
-    [[noreturn]] void put_end(const char* message, unsigned int indent = 0);
+    // Exits or throws exception; newline printed after message
+    [[noreturn]] void raise(const char* message = "", unsigned int indent = 0);
 };
 #endif

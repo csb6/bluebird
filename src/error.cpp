@@ -1,4 +1,5 @@
 #include "error.h"
+#include "ast.h"
 #include <iostream>
 
 #ifdef FUZZER_MODE
@@ -12,7 +13,6 @@
         }
     }
 #endif
-
 
 #ifdef FUZZER_MODE
     Error& Error::put(const char*, unsigned int) { return *this; }
@@ -28,6 +28,26 @@
 #endif
 
 #ifdef FUZZER_MODE
+    Error& Error::put(const Expression*) { return *this; }
+#else
+    Error& Error::put(const Expression* expr)
+    {
+        expr->print(std::cerr);
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
+    Error& Error::put(const Statement*) { return *this; }
+#else
+    Error& Error::put(const Statement* stmt)
+    {
+        stmt->print(std::cerr);
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
     Error& Error::quote(const std::string&) { return *this; }
 #else
     Error& Error::quote(const std::string& text)
@@ -36,7 +56,6 @@
         return *this;
     }
 #endif
-
 
 #ifdef FUZZER_MODE
     Error& Error::quote(char) { return *this; }
@@ -48,7 +67,6 @@
     }
 #endif
 
-
 #ifdef FUZZER_MODE
     Error& Error::quote(Token) { return *this; }
 #else
@@ -58,7 +76,6 @@
         return *this;
     }
 #endif
-
 
 #ifdef FUZZER_MODE
     Error& Error::newline() { return *this; }
@@ -70,20 +87,9 @@
     }
 #endif
 
-void Error::end()
-{
-    newline();
-    raise();
-}
-
-void Error::raise()
-{
-    exit(1);
-}
-
-void Error::put_end(const char* message, unsigned int indent)
+void Error::raise(const char* message, unsigned int indent)
 {
     put(message, indent);
     newline();
-    raise();
+    exit(1);
 }
