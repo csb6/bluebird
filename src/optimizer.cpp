@@ -30,48 +30,48 @@
 
 void optimize(llvm::Module& module)
 {
-    llvm::FunctionPassManager funct_manager;
-    llvm::LoopAnalysisManager loop_analysis;
-    llvm::FunctionAnalysisManager funct_analysis;
-    // mem2reg
-    funct_manager.addPass(llvm::PromotePass());
-    // Aggressive Instruction Combine
-    funct_manager.addPass(llvm::AggressiveInstCombinePass());
-    // Reassociate (reorder expressions to improve constant propagation)
-    funct_manager.addPass(llvm::ReassociatePass());
-    // Eliminate common subexpressions
-    funct_manager.addPass(llvm::GVN());
-    // Constant Propagation
-    funct_manager.addPass(llvm::SCCPPass());
-    // Aggressive Dead Code Elimination
-    funct_manager.addPass(llvm::ADCEPass());
-    // Loop Simplification (needs to be followed by a simplifycfg pass)
-    funct_manager.addPass(llvm::LoopSimplifyPass());
-    {
-        llvm::LoopPassManager loop_manager;
-        loop_manager.addPass(llvm::IndVarSimplifyPass());
-        loop_manager.addPass(llvm::LICMPass());
-        funct_manager.addPass(llvm::FunctionToLoopPassAdaptor{std::move(loop_manager)});
-    }
-    // Unroll loops where needed
-    funct_manager.addPass(llvm::LoopUnrollPass());
-    funct_manager.addPass(llvm::SimplifyCFGPass());
-    // Aggressive Dead Code Elimination
-    funct_manager.addPass(llvm::ADCEPass());
-    // Sink (move instructions to successor blocks where possible)
-    funct_manager.addPass(llvm::SinkingPass());
-    // Tail Call Elimination
-    funct_manager.addPass(llvm::TailCallElimPass());
-    // Change series of stores into vector-stores
-    funct_manager.addPass(llvm::SLPVectorizerPass());
-    // Try to convert aggregates to multiple scalar allocas, then convert to SSA
-    // where possible
-    funct_manager.addPass(llvm::SROA());
-
     llvm::ModulePassManager module_manager;
-    llvm::ModuleAnalysisManager module_analysis;
-    // Enables function passes to be used on a module
-    module_manager.addPass(llvm::ModuleToFunctionPassAdaptor{std::move(funct_manager)});
+    {
+        llvm::FunctionPassManager funct_manager;
+        // mem2reg
+        funct_manager.addPass(llvm::PromotePass());
+        // Aggressive Instruction Combine
+        funct_manager.addPass(llvm::AggressiveInstCombinePass());
+        // Reassociate (reorder expressions to improve constant propagation)
+        funct_manager.addPass(llvm::ReassociatePass());
+        // Eliminate common subexpressions
+        funct_manager.addPass(llvm::GVN());
+        // Constant Propagation
+        funct_manager.addPass(llvm::SCCPPass());
+        // Aggressive Dead Code Elimination
+        funct_manager.addPass(llvm::ADCEPass());
+        // Loop Simplification (needs to be followed by a simplifycfg pass)
+        funct_manager.addPass(llvm::LoopSimplifyPass());
+        {
+            llvm::LoopPassManager loop_manager;
+            loop_manager.addPass(llvm::IndVarSimplifyPass());
+            loop_manager.addPass(llvm::LICMPass());
+            funct_manager.addPass(llvm::FunctionToLoopPassAdaptor{std::move(loop_manager)});
+        }
+        // Unroll loops where needed
+        funct_manager.addPass(llvm::LoopUnrollPass());
+        funct_manager.addPass(llvm::SimplifyCFGPass());
+        // Aggressive Dead Code Elimination
+        funct_manager.addPass(llvm::ADCEPass());
+        // Sink (move instructions to successor blocks where possible)
+        funct_manager.addPass(llvm::SinkingPass());
+        // Tail Call Elimination
+        funct_manager.addPass(llvm::TailCallElimPass());
+        // Change series of stores into vector-stores
+        funct_manager.addPass(llvm::SLPVectorizerPass());
+        // Try to convert aggregates to multiple scalar allocas, then convert to SSA
+        // where possible
+        funct_manager.addPass(llvm::SROA());
+        // Interprocedural Constant Propagation
+        funct_manager.addPass(llvm::SCCPPass());
+        // Enables function passes to be used on a module
+        module_manager.addPass(llvm::ModuleToFunctionPassAdaptor{std::move(funct_manager)});
+    }
     // Inlines parts of functions (e.g. if-statements if they surround a function body)
     module_manager.addPass(llvm::PartialInlinerPass());
     // Interprocedural constant propagation
@@ -84,6 +84,9 @@ void optimize(llvm::Module& module)
     module_manager.addPass(llvm::GlobalOptPass());
 
     llvm::PassBuilder pass_builder;
+    llvm::ModuleAnalysisManager module_analysis;
+    llvm::LoopAnalysisManager loop_analysis;
+    llvm::FunctionAnalysisManager funct_analysis;
     llvm::CGSCCAnalysisManager cg_analysis;
 
     pass_builder.registerFunctionAnalyses(funct_analysis);
