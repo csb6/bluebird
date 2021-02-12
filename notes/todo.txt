@@ -38,8 +38,10 @@ Todo:
     platform-specific linker/compiler flags more easily
 [X] Add support for module-global variables
 [X] Add debug support for functions and local variables
-[ ] Add debug support for expressions and global variables
-[ ] Add support for arrays of integers/characters
+[X] Add debug support for expressions and global variables
+[X] Add support for defining array types and reading from them
+[X] Add initializer lists for arrays
+[ ] Add support for writing to arrays
 [ ] Figure out how strings should work
 [ ] Add standard interface for adding builtin functions/types
 [X] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
@@ -60,9 +62,12 @@ Todo:
     except that each expression is evaluated at most once." (from Python docs)
 [ ] Consider adding a viceversa keyword to be used with binary expressions
 [ ] Work on the various TODOs throughout the codebase
-[ ] Consider reading characters on-demand from an iostream in the lexer instead
-    of reading everything into a big string at the start
-[ ] Use property-based testing to test lexer
+[X] Consider reading characters on-demand from an iostream in the lexer instead
+    of reading everything into a big string at the start (this doesn't seem worth it;
+    it is pretty simple to have a file loaded into memory, allowing bidirectional iteration,
+    a big convenience that the iostream iterators can't do)
+[ ] Use property-based testing to test lexer (Update: I've run libfuzzer over the lexer some.
+    Still could do more)
 [ ] Consider rewriting frontend/part of frontend in Ada (this is unlikely
     to be practical but would be interesting to experiment with)
 [ ] Think more about the potential for proving code, possibly using z3
