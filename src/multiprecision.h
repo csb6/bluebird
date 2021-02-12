@@ -1,3 +1,5 @@
+#ifndef MULTIPRECISION_CPP_INT_H
+#define MULTIPRECISION_CPP_INT_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
     Copyright (C) 2020  Cole Blakley
 
@@ -14,8 +16,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef MULTIPRECISION_CPP_INT_H
-#define MULTIPRECISION_CPP_INT_H
 #include <string>
 #include <iosfwd>
 #include <mini-gmp/mini-gmp.h>

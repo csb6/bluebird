@@ -1,3 +1,5 @@
+#ifndef BLUEBIRD_CODEGEN_H
+#define BLUEBIRD_CODEGEN_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
     Copyright (C) 2020-2021  Cole Blakley
 
@@ -14,8 +16,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef BLUEBIRD_CODEGEN_H
-#define BLUEBIRD_CODEGEN_H
 // Internal LLVM code has lots of warnings that we don't care about
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
