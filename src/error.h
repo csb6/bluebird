@@ -1,3 +1,5 @@
+#ifndef BLUEBIRD_ERROR_H
+#define BLUEBIRD_ERROR_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
     Copyright (C) 2021  Cole Blakley
 
@@ -14,15 +16,25 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef BLUEBIRD_ERROR_H
-#define BLUEBIRD_ERROR_H
+#include <string>
+#include "token.h"
 
-#ifdef FUZZER_MODE
-/* ret_val is the return type of the containing function (don't pass an argument
-   if returning void) */
-  #define fatal_error(ret_val) return ret_val
-#else
-  #include <cstdlib>
-  #define fatal_error(ret_val) (exit(1))
-#endif
+class Error {
+public:
+    explicit Error(unsigned int line_num = 0);
+    Error& quote(const std::string& text);
+    Error& quote(char);
+    Error& quote(Token);
+    Error& put(const char* message, unsigned int indent = 0);
+    // TODO: Implement put() for Expression and Statement
+    Error& put(struct Expression*);
+    Error& put(struct Statement*);
+    Error& newline();
+    // Calls newline(), then raise()
+    [[noreturn]] void end();
+    // Exits or throws exception
+    [[noreturn]] void raise();
+    // Calls put(), then newline(), then raise()
+    [[noreturn]] void put_end(const char* message, unsigned int indent = 0);
+};
 #endif

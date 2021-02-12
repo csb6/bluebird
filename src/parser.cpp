@@ -14,6 +14,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include "error.h"
 #include "parser.h"
 #include <string_view>
 #include <iostream>
@@ -76,20 +77,6 @@ constexpr Precedence precedence_of(const TokenType index)
 constexpr bool is_binary_operator(const Precedence p)
 {
     return p >= 0 && p != Operand;
-}
-
-
-[[noreturn]] static void raise_error(unsigned int line_num, std::string_view message)
-{
-    std::cerr << "ERROR: Line " << line_num << ": "
-              << message << "\n";
-    exit(1);
-}
-
-[[noreturn]] static void raise_error(std::string_view message)
-{
-    std::cerr << "ERROR: " << message << "\n";
-    exit(1);
 }
 
 [[noreturn]] static void raise_error_expected(std::string_view expected, Token actual)
@@ -299,11 +286,12 @@ Magnum::Pointer<Expression> Parser::in_lvalue_expression()
     // Need to find the right LValue that this LValueExpression is a usage of
     const auto match = m_names_table.find(current->text);
     if(!match) {
-        raise_error(current->line_num,
-                    "Unknown variable/constant `" + current->text + "`");
+        Error(current->line_num)
+            .put("Unknown variable/constant").quote(current->text).end();
     } else if(match.value().kind != NameType::LValue) {
-        raise_error("Expected name of variable/constant, but `"
-                    + current->text + "` is already being used as a name");
+        Error(current->line_num)
+            .put("Expected name of variable/constant, but").quote(current->text)
+            .put_end("is already being used as a name");
     } else {
         return Magnum::pointer<LValueExpression>(
             current->line_num, current->text, match.value().lvalue);
@@ -370,8 +358,9 @@ Magnum::Pointer<Expression> Parser::in_function_call()
             }
             break;
         default:
-            raise_error(token->line_num, "Expected `" + token->text
-                        + "` to be a function name, but it is defined as another kind of name");
+            Error(token->line_num)
+                .put("Expected").quote(token->text)
+                .put_end("to be a function name, but it is defined as another kind of name");
         }
     }
 
@@ -396,7 +385,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
             ++arg_count;
         }
     }
-    raise_error(token->line_num, "Function call definition ended early");
+    Error(token->line_num).put_end("Function call definition ended early");
 }
 
 Magnum::Pointer<Expression> Parser::in_index_op()
@@ -449,7 +438,7 @@ Magnum::Pointer<Expression> Parser::in_init_list()
             new_init_list->values.emplace_back(parse_expression(TokenType::Comma));
         }
     }
-    raise_error(token->line_num, "Initializer list definition ended early");
+    Error(token->line_num).put_end("Initializer list definition ended early");
 }
 
 // Creates LValue, but does not add to symbol table
@@ -457,8 +446,9 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 {
     check_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
-        raise_error(token->line_num, "`" + token->text
-                    + "` cannot be used as an lvalue name. It is already defined as a name");
+        Error(token->line_num)
+            .quote(token->text)
+            .put_end("cannot be used as an lvalue name. It is already defined as a name");
     }
     auto new_lvalue = Magnum::pointer<LValue>(token->text);
 
@@ -491,8 +481,9 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
             new_lvalue->type = match.value().type;
             break;
         default:
-            raise_error(token->line_num, "Expected `" + token->text
-                        + "` to be a typename, but it is defined as another kind of name");
+            Error(token->line_num)
+                .put("Expected").quote(token->text)
+                .put_end("to be a typename, but it is defined as another kind of name");
         }
     }
 
@@ -529,14 +520,16 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
 {
     auto lval_match = m_names_table.find(token->text);
     if(!lval_match) {
-        raise_error(token->line_num, "`" + token->text
-                    + "` is not a variable name and so cannot be assigned to");
+        Error(token->line_num)
+            .quote(token->text)
+            .put_end("is not a variable name and so cannot be assigned to");
     } else if(lval_match->kind != NameType::LValue) {
-        raise_error(token->line_num, "Expected `" + token->text
-                    + "` to be a variable, but it is defined as another kind of name");
+        Error(token->line_num)
+            .put("Expected").quote(token->text)
+            .put_end("to be a variable, but it is defined as another kind of name");
     } else if(!lval_match->lvalue->is_mutable) {
-        raise_error(token->line_num, "cannot assign to constant `" + token->text + "`");
-        
+        Error(token->line_num)
+            .put("Cannot assign to constant:").quote(token->text).end();
     }
 
     std::advance(token, 2); // skip varname and `=` operator
@@ -622,7 +615,7 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
             new_if_block->statements.push_back(in_statement());
         }
     }
-    raise_error(token->line_num, "Incomplete if-block");
+    Error(token->line_num).put_end("Incomplete if-block");
 }
 
 Magnum::Pointer<Block> Parser::in_else_block()
@@ -650,7 +643,7 @@ Magnum::Pointer<Block> Parser::in_else_block()
             new_else_block->statements.push_back(in_statement());
         }
     }
-    raise_error(token->line_num, "Incomplete else-block");
+    Error(token->line_num).put_end("Incomplete else-block");
 }
 
 Magnum::Pointer<WhileLoop> Parser::in_while_loop()
@@ -683,7 +676,7 @@ Magnum::Pointer<WhileLoop> Parser::in_while_loop()
             new_while_loop->statements.push_back(in_statement());
         }
     }
-    raise_error(token->line_num, "Incomplete while-loop-block");
+    Error(token->line_num).put_end("Incomplete while-loop-block");
 }
 
 Magnum::Pointer<ReturnStatement> Parser::in_return_statement()
@@ -712,8 +705,9 @@ void Parser::in_return_type(Function* funct)
             funct->return_type = match.value().type;
             break;
         default:
-            raise_error(token->line_num, "Expected `" + token->text
-                        + "` to be a typename, but it is defined as another kind of name");
+            Error(token->line_num)
+                .put("Expected").quote(token->text)
+                .put_end("to be a typename, but it is defined as another kind of name");
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
@@ -732,8 +726,9 @@ void Parser::in_function_definition()
     // anything else
     const auto match = m_names_table.find(token->text);
     if(match && match.value().kind != NameType::DeclaredFunct) {
-        raise_error(token->line_num, "Name `" + token->text + "` is"
-                    " already in use");
+        Error(token->line_num)
+            .put("Name").quote(token->text)
+            .put_end("is already in use");
     }
     auto* new_funct = new BBFunction(token->text, token->line_num);
     m_function_list.emplace_back(new_funct);
@@ -825,7 +820,8 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
     // TODO: Support arbitrary expressions made of arithmetic
     //  operators/parentheses/negations/bitwise operators
     if(right_expr->value < left_expr->value) {
-        raise_error(token->line_num, "Upper limit of range is lower than the lower limit");
+        Error(token->line_num)
+            .put_end("Upper limit of range is lower than the lower limit");
     }
     low_out = left_expr->value;
     high_out = right_expr->value;
@@ -878,7 +874,8 @@ void Parser::in_type_definition()
 
     if(const auto match = m_names_table.find(token->text);
        match && match.value().kind != NameType::DeclaredType) {
-        raise_error(token->line_num, "Name: " + token->text + " already in use");
+        Error(token->line_num)
+            .put("Name:").quote(token->text).put_end("already in use");
     }
 
     const auto& type_name = token->text;
@@ -1035,8 +1032,8 @@ void SymbolTable::resolve_usages()
         for(LValue* lvalue : scope.lvalues_type_unresolved) {
             std::optional<SymbolInfo> match = find(lvalue->type->name, NameType::Type);
             if(!match) {
-                raise_error("Type `" + lvalue->type->name
-                            + "` is used but has no definition");
+                Error().put("Type").quote(lvalue->type->name)
+                    .put_end("is used but has no definition");
             } else {
                 // Update to the newly-defined type (replacing the temp type)
                 lvalue->type = match->type;
@@ -1047,9 +1044,9 @@ void SymbolTable::resolve_usages()
         for(Function* funct : scope.unresolved_return_type_functs) {
             std::optional<SymbolInfo> match = find(funct->return_type->name, NameType::Type);
             if(!match) {
-                raise_error("Return type `" + funct->return_type->name
-                            + "` of function `" + funct->name
-                            + "` is used but has no definition");
+                Error().put("Return type").quote(funct->return_type->name)
+                    .put("of function").quote(funct->return_type->name)
+                    .put_end("is used but has no definition");
             } else {
                 // Update to the newly-defined type (replacing the temp type)
                 funct->return_type = match->type;
@@ -1061,8 +1058,8 @@ void SymbolTable::resolve_usages()
         for(FunctionCall* funct_call : scope.unresolved_funct_calls) {
             std::optional<SymbolInfo> match = find(funct_call->name, NameType::Funct);
             if(!match) {
-                raise_error("Function `" + funct_call->name
-                            + "` is used but has no definition");
+                Error().put("Function").quote(funct_call->name)
+                    .put_end("is used but has no definition");
             } else {
                 // Update call to point to the actual function
                 funct_call->function = match->function;

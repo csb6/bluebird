@@ -25,4 +25,5 @@ target_sources(bluebird PRIVATE
   objectgenerator.cpp
   optimizer.cpp
   multiprecision.cpp
+  error.cpp
 )
