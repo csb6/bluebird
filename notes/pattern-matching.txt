@@ -1,0 +1,86 @@
+Definitely want some form of pattern matching to simplify working with
+records, arrays, and polymorphic types.
+
+In keeping with type safety/the Ada case statement policy of checking for
+exhaustiveness, the match list should be exhaustive and not throw runtime
+errors on matches (the code after a match should be able to throw errors, but
+the process of finding a match should not). Overlapping matches might be useful
+to allow in some cases, with cases checked in the order they are declared
+(maybe have a separate kind of case statement?)
+
+Case statements should be a subset of pattern matching:
+
+let i: Integer = read();
+
+case i is
+  when 0 => ...
+  when 1 or 3 => ...
+  when 5 thru 90 or 93 thru 109 => ...
+  when else => ...
+end case;
+
+But we want to match on more complicated patterns, too:
+
+let i: Integer = read();
+
+// See https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html for ideas
+// (yes, Rust is overhyped in programming language discussions to the point of cliche,
+// but I think this is a good example of pattern matching in a strongly-typed,
+// somewhat imperative language)
+case i is
+  when _ upto 89 => ...
+  when 89 or 721 => ...
+  when else      => ...
+end case;
+
+// Records:
+
+type Point is record
+  x: Positive;
+  y: Positive;
+end;
+
+let p: Point = {3, 4};
+
+case p is
+  when _, 6 => ...
+  when 9, _ => ...
+  when 7, y => ...
+  when else => ...
+end case;
+
+// Arrays:
+
+type Flags is [0 thru 2] of Boolean;
+
+let f: Flags = { true, true, false };
+
+case f => a, b, c is
+  when true, true, true => ...
+  when false, true, false => ...
+  when false, _, _ => ...
+  when else => ...
+end case;
+
+// Polymorphic types:
+
+type Shape is record end;
+
+type Triangle is new Shape record
+   a, b, c: Point;
+end;
+
+type Square is new Shape record
+   a, b, c, d: Point;
+   // I kind of like this comma syntax, but could get tricky
+   // in function arguments (don't want to use semicolons like Ada)
+end;
+
+let t: Triangle = {{0,0}, {5,5}, {9, 0}}; // Definitely need nested init lists
+let s: Shape'Class = t; // Polymorphic types have to be marked as 'Class
+
+case s is
+  when n: Square => ...
+  when n: Triangle => ...
+  when else => ...
+end case;

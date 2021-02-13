@@ -1,49 +1,5 @@
 Todo:
 
-[X] Implement rest of codegen code for working with mutable variables (see Kaleidoscope example)
-[X] Review the multiprecision int code and consider switching to mini-gmp
-[X] Fix bug where bit_size of types is off by 1 bit
-[X] Consider simplifying how each type's bit_size is obtained
-[X] Add support for signed vs. unsigned within int types
-[X] Have codegen use LLVM's signed and unsigned operations on int types
-[X] Add support for automatically forward declaring functions in the same way it currently works for types
-[X] Run the generated IR through LLVM's verifier after codegen is complete
-[X] Figure out why IRBuilder isn't keeping some arithmetic expressions, and
-    creating weird constant folding outcomes in other cases
-[X] Create some helper functions for printing out lexer errors (with line num)
-[X] Consider rewriting lexer to be array-based and making better use
-    of constexpr (this isn't practical without C++20, and even there, causes more complexity)
-[X] Add support for if-statements
-[X] Add typechecking/boolean checking in if-conditions
-[X] Add support for else-statements
-[X] Add support for else-if statements
-[X] Fix bug where in an initialization expression, the variable being initialized can appear
-[X] Fix bug where sometimes (~1 out of every 10 runs) the typechecker incorrectly checks
-    the range of a literal (run if-block.bird example to see the error)
-    - I have confirmed that this bug (with varying frequency) recurs at least as far back
-      as commit 23088af. It is probably very old (since it is appears so rarely)
-    - After further testing it seems like the issue is that sometimes the range's upper
-      range is not being set correctly (i.e. printing the range out gives: "(0, )"
-    - Issue was with complex situation of move semantics, with multiple temporaries
-      being constructed/moved in a bad design
-[X] Generate an object file from the LLVM IR
-[X] Generate an executable from LLVM IR, possibly integrating simple C library
-    functions (e.g. printf() or puts()) to have some output
-[X] Add typechecking for int literals and expressions (ensuring that int literals
-    are only used with expressions that evaluate to range types)
-[X] Add check so that int literals are always within the range of the type they
-    are being used with
-[X] Add above two items for assignments/initialization statements
-[X] Change build system to CMake to be more portable across Windows/Unix, set
-    platform-specific linker/compiler flags more easily
-[X] Add support for module-global variables
-[X] Add debug support for functions and local variables
-[X] Add debug support for expressions and global variables
-[X] Add support for defining array types and reading from them
-[X] Add initializer lists for arrays
-[ ] Add support for writing to arrays
-[ ] Figure out how strings should work
-[ ] Add standard interface for adding builtin functions/types
 [X] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
     depend specifically on RangeTypes
 [X] Add while-loops
@@ -52,6 +8,13 @@ Todo:
     and no trailing newline segfault
 [X] Add return statement and return types, enabling non-void functions
 [X] Add checks to ensure all paths out of a function have a return statement ending them
+[X] Consider reading characters on-demand from an iostream in the lexer instead
+    of reading everything into a big string at the start (this doesn't seem worth it;
+    it is pretty simple to have a file loaded into memory, allowing bidirectional iteration,
+    a big convenience that the iostream iterators can't do)
+[ ] Add support for writing to arrays
+[ ] Figure out how strings should work
+[ ] Add standard interface for adding builtin functions/types
 [ ] Add support for user-defined record types
 [ ] Add support for creating ranges and using them within larger expressions/variables
 [ ] Add simple for-loops that iterate over a range
@@ -61,11 +24,9 @@ Todo:
     "`a op1 b op2 c ... y opN z` is equivalent to `a op1 b and b op2 c and ... y opN z`,
     except that each expression is evaluated at most once." (from Python docs)
 [ ] Consider adding a viceversa keyword to be used with binary expressions
+[ ] Think about using LLVM's builtin optimization pipelines (with some customization)
+    as enabled in llvm::PassBuilder
 [ ] Work on the various TODOs throughout the codebase
-[X] Consider reading characters on-demand from an iostream in the lexer instead
-    of reading everything into a big string at the start (this doesn't seem worth it;
-    it is pretty simple to have a file loaded into memory, allowing bidirectional iteration,
-    a big convenience that the iostream iterators can't do)
 [ ] Use property-based testing to test lexer (Update: I've run libfuzzer over the lexer some.
     Still could do more)
 [ ] Consider rewriting frontend/part of frontend in Ada (this is unlikely
