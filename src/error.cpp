@@ -15,6 +15,16 @@
 #endif
 
 #ifdef FUZZER_MODE
+    Error& Error::put(size_t) { return *this; }
+#else
+    Error& Error::put(size_t n)
+    {
+        std::cerr << n;
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
     Error& Error::put(const char*, unsigned int) { return *this; }
 #else
     Error& Error::put(const char* message, unsigned int indent)
@@ -48,6 +58,36 @@
 #endif
 
 #ifdef FUZZER_MODE
+    Error& Error::put(const Type*) { return *this; }
+#else
+    Error& Error::put(const Type* type)
+    {
+        type->print(std::cerr);
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
+    Error& Error::put(const Function*) { return *this; }
+#else
+    Error& Error::put(const Function* funct)
+    {
+        funct->print(std::cerr);
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
+    Error& Error::put(const LValue*) { return *this; }
+#else
+    Error& Error::put(const LValue* lval)
+    {
+        lval->print(std::cerr);
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
     Error& Error::quote(const std::string&) { return *this; }
 #else
     Error& Error::quote(const std::string& text)
@@ -73,6 +113,16 @@
     Error& Error::quote(Token token)
     {
         std::cerr << " `" << token << "` ";
+        return *this;
+    }
+#endif
+
+#ifdef FUZZER_MODE
+    Error& Error::quote(TokenType) { return *this; }
+#else
+    Error& Error::quote(TokenType kind)
+    {
+        std::cerr << " `" << kind << "` ";
         return *this;
     }
 #endif

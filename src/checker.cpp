@@ -16,7 +16,7 @@
 */
 #include "checker.h"
 #include "ast.h"
-#include <iostream>
+#include "error.h"
 
 Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
                  std::vector<Magnum::Pointer<Type>>& types,
@@ -24,48 +24,25 @@ Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
     : m_functions(functions), m_types(types), m_global_vars(global_vars)
 {}
 
-static void print_error(const Expression* expr, const char* message)
-{
-    std::cerr << "ERROR: In expression starting at line " << expr->line_num()
-              << ":\n" << message;
-}
-
 template<typename Other>
-static void print_type_mismatch(const Expression* expr,
-                                const Other* other, const Type* other_type,
-                                const char* other_label = "",
-                                const char* expr_label = "Expression",
-                                const TokenType* op = nullptr)
+[[noreturn]] static
+void print_type_mismatch(const Expression* expr,
+                         const Other* other, const Type* other_type,
+                         const char* other_label = "Used with",
+                         const char* expr_label = "Expression")
 {
-    print_error(expr, " Types don't match:\n  ");
-
-    // Left
-    std::cerr << expr_label << ": ";
-    expr->print(std::cerr);
-    std::cerr << '\t';
-    expr->type()->print(std::cerr);
-    // Op
-    if(op != nullptr) {
-        std::cerr << "  Operator: " << *op << "\n";
-    }
-    // Right
-    std::cerr << "  ";
-    if(other_label[0] != '\0') {
-        std::cerr << other_label << ": ";
-    }
-    other->print(std::cerr);
-    std::cerr << '\t';
-    other_type->print(std::cerr);
+    Error(expr->line_num()).put("Types don't match:\n")
+        .put(expr_label, 2).put(": ").put(expr).put("\t").put(expr->type()).newline()
+        .put(other_label, 2).put(": ").put(other).put("\t").put(other_type).raise();
 }
 
-static void nonbool_condition_error(const Expression* condition,
-                                    const char* statement_name)
+[[noreturn]] static
+void nonbool_condition_error(const Expression* condition,
+                             const char* statement_name)
 {
-    print_error(condition, " Exprected boolean condition for this ");
-    std::cerr << statement_name << ", but instead found:\n  Expression: ";
-    condition->print(std::cerr);
-    std::cerr << '\t';
-    condition->type()->print(std::cerr);
+    Error(condition->line_num()).put("Expected boolean condition for\n  ")
+        .quote(statement_name).put("statement, but instead found:\n")
+        .put("Expression: ", 2).put(condition).put("\t").put(condition->type()).raise();
 }
 
 // No need to typecheck for literal/lvalue expressions since they aren't composite,
@@ -82,14 +59,11 @@ static void check_literal_types(Expression* literal, const Other* other,
         case ExpressionKind::IntLiteral: {
             auto* int_literal = static_cast<IntLiteral*>(literal);
             if(!range.contains(int_literal->value)) {
-                print_error(int_literal, " Integer Literal `");
-                int_literal->print(std::cerr);
-                std::cerr << "` is not in the range of:\n  ";
-                range_type->print(std::cerr);
-                std::cerr << " so it cannot be used with:\n  ";
-                other->print(std::cerr);
-                std::cerr << "\n";
-                exit(1);
+                Error(int_literal->line_num())
+                    .put("Integer Literal ").put(int_literal)
+                    .put(" is not in the range of:\n  ")
+                    .put(range_type).newline()
+                    .put(" so it cannot be used with:\n  ").put(other).raise();
             }
             // Literals (if used with a compatible range type) take on the type of what
             // they are used with
@@ -101,23 +75,18 @@ static void check_literal_types(Expression* literal, const Other* other,
             if(other_type != &RangeType::Character) {
                 // TODO: allow user-defined character types to be used with character
                 // literals
-                print_error(char_literal, " Character Literal ");
-                char_literal->print(std::cerr);
-                std::cerr << " cannot be used with the non-character type:\n  ";
-                other_type->print(std::cerr);
-                std::cerr << "\n";
-                exit(1);
+                Error(char_literal->line_num())
+                    .put("Character Literal ").put(char_literal)
+                    .put(" cannot be used with the non-character type:\n  ")
+                    .put(other_type).raise();
             }
             char_literal->actual_type = other_type;
             break;
         }
         default:
-            print_error(literal, " Expected a literal type, but instead found expression: ");
-            literal->print(std::cerr);
-            std::cerr << "\n Which has type:\n  ";
-            literal->type()->print(std::cerr);
-            std::cerr << "\n";
-            exit(1);
+            Error(literal->line_num())
+                .put("Expected a literal type, but instead found expression:\n  ")
+                .put(literal).put("\t").put(literal->type()).raise();
         }
     } else if(other_type->kind() == TypeKind::Boolean) {
         // TODO: add support for user-created boolean types, which should be usable
@@ -126,17 +95,12 @@ static void check_literal_types(Expression* literal, const Other* other,
             auto* bool_literal = static_cast<BoolLiteral*>(literal);
             bool_literal->actual_type = other_type;
         } else {
-            print_error(literal, " Expected a boolean literal, but instead found"
-                        " expression: ");
-            literal->print(std::cerr);
-            std::cerr << "\n Which has type:\n  ";
-            literal->type()->print(std::cerr);
-            std::cerr << "\n";
-            exit(1);
+            Error(literal->line_num())
+                .put("Expected a boolean literal, but instead found expression:\n  ")
+                .put(literal).put("\t").put(literal->type()).raise();
         }
     } else {
         print_type_mismatch(literal, other, other_type, "Used with", "Literal");
-        exit(1);
     }
 }
 
@@ -151,28 +115,25 @@ void UnaryExpression::check_types()
         break;
     case TypeKind::Boolean:
         if(!is_bool_op(op)) {
-            print_error(right.get(), "The non-boolean operator `");
-            std::cerr << op << "` cannot be used with expression:\n ";
-            right->print(std::cerr);
-            std::cerr << "\nbecause the expression is a boolean type\n";
-            exit(1);
+            Error(right->line_num()).put("The non-boolean operator")
+                .quote(op).put("cannot be used with expression:\n ")
+                .put(right.get()).put("\t").put(right->type()).newline()
+                .raise("because the expression is a boolean type");
         }
         break;
     case TypeKind::Range:
         if(is_bool_op(op)) {
-            print_error(right.get(), "The boolean operator `");
-            std::cerr << op << "` cannot be used with expression:\n ";
-            right->print(std::cerr);
-            std::cerr << "\nbecause the expression is a range type, not a boolean type\n";
-            exit(1);
+            Error(right->line_num()).put("The boolean operator").quote(op)
+                .put("cannot be used with expression:\n  ")
+                .put(right.get()).newline()
+                .put("because the expression type is a range type, not a boolean type")
+                .raise();
         }
         break;
     default:
-        print_error(right.get(), "The unary operator `");
-        std::cerr << op << "` cannot be used with expression:\n ";
-        right->print(std::cerr);
-        std::cerr << "\n";
-        exit(1);
+        Error(right->line_num()).put("The unary operator").quote(op)
+            .put("cannot be used with expression:\n  ")
+            .put(right.get()).put("\t").put(right->type()).raise();
     }
 }
 
@@ -191,8 +152,7 @@ void BinaryExpression::check_types()
         } else if(left_type->kind() == TypeKind::Literal) {
             check_literal_types(left.get(), right.get(), right_type);
         } else {
-            print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left", &op);
-            exit(1);
+            print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
         }
     }
 }
@@ -200,10 +160,9 @@ void BinaryExpression::check_types()
 void FunctionCall::check_types()
 {
     if(arguments.size() != function->parameters.size()) {
-        print_error(this, " Function `");
-        std::cerr << name << "` expects " << function->parameters.size()
-                  << " arguments, but " << arguments.size() << " were provided\n";
-        exit(1);
+        Error(line_num()).put("Function").quote(name).put("expects ")
+            .put(function->parameters.size()).put(" arguments, but ")
+            .put(arguments.size()).raise(" were provided");
     }
     const size_t arg_count = arguments.size();
     for(size_t i = 0; i < arg_count; ++i) {
@@ -218,7 +177,6 @@ void FunctionCall::check_types()
             } else {
                 print_type_mismatch(arg, param, param->type, "Expected function parameter",
                                     "Actual function argument");
-                exit(1);
             }
         }
     }
@@ -227,21 +185,15 @@ void FunctionCall::check_types()
 void IndexOp::check_types()
 {
     if(base_expr->kind() != ExpressionKind::LValue) {
-        print_error(this, " Cannot index into the expression:\n  ");
-        base_expr->print(std::cerr);
-        std::cerr << "\n of ";
-        base_expr->type()->print(std::cerr);
-        exit(1);
+        Error(line_num()).put(" Cannot index into the expression:\n  ")
+            .put(base_expr.get()).put("\t").put(base_expr->type()).raise();
     }
     base_expr->check_types();
     auto* base_type = base_expr->type();
     if(base_type->kind() != TypeKind::Array) {
-        print_error(this, " Object ");
-        base_expr->print(std::cerr);
-        std::cerr << " of ";
-        base_type->print(std::cerr);
-        std::cerr << " is not an array type and so cannot be indexed using `[ ]`\n";
-        exit(1);
+        Error(line_num()).put(" Object\n ")
+            .put(base_expr.get()).put("\t").put(base_type).newline()
+            .raise(" is not an array type and so cannot be indexed using `[ ]`");
     }
     auto* arr_type = static_cast<const ArrayType*>(base_type);
     index_expr->check_types();
@@ -253,7 +205,6 @@ void IndexOp::check_types()
             print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
                                 "Expected array index",
                                 "Actual");
-            exit(1);
         }
     }
 }
@@ -261,23 +212,21 @@ void IndexOp::check_types()
 void InitList::check_types()
 {
     if(lvalue == nullptr) {
-        print_error(this, "Initializer list used in incorrect context."
-                    " Initializer lists can only be used to initialize/assign"
-                    " a variable or constant of array/record types, not as part"
-                    " of a larger expression\n");
-        exit(1);
+        Error(line_num())
+            .raise("Initializer list used in incorrect context."
+                   " Initializer lists can only be used to initialize/assign"
+                   " a variable or constant of array/record types, not as part"
+                   " of a larger expression");
     }
 
     if(lvalue->type->kind() == TypeKind::Array) {
         auto* arr_type = static_cast<ArrayType*>(lvalue->type);
         // TODO: zero-initialize all other indices
         if(values.size() > arr_type->index_type->range.size()) {
-            print_error(this, " Array ");
-            lvalue->type->print(std::cerr);
-            std::cerr << " expects at most " << arr_type->index_type->range.size()
-                      << " values, but this initializer list provides "
-                      << values.size() << " value(s)\n";
-            exit(1);
+            Error(line_num()).put(" Array ").put(lvalue->type)
+                .put(" expects at most ").put(arr_type->index_type->range.size())
+                .put(" values, bit this initializer list provides ")
+                .put(values.size()).raise(" value(s)");
         }
 
         for(auto& value : values) {
@@ -290,16 +239,15 @@ void InitList::check_types()
                     print_type_mismatch(value.get(), lvalue, arr_type->element_type,
                                         "Expected initializer list item",
                                         "Actual item");
-                    exit(1);
                 }
             }
         }
     } else {
         // TODO: add support for record type initializer lists
         // Non-aggregate types cannot have initializer lists
-        print_error(this, "Initializer lists can only be used to initialize/assign"
-                    "a variable or constant of array/record types");
-        exit(1);
+        Error(line_num())
+            .raise("Initializer lists can only be used to initialize/assign"
+                   " a variable or constant of array/record types");
     }
 }
 
@@ -319,7 +267,6 @@ bool Initialization::check_types(Checker&)
             check_literal_types(expression.get(), lvalue.get(), lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
-            exit(1);
         }
     }
     return false;
@@ -333,7 +280,6 @@ bool Assignment::check_types(Checker&)
             check_literal_types(expression.get(), lvalue, lvalue->type);
         } else {
             print_type_mismatch(expression.get(), lvalue, lvalue->type);
-            exit(1);
         }
     }
     return false;
@@ -351,7 +297,6 @@ bool IfBlock::check_types(Checker& checker)
     condition->check_types();
     if(!is_bool_condition(condition.get())) {
         nonbool_condition_error(condition.get(), "if-statement");
-        exit(1);
     }
     bool always_returns = Block::check_types(checker);
     if(else_or_else_if != nullptr) {
@@ -370,10 +315,8 @@ bool Block::check_types(Checker& checker)
         always_returns |= stmt->check_types(checker);
 
         if(always_returns && stmt.get() != statements.back().get()) {
-            std::cerr << "ERROR: Statements after:\n  ";
-            stmt->print(std::cerr);
-            std::cerr << " are unreachable because the statement always returns\n";
-            exit(1);
+            Error(line_num()).put(" Statements after:\n  ").put(stmt.get())
+                .raise("\n are unreachable because the statement always returns");
         }
     }
     return always_returns;
@@ -384,7 +327,6 @@ bool WhileLoop::check_types(Checker& checker)
     condition->check_types();
     if(!is_bool_condition(condition.get())) {
         nonbool_condition_error(condition.get(), "while-loop");
-        exit(1);
     }
     Block::check_types(checker);
     return false;
@@ -400,17 +342,16 @@ bool ReturnStatement::check_types(Checker& checker)
         if(return_type->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), curr_funct, curr_funct->return_type);
         } else {
-            print_error(expression.get(), " Wrong return type: ");
-            return_type->print(std::cerr);
             if(curr_funct->return_type == &Type::Void) {
-                std::cerr << " Did not expect void function `" << curr_funct->name
-                          << "` to return something\n";
+                Error(expression->line_num())
+                    .put("Did not expect void function").quote(curr_funct->name)
+                    .raise("to return something");
             } else {
-                std::cerr << " Expected return type for this function: ";
-                curr_funct->return_type->print(std::cerr);
-                std::cerr << "\n";
+                Error(expression->line_num())
+                    .put("Expected function").quote(curr_funct->name)
+                    .put("to return:\n  ").put(curr_funct->return_type).newline()
+                    .put("not:\n  ").put(return_type).raise();
             }
-            exit(1);
         }
     }
     return true;
@@ -426,10 +367,9 @@ void Checker::run()
             case ExpressionKind::IntLiteral:
                 break;
             default:
-                print_error(var->expression.get(),
-                            " Global variables/constants can only be initialized"
-                            " to integer or character literals\n");
-                exit(1);
+                Error(var->expression->line_num())
+                    .raise(" Global variables/constants can only be initialized"
+                           " to integer or character literals");
             }
         }
     }
@@ -439,9 +379,8 @@ void Checker::run()
             m_curr_funct = static_cast<BBFunction*>(function.get());
             bool always_returns = m_curr_funct->body.check_types(*this);
             if(!always_returns && m_curr_funct->return_type != &Type::Void) {
-                std::cerr << "ERROR: function `" << m_curr_funct->name
-                          << "` does not return in all cases\n";
-                exit(1);
+                Error().put("Function").quote(m_curr_funct->name)
+                    .raise("does not return in all cases");
             }
         }
     }

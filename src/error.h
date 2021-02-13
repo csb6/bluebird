@@ -25,9 +25,14 @@ public:
     Error& quote(const std::string& text);
     Error& quote(char);
     Error& quote(Token);
+    Error& quote(TokenType);
+    Error& put(size_t);
     Error& put(const char* message, unsigned int indent = 0);
     Error& put(const struct Expression*);
     Error& put(const struct Statement*);
+    Error& put(const struct Type*);
+    Error& put(const struct Function*);
+    Error& put(const struct LValue*);
     Error& newline();
     // Exits or throws exception; newline printed after message
     [[noreturn]] void raise(const char* message = "", unsigned int indent = 0);
