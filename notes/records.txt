@@ -1,0 +1,84 @@
+// Want normal Ada-like record types:
+
+type Point is
+  a: Integer;
+  b: Integer;
+end;
+
+// Maybe allow this syntax?
+
+type Point is
+  a, b: Integer;
+end;
+
+// Inheritance
+
+type Triangle is new Shape record
+  ...
+end;
+
+// Invariants are boolean expressions that (when enabled) are automatically
+// evaluated right before calling and right after returning from a function
+// that takes the type (doesn't have to be, but usualyl would be, a record
+// type) as a parameter; if false, they throw an exception
+
+type Point is record
+  a, b: Integer;
+with
+  Invariant => a > b;
+end;
+
+function draw(p: Point) is
+  // Will be checked at runtime here
+  ...
+  // and here
+end;
+
+// Guards are boolean expressions that (when enabled) are automatically
+// evaluated right before a primitive operation (i.e a function with the
+// type as the first parameter that is defined in the same module as the
+// function); if true, the function continues; if false, the function is
+// not called. This would probably have to require a default value for
+// functions that return a value, or maybe require that no primitive
+// operations return anything
+
+type Point is record
+  a, b: Integer;
+  debug_mode: Boolean = true;
+with
+  Guard => debug_mode;
+end;
+
+function draw(p: Point) is
+  // If p.debug_mode is true, this is a no-op
+  ...
+end;
+
+function erase(p: Point): Point
+  with Guard_Return => {0, 0} is // Not sure about this syntax
+  ...
+end;
+
+// Unions
+
+type Numeral(is_float: Boolean = false) is record
+  case is_float is
+    when true => f: Float;
+    when else => i: Integer;
+  end;
+end;
+
+n: Numeral(is_float => true) = {6.0};
+n.f = ...;
+n2: Numeral(is_float => false) = {89};
+n2.i = ...;
+
+// Generic type parameters
+type Pair(FirstT: Type, SecondT: Type) is
+  first: FirstT;
+  second: SecondT;
+end;
+
+p: Pair(Integer, String) = {89, "hello"};
+p.first = ...;
+p.second = ...;
