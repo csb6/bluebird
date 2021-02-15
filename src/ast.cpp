@@ -262,10 +262,23 @@ void WhileLoop::print(std::ostream& output) const
     Block::print(output);
 }
 
+unsigned int ReturnStatement::line_num() const
+{
+    if(expression.get() != nullptr) {
+        return expression->line_num();
+    } else {
+        return line;
+    }
+}
+
 void ReturnStatement::print(std::ostream& output) const
 {
     output << "Return: ";
-    expression->print(output);
+    if(expression.get() != nullptr) {
+        expression->print(output);
+    } else {
+        output << "Empty statement";
+    }
 }
 
 void LValue::print(std::ostream& output) const

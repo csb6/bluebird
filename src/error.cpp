@@ -9,7 +9,7 @@
     {
         std::cerr << "ERROR: ";
         if(line_num > 0) {
-            std::cerr << line_num << ": ";
+            std::cerr << "Line " << line_num << ": ";
         }
     }
 #endif

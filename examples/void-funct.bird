@@ -1,0 +1,6 @@
+function main() is
+   if false do
+      return;
+   end;
+   return;
+end;

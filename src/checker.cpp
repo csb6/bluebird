@@ -334,10 +334,17 @@ bool WhileLoop::check_types(Checker& checker)
 
 bool ReturnStatement::check_types(Checker& checker)
 {
+    const BBFunction* curr_funct = checker.m_curr_funct;
+    if(expression.get() == nullptr) {
+        if(curr_funct->return_type != &Type::Void) {
+            Error(line_num()).put("Function").quote(curr_funct->name)
+                .raise("returns a value, so an empty return statement isn't allowed");
+        }
+        return true;
+    }
     expression->check_types();
 
     const Type* return_type = expression->type();
-    const BBFunction* curr_funct = checker.m_curr_funct;
     if(curr_funct->return_type != return_type) {
         if(return_type->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), curr_funct, curr_funct->return_type);

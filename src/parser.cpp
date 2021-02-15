@@ -676,11 +676,14 @@ Magnum::Pointer<WhileLoop> Parser::in_while_loop()
 Magnum::Pointer<ReturnStatement> Parser::in_return_statement()
 {
     check_token_is(TokenType::Keyword_Return, "`return` keyword", *token);
-
+    auto return_stmt = Magnum::pointer<ReturnStatement>(token->line_num);
     ++token;
-    auto return_stmt = Magnum::pointer<ReturnStatement>(parse_expression());
-    check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
+
+    if(token->type != TokenType::End_Statement) {
+        return_stmt = Magnum::pointer<ReturnStatement>(parse_expression());
+        check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)",
                    *token);
+    }
     ++token;
     return return_stmt;
 }

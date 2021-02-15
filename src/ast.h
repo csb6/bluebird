@@ -461,12 +461,15 @@ struct WhileLoop final : public Block {
 
 struct ReturnStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
+    unsigned int line;
 
+    explicit ReturnStatement(unsigned int line_n)
+        : expression(nullptr), line(line_n) {}
     explicit ReturnStatement(Magnum::Pointer<Expression>&& expr)
         : expression(std::forward<Magnum::Pointer<Expression>>(expr)) {}
 
     StatementKind kind() const override { return StatementKind::Return; }
-    unsigned int  line_num() const override { return expression->line_num(); }
+    unsigned int  line_num() const override;
     void          print(std::ostream&) const override;
     bool          check_types(Checker&) override;
 };

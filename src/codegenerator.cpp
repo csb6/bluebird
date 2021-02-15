@@ -507,7 +507,11 @@ void CodeGenerator::in_assignment(Assignment* assgn)
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)
 {
     m_dbg_gen.setLocation(stmt->line_num(), m_ir_builder);
-    m_ir_builder.CreateRet(stmt->expression->codegen(*this));
+    if(stmt->expression.get() != nullptr) {
+        m_ir_builder.CreateRet(stmt->expression->codegen(*this));
+    } else {
+        m_ir_builder.CreateRetVoid();
+    }
 }
 
 void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
@@ -699,7 +703,8 @@ void CodeGenerator::define_functions()
         for(auto& statement : function->body.statements) {
             in_statement(curr_funct, statement.get());
         }
-        if(fcn->return_type == &Type::Void) {
+        if(fcn->return_type == &Type::Void
+           && m_ir_builder.GetInsertBlock()->getTerminator() == nullptr) {
             // All blocks must end in a ret instruction of some kind
             m_ir_builder.CreateRetVoid();
         }
