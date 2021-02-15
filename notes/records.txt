@@ -68,6 +68,16 @@ type Numeral(is_float: Boolean = false) is record
   end;
 end;
 
+// Or maybe
+
+type Numeral(kind: Type) is record
+  case kind is
+    when Float => f;
+    when Integer => i;
+    // No need for else case here; compile error if another type is passed
+  end;
+end;
+
 n: Numeral(is_float => true) = {6.0};
 n.f = ...;
 n2: Numeral(is_float => false) = {89};
