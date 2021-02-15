@@ -83,13 +83,8 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
             to_dbg_type(arr_type->element_type), array);
     }
     default:
-        if(ast_type == &Type::Void) {
-            return nullptr;
-        } else {
-            // TODO: add proper error handling
-            assert(false);
-            exit(1);
-        }
+        assert(ast_type == &Type::Void);
+        return nullptr;
     }
 
     return m_dbg_builder.createBasicType(ast_type->name, bit_size, encoding);

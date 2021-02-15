@@ -80,7 +80,7 @@ constexpr bool is_binary_operator(const Precedence p)
 
 [[noreturn]] static void raise_error_expected(const char* expected, Token actual)
 {
-    Error(actual.line_num).put("Expected").put(expected)
+    Error(actual.line_num).put("Expected ").put(expected)
         .put(", but instead found token:\n").quote(actual).raise();
 }
 

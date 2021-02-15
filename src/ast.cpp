@@ -19,12 +19,12 @@
 
 void Type::print(std::ostream& output) const
 {
-    output << "Type: " << name << "\n";
+    output << "Type: " << name;
 }
 
 void RangeType::print(std::ostream& output) const
 {
-    output << "Type: " << name << " Range: " << range << "\n";
+    output << "Type: " << name << " Range: " << range;
 }
 
 void ArrayType::print(std::ostream& output) const
@@ -72,7 +72,7 @@ unsigned long int Range::size() const
 
 std::ostream& operator<<(std::ostream& output, const Range& range)
 {
-    output << '(' << range.lower_bound << ", " << range.upper_bound << ')';
+    output << "(" << range.lower_bound << ", " << range.upper_bound << ")";
     return output;
 }
 
@@ -88,16 +88,16 @@ void LValueExpression::print(std::ostream& output) const
 
 void StringLiteral::print(std::ostream& output) const
 {
-    output << '"';
+    output << "\"";
     print_unescape(value, output);
-    output << '"';
+    output << "\"";
 }
 
 void CharLiteral::print(std::ostream& output) const
 {
-    output << '\'';
+    output << "'";
     print_unescape(value, output);
-    output << '\'';
+    output << "'";
 }
 
 void IntLiteral::print(std::ostream& output) const
@@ -118,9 +118,9 @@ void FloatLiteral::print(std::ostream& output) const
 
 void UnaryExpression::print(std::ostream& output) const
 {
-    output << '(' << op << ' ';
+    output << "(" << op << " ";
     right->print(output);
-    output << ')';
+    output << ")";
 }
 
 const Type* BinaryExpression::type() const
@@ -143,23 +143,23 @@ const Type* BinaryExpression::type() const
 
 void BinaryExpression::print(std::ostream& output) const
 {
-    output << '(';
+    output << "(";
     left->print(output);
-    output << ' ' << op << ' ';
+    output << " " << op << " ";
     right->print(output);
-    output << ')';
+    output << ")";
 }
 
 const Type* FunctionCall::type() const { return function->return_type; }
 
 void FunctionCall::print(std::ostream& output) const
 {
-    output << name << '(';
+    output << name << "(";
     for(const auto& argument : arguments) {
         argument->print(output);
         output << ", ";
     }
-    output << ')';
+    output << ")";
 }
 
 const Type* IndexOp::type() const
@@ -204,11 +204,10 @@ void InitList::print(std::ostream& output) const
 void BasicStatement::print(std::ostream& output) const
 {
     if(expression) {
-        output << "Statement:\n";
+        output << "Statement: ";
         expression->print(output);
-        output << "\n";
     } else {
-        output << "Empty Statement\n";
+        output << "Empty Statement";
     }
 }
 
@@ -218,11 +217,9 @@ void Initialization::print(std::ostream& output) const
     lvalue->print(output);
     output << " = ";
     if(expression) {
-        output << "Expression: ";
         expression->print(output);
-        output << "\n";
     } else {
-        output << "Empty Statement\n";
+        output << "Empty Statement";
     }
 }
 
@@ -232,17 +229,15 @@ void Assignment::print(std::ostream& output) const
     lvalue->print(output);
     output << " = ";
     expression->print(output);
-    output << "\n";
 }
 
 void Block::print(std::ostream& output) const
 {
-    output << "Block:\n";
-    output << "Block Statements:\n";
+    output << "Block:";
     for(const auto& each : statements) {
+        output << "\n";
         each->print(output);
     }
-    output << "\n";
 }
 
 void IfBlock::print(std::ostream& output) const
@@ -253,7 +248,7 @@ void IfBlock::print(std::ostream& output) const
     output << "\n";
     Block::print(output);
     if(else_or_else_if != nullptr) {
-        output << "Else ";
+        output << "\nElse ";
         else_or_else_if->print(output);
     }
 }
@@ -271,7 +266,6 @@ void ReturnStatement::print(std::ostream& output) const
 {
     output << "Return: ";
     expression->print(output);
-    output << "\n";
 }
 
 void LValue::print(std::ostream& output) const
@@ -281,7 +275,6 @@ void LValue::print(std::ostream& output) const
     } else {
         output << "Constant: ";
     }
-
     output << name;
 }
 
@@ -291,10 +284,8 @@ void BBFunction::print(std::ostream& output) const
     if(return_type != nullptr) {
         output << "\tReturn ";
         return_type->print(output);
-    } else {
-        output << "\n";
     }
-    output << "Parameters:\n";
+    output << "\nParameters:\n";
     for(const auto& param : parameters) {
         param->print(output);
         output << "\n";
@@ -305,7 +296,7 @@ void BBFunction::print(std::ostream& output) const
 
 void BuiltinFunction::print(std::ostream& output) const
 {
-    output << "Built-In Function: " << name << "\n";
+    output << "Built-In Function: " << name;
 }
 
 const Type Type::Void{"VoidType"};

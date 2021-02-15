@@ -21,28 +21,28 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 {
     switch(type) {
     case TokenType::Keyword_Funct:
-        output << "Keyword `function`";
+        output << "Keyword `function` ";
         break;
     case TokenType::Name:
         output << "Name";
         break;
     case TokenType::Keyword_Is:
-        output << "Keyword `is`";
+        output << "Keyword `is` ";
         break;
     case TokenType::Keyword_Do:
-        output << "Keyword `do`";
+        output << "Keyword `do` ";
         break;
     case TokenType::Keyword_Let:
-        output << "Keyword `let`";
+        output << "Keyword `let` ";
         break;
     case TokenType::Keyword_Const:
-        output << "Keyword `constant`";
+        output << "Keyword `constant` ";
         break;
     case TokenType::Keyword_Type:
-        output << "Keyword `type`";
+        output << "Keyword `type` ";
         break;
     case TokenType::Keyword_Of:
-        output << "Keyword `of`";
+        output << "Keyword `of` ";
         break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses";
@@ -51,31 +51,31 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "Closed Parentheses";
         break;
     case TokenType::Keyword_End:
-        output << "Keyword `end`";
+        output << "Keyword `end` ";
         break;
     case TokenType::Keyword_If:
-        output << "Keyword `if`";
+        output << "Keyword `if` ";
         break;
     case TokenType::Keyword_Else:
-        output << "Keyword `else`";
+        output << "Keyword `else` ";
         break;
     case TokenType::Keyword_While:
-        output << "Keyword `while`";
+        output << "Keyword `while` ";
         break;
     case TokenType::Keyword_Range:
-        output << "Keyword `range`";
+        output << "Keyword `range` ";
         break;
     case TokenType::Keyword_Return:
-        output << "Keyword `return`";
+        output << "Keyword `return` ";
         break;
     case TokenType::Keyword_True:
-        output << "Keyword `true`";
+        output << "Keyword `true` ";
         break;
     case TokenType::Keyword_False:
-        output << "Keyword `false`";
+        output << "Keyword `false` ";
         break;
     case TokenType::End_Statement:
-        output << "End Statement Marker (a.k.a `;`)";
+        output << "End Statement Marker (a.k.a `;`) ";
         break;
     case TokenType::String_Literal:
         output << "String Literal";
@@ -168,16 +168,16 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "Assignment operator";
         break;
     case TokenType::Type_Indicator:
-        output << "Type Indicator";
+        output << "Type indicator";
         break;
     case TokenType::Char_Literal:
-        output << "Character Literal";
+        output << "Character literal";
         break;
     case TokenType::Int_Literal:
-        output << "Integer Literal";
+        output << "Integer literal";
         break;
     case TokenType::Float_Literal:
-        output << "Float Literal";
+        output << "Float literal";
         break;
     }
 
@@ -186,12 +186,11 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
 
 std::ostream& operator<<(std::ostream& output, const Token& token)
 {
-    output << token.type << "\n";
+    output << token.type;
 
     if(!token.text.empty()) {
-        output << "  Text: ";
+        output << "\n  Text: ";
         print_unescape(token.text, output);
-        output << "\n";
     }
     return output;
 }
