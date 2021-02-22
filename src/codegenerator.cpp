@@ -250,12 +250,7 @@ llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
 llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 {
     llvm::Value* src_lvalue = gen.m_lvalues[lvalue];
-    if(src_lvalue == nullptr) {
-        std::cerr << "Codegen error: Could not find lvalue referenced by:\n ";
-        print(std::cerr);
-        std::cerr << "\n";
-        exit(1);
-    }
+    assert(src_lvalue != nullptr);
     return gen.m_ir_builder.CreateLoad(src_lvalue, name);
 }
 
@@ -358,11 +353,8 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 {
     llvm::Function* funct_to_call = gen.m_module.getFunction(name);
-    if(funct_to_call == nullptr) {
-        std::cerr << "Codegen error: Could not find function `"
-                  << name << "`\n";
-        exit(1);
-    }
+    assert(funct_to_call != nullptr);
+
     llvm::SmallVector<llvm::Value*, 6> args;
     for(auto& arg : arguments) {
         args.push_back(arg->codegen(gen));
@@ -411,11 +403,7 @@ llvm::Value* IndexOp::codegen(CodeGenerator& gen)
 llvm::Value* InitList::codegen(CodeGenerator& gen)
 {
     const auto match = gen.m_lvalues.find(lvalue);
-    if(match == gen.m_lvalues.end()) {
-        std::cerr << "Codegen error: Could not find lvalue `"
-                  << lvalue->name << "` in lvalue table\n";
-        exit(1);
-    }
+    assert(match != gen.m_lvalues.end());
     llvm::Value* alloc = match->second;
     gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
 
@@ -508,15 +496,12 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
 void CodeGenerator::in_assignment(Assignment* assgn)
 {
     LValue* lvalue = assgn->lvalue;
-    if(auto match = m_lvalues.find(lvalue); match != m_lvalues.end()) {
-        m_dbg_gen.setLocation(assgn->line_num(), m_ir_builder);
-        llvm::Value* alloc = match->second;
-        store_expr_result(assgn->expression.get(), alloc);
-    } else {
-        std::cerr << "Codegen error: Could not find lvalue `"
-                  << assgn->lvalue->name << "` in lvalue table\n";
-        exit(1);
-    }
+    auto match = m_lvalues.find(lvalue);
+    assert(match != m_lvalues.end());
+
+    m_dbg_gen.setLocation(assgn->line_num(), m_ir_builder);
+    llvm::Value* alloc = match->second;
+    store_expr_result(assgn->expression.get(), alloc);
 }
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)
@@ -740,10 +725,7 @@ void CodeGenerator::run()
     }
 
     m_module.print(llvm::errs(), nullptr);
-    if(llvm::verifyModule(m_module, &llvm::errs())) {
-        std::cerr << "ERROR: failed to properly generate code for this module\n";
-        exit(1);
-    }
+    assert(!llvm::verifyModule(m_module, &llvm::errs()));
 
     std::filesystem::path object_file{m_module.getSourceFileName()};
     object_file.replace_extension(".o");
