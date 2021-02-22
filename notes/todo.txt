@@ -12,6 +12,8 @@ Todo:
     of reading everything into a big string at the start (this doesn't seem worth it;
     it is pretty simple to have a file loaded into memory, allowing bidirectional iteration,
     a big convenience that the iostream iterators can't do)
+[X] In codegen, generate offsets so that indexes starting at non-zero values
+    still access starting at element 0 of the underlying array pointer
 [ ] Add support for writing to arrays
 [ ] Figure out how strings should work
 [ ] Add standard interface for adding builtin functions/types
