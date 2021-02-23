@@ -14,7 +14,21 @@ Todo:
     a big convenience that the iostream iterators can't do)
 [X] In codegen, generate offsets so that indexes starting at non-zero values
     still access starting at element 0 of the underlying array pointer
-[ ] Add support for writing to arrays
+[ ] Replace use of mini-GMP and its wrapper class multi_int with llvm::APInt. This will remove
+    a dependency and simplify interoperating with LLVM. If I ever decide to create a non-LLVM
+    backend, I can fairly easily extract the APInt class from LLVM, or simply conditionally compile
+    and use a different bigint library. Trying to follow the YAGNI rule.
+[ ] Add support for rvalues, which are objects in the program that do not have names, but can still
+    be read from/modified (e.g. a return value, an anonymous object, an array index). Think about how
+    these semantics would mesh with the reference system I am considering, and with pointers.
+[ ] Add a ref type, which is like a pointer except it cannot be returned or stored in a record. It
+    has to refer to an object on the stack. Useful as a safer pointer in common usages.
+[ ] Add a pointer type. Initially, don't put major restrictions on their usage, just get something
+    working
+[ ] Add support for writing to arrays (should tie in with rvalue support)
+[ ] Consider switching to using visitor pattern for traversing AST for greater flexibility/modularity,
+    as opposed to writing virtual member functions for this kind of work. Wish C++ had the ability to
+    dispatch on non-member functions easily
 [ ] Figure out how strings should work
 [ ] Add standard interface for adding builtin functions/types
 [ ] Add support for user-defined record types
