@@ -30,7 +30,7 @@
 #pragma GCC diagnostic pop
 
 #include "ast.h"
-#include <iostream>
+#include "error.h"
 #include <string>
 
 DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
@@ -173,7 +173,7 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         // Note that literal types should never reach here (see the literal
         // codegen() functions)
         assert(false);
-        exit(1);
+        return nullptr;
     }
 }
 
@@ -207,14 +207,12 @@ CodeGenerator::CodeGenerator(const char* source_filename,
     std::string error;
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
     if(!error.empty()) {
-        std::cerr << "Codegen error: " << error << "\n";
-        exit(1);
+        Error().put("Codegen error:").quote(error).raise();
     }
     const llvm::TargetOptions options;
 
     m_target_machine = target->createTargetMachine(
-        target_triple,
-        "generic", "",
+        target_triple, "generic", "",
         options, llvm::Reloc::PIC_, {}, {});
 
     m_module.setDataLayout(m_target_machine->createDataLayout());
@@ -229,7 +227,7 @@ llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
 llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 {
     // Create a signed `char` type
-    return gen.to_llvm_int(static_cast<uint64_t>(value), 8, true);
+    return gen.to_llvm_int(value, 8, true);
 }
 
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
@@ -239,7 +237,7 @@ llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 
 llvm::Value* BoolLiteral::codegen(CodeGenerator& gen)
 {
-    return gen.to_llvm_int(static_cast<uint64_t>(value), type()->bit_size());
+    return gen.to_llvm_int(value, type()->bit_size());
 }
 
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
@@ -266,7 +264,7 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateNot(operand, "bitnottmp");
     default:
         assert(false && "Unknown unary operator");
-        exit(1);
+        return nullptr;
     }
 }
 
@@ -346,7 +344,7 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
         return gen.m_ir_builder.CreateXor(left_ir, right_ir, "bitxortmp");
     default:
         assert(false && "Unknown binary operator");
-        exit(1);
+        return nullptr;
     }
 }
 
@@ -360,7 +358,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
         args.push_back(arg->codegen(gen));
     }
     llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
-    // void function calls can't have a name (they don't return anything)
+    // Can't name result of void function calls (they don't return anything)
     if(type() != &Type::Void)
         call_instr->setName("call" + name);
     return call_instr;
@@ -407,7 +405,7 @@ llvm::Value* InitList::codegen(CodeGenerator& gen)
     llvm::Value* alloc = match->second;
     gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
 
-    llvm::Value* indexes[] = { gen.to_llvm_int(0, 32), nullptr };
+    llvm::Value* indexes[2] = { gen.to_llvm_int(0, 32) };
     llvm::Type* array_type = gen.to_llvm_type(lvalue->type);
     for(uint64_t i = 0; i < values.size(); ++i) {
         // index 0: 0 bytes past the array ptr; index i: index into array
@@ -441,8 +439,7 @@ void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = expr->codegen(*this);
     if(input_instr != nullptr) {
-        // For nullptr case, see InitList::codegen (which makes this store
-        // instruction redundant in that case)
+        // See InitList::codegen (which makes this store instruction redundant)
         m_ir_builder.CreateStore(input_instr, alloc);
     }
 }
@@ -552,9 +549,10 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
     m_ir_builder.restoreIP(cond_br_point);
     m_ir_builder.CreateCondBr(condition, if_true, if_false);
     if(is_if_block && successor->hasNPredecessors(0)) {
-        // Handle all branches always return (meaning successor-block is never reached).
-        // We have to check that we are currently processing an if-block since the
-        // call to generate an if-block also handles creating the successor block
+        // Handle case in which all branches always return (meaning successor-block
+        // is never reached). We have to check that we are currently processing
+        // an if-block since the call to generate an if-block also handles creating
+        // the successor block
         successor->eraseFromParent();
     } else {
         m_ir_builder.SetInsertPoint(successor);
@@ -607,7 +605,7 @@ void CodeGenerator::declare_globals()
         if(global->expression == nullptr) {
             init_val = llvm::Constant::getNullValue(type);
         } else {
-            init_val = static_cast<llvm::Constant*>(global->expression->codegen(*this));
+            init_val = llvm::cast<llvm::Constant>(global->expression->codegen(*this));
         }
         auto* global_ptr =
             new llvm::GlobalVariable(m_module, type, !lvalue->is_mutable,
@@ -638,11 +636,15 @@ void CodeGenerator::declare_function_headers()
     llvm::SmallVector<llvm::Type*, 6> parameter_types;
     llvm::SmallVector<llvm::StringRef, 6> parameter_names;
     for(const auto& ast_function : m_functions) {
-        // TODO: maybe add debug info. for builtin functions?
+        auto linkage_type = llvm::Function::InternalLinkage;
         if(ast_function->kind() == FunctionKind::Builtin) {
+            // TODO: maybe add debug info. for builtin functions?
             auto* builtin = static_cast<const BuiltinFunction*>(ast_function.get());
             if(!builtin->is_used)
                 continue;
+            linkage_type = llvm::Function::ExternalLinkage;
+        } else if(ast_function->name == "main") {
+            linkage_type = llvm::Function::ExternalLinkage;
         }
 
         for(const auto& ast_param : ast_function->parameters) {
@@ -655,9 +657,7 @@ void CodeGenerator::declare_function_headers()
             return_type = to_llvm_type(ast_function->return_type);
         }
         auto* funct_type = llvm::FunctionType::get(return_type, parameter_types, false);
-        // TODO: add more fine-grained support for Linkage
-        auto* curr_funct = llvm::Function::Create(funct_type,
-                                                  llvm::Function::ExternalLinkage,
+        auto* curr_funct = llvm::Function::Create(funct_type, linkage_type,
                                                   ast_function->name,
                                                   m_module);
         assert(curr_funct->getParent() != nullptr);
@@ -693,7 +693,7 @@ void CodeGenerator::define_functions()
         // TODO: For constant arguments, avoid the unnecessary alloca and have way
         //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
         //  instead using it directly, since it will already be in a register
-        for(auto& arg : curr_funct->args()) {
+        for(llvm::Argument& arg : curr_funct->args()) {
             llvm::AllocaInst* alloc = prepend_alloca(curr_funct, arg.getType(),
                                                      arg.getName());
             m_lvalues[ast_arg_it->get()] = alloc;

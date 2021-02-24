@@ -14,10 +14,11 @@ Todo:
     a big convenience that the iostream iterators can't do)
 [X] In codegen, generate offsets so that indexes starting at non-zero values
     still access starting at element 0 of the underlying array pointer
-[ ] Replace use of mini-GMP and its wrapper class multi_int with llvm::APInt. This will remove
+[X] Replace use of mini-GMP and its wrapper class multi_int with llvm::APInt. This will remove
     a dependency and simplify interoperating with LLVM. If I ever decide to create a non-LLVM
-    backend, I can fairly easily extract the APInt class from LLVM, or simply conditionally compile
-    and use a different bigint library. Trying to follow the YAGNI rule.
+    backend, I can fairly easily extract the APInt class from LLVM, or simply conditionally
+    compile and use a different bigint library. Trying to follow the YAGNI rule. (Changed
+    my mind on this since APInt doesn't easily handle adding two differently-sized bigints)
 [ ] Add support for rvalues, which are objects in the program that do not have names, but can still
     be read from/modified (e.g. a return value, an anonymous object, an array index). Think about how
     these semantics would mesh with the reference system I am considering, and with pointers.
