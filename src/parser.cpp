@@ -647,8 +647,8 @@ Magnum::Pointer<WhileLoop> Parser::in_while_loop()
     m_names_table.open_scope();
     // First, parse the condition
     auto new_while_loop = Magnum::pointer<WhileLoop>(parse_expression());
-    check_token_is(TokenType::Keyword_Do,
-                   "keyword `do` following `while` condition", *token);
+    check_token_is(TokenType::Keyword_Loop,
+                   "keyword `loop` following `while` condition", *token);
 
     // Parse the statements inside the loop body
     ++token;

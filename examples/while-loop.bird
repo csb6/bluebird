@@ -1,10 +1,10 @@
 function main() is
    let a: Integer = 9;
    let b: Integer = 0;
-   while b < a do
+   while b < a loop
        b = b + 1;
        let d: Integer = -80;
-       while d <= b do
+       while d <= b loop
            d = d + 90;
        end while;
    end while;

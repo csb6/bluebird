@@ -1,7 +1,7 @@
 function foo(): Natural is
     let a: Natural = 78;
     let i: Natural = 0;
-    while i < 90 do
+    while i < 90 loop
         if a < 80 do
             return a - 8;
         end if;

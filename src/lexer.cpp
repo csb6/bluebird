@@ -57,7 +57,8 @@ Lexer::Lexer(std::string::const_iterator input_begin,
          {"upto", TokenType::Op_Upto},
          {"true", TokenType::Keyword_True},
          {"false", TokenType::Keyword_False},
-         {"of", TokenType::Keyword_Of}
+         {"of", TokenType::Keyword_Of},
+         {"loop", TokenType::Keyword_Loop}
       }
 {}
 

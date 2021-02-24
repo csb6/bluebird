@@ -1,7 +1,7 @@
 function main() is
 
     let i: Integer = 0;
-    while i < 5 do
+    while i < 5 loop
         putchar('h');
         putchar('e');
         putchar('l');
