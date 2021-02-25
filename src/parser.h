@@ -61,9 +61,8 @@ struct Scope {
     std::unordered_map<std::string, SymbolInfo> symbols{};
     // These 'unresolved' lists are maintained for each scope until the end of
     // this module's parsing process, at which point their definitions are resolved
-    std::vector<LValue*> lvalues_type_unresolved{};
-    std::vector<Function*> unresolved_return_type_functs{};
     std::vector<FunctionCall*> unresolved_funct_calls{};
+    std::vector<Type**> unresolved_types{};
 };
 
 /* Holds a tree of scopes which can be queried and added to */

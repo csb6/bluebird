@@ -21,7 +21,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <string_view>
 
 const std::string load_source_file(const char *filename)
 {
@@ -41,7 +40,7 @@ int main(int argc, char **argv)
         std::cerr << "Usage: ./compiler [-g | --debug] source_file\n";
         return 1;
     }
-    
+
     CodeGenerator::Mode build_mode = CodeGenerator::Mode::Default;
     int arg_index = 1;
     while(argv[arg_index][0] == '-') {

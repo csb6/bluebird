@@ -1001,7 +1001,7 @@ void SymbolTable::add_function(Function* function)
 
 void SymbolTable::add_unresolved(LValue* lvalue)
 {
-    m_scopes[m_curr_scope].lvalues_type_unresolved.push_back(lvalue);
+    m_scopes[m_curr_scope].unresolved_types.push_back(&lvalue->type);
 }
 
 void SymbolTable::add_unresolved(FunctionCall* funct)
@@ -1011,7 +1011,7 @@ void SymbolTable::add_unresolved(FunctionCall* funct)
 
 void SymbolTable::add_unresolved_return_type(Function* funct)
 {
-    m_scopes[m_curr_scope].unresolved_return_type_functs.push_back(funct);
+    m_scopes[m_curr_scope].unresolved_types.push_back(&funct->return_type);
 }
 
 void SymbolTable::resolve_usages()
@@ -1020,35 +1020,23 @@ void SymbolTable::resolve_usages()
     // If they don't, try to find one/fix-up the symbol table
 
     // TODO: Have mechanism where types/functions in other modules are resolved
-    const int old_curr_scope = m_curr_scope;
+    const int prev_scope = m_curr_scope;
     for(size_t scope_index = 0; scope_index < m_scopes.size(); ++scope_index) {
         m_curr_scope = scope_index;
         Scope& scope = m_scopes[scope_index];
-        // Try and resolve the types of lvalues whose types were not declared beforehand
-        for(LValue* lvalue : scope.lvalues_type_unresolved) {
-            std::optional<SymbolInfo> match = find(lvalue->type->name, NameType::Type);
+        // Try and resolve the references to types that were missing a definition
+        // when first used
+        for(Type** type_ptr : scope.unresolved_types) {
+            std::optional<SymbolInfo> match = find((*type_ptr)->name, NameType::Type);
             if(!match) {
-                Error().put("Type").quote(lvalue->type->name)
+                Error().put("Type").quote((*type_ptr)->name)
                     .raise("is used but has no definition");
             } else {
                 // Update to the newly-defined type (replacing the temp type)
-                lvalue->type = match->type;
+                *type_ptr = match->type;
             }
         }
-        scope.lvalues_type_unresolved.clear();
-
-        for(Function* funct : scope.unresolved_return_type_functs) {
-            std::optional<SymbolInfo> match = find(funct->return_type->name, NameType::Type);
-            if(!match) {
-                Error().put("Return type").quote(funct->return_type->name)
-                    .put("of function").quote(funct->return_type->name)
-                    .raise("is used but has no definition");
-            } else {
-                // Update to the newly-defined type (replacing the temp type)
-                funct->return_type = match->type;
-            }
-        }
-        scope.unresolved_return_type_functs.clear();
+        scope.unresolved_types.clear();
 
         // Try and resolve function calls to functions declared later
         for(FunctionCall* funct_call : scope.unresolved_funct_calls) {
@@ -1064,5 +1052,5 @@ void SymbolTable::resolve_usages()
         scope.unresolved_funct_calls.clear();
     }
     // Restore original
-    m_curr_scope = old_curr_scope;
+    m_curr_scope = prev_scope;
 }

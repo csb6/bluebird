@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& output, const Range&);
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static const Type Void, String, Float;
+    static Type Void, String, Float;
     std::string name;
 
     Type() = default;
@@ -477,7 +477,7 @@ struct ReturnStatement final : public Statement {
 // A callable procedure that optionally takes inputs
 struct Function {
     std::string name;
-    const Type* return_type = &Type::Void;
+    Type* return_type = &Type::Void;
     std::vector<Magnum::Pointer<LValue>> parameters;
 
     explicit Function(const std::string& n) : name(n) {}

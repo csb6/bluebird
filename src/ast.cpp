@@ -312,9 +312,9 @@ void BuiltinFunction::print(std::ostream& output) const
     output << "Built-In Function: " << name;
 }
 
-const Type Type::Void{"VoidType"};
-const Type Type::String{"StringLiteral"};
-const Type Type::Float{"FloatLiteral"};
+Type Type::Void{"VoidType"};
+Type Type::String{"StringLiteral"};
+Type Type::Float{"FloatLiteral"};
 
 EnumType EnumType::Boolean{"Boolean"};
 
