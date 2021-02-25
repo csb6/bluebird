@@ -159,9 +159,9 @@ void BinaryExpression::check_types()
 
 void FunctionCall::check_types()
 {
-    if(arguments.size() != function->parameters.size()) {
+    if(arguments.size() != definition->parameters.size()) {
         Error(line_num()).put("Function").quote(name).put("expects ")
-            .put(function->parameters.size()).put(" arguments, but ")
+            .put(definition->parameters.size()).put(" arguments, but ")
             .put(arguments.size()).raise(" were provided");
     }
     const size_t arg_count = arguments.size();
@@ -170,7 +170,7 @@ void FunctionCall::check_types()
         // Ensure each argument expression is internally typed correctly
         arg->check_types();
         // Make sure each arg type matches corresponding parameter type
-        const LValue* param = function->parameters[i].get();
+        const LValue* param = definition->parameters[i].get();
         if(arg->type() != param->type) {
             if(arg->type()->kind() == TypeKind::Literal) {
                 check_literal_types(arg, param, param->type);

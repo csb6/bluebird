@@ -297,11 +297,11 @@ struct BinaryExpression final : public Expression {
 struct FunctionCall final : public Expression {
     std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
-    struct Function* function;
     unsigned int line;
+    struct Function* definition;
 
-    FunctionCall(unsigned int line_n, const std::string& name)
-        : name(name), line(line_n) {}
+    FunctionCall(unsigned int line_n, const std::string& name, Function* def)
+        : name(name), line(line_n), definition(def) {}
 
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override;
