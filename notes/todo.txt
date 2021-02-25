@@ -19,6 +19,9 @@ Todo:
     backend, I can fairly easily extract the APInt class from LLVM, or simply conditionally
     compile and use a different bigint library. Trying to follow the YAGNI rule. (Changed
     my mind on this since APInt doesn't easily handle adding two differently-sized bigints)
+[ ] Fix bug where lldb does not properly stop on breakpoints and does not map source locations
+    correctly
+[ ] Fix weird exit codes of compiled executables (probably from main not returning 0)
 [ ] Add support for rvalues, which are objects in the program that do not have names, but can still
     be read from/modified (e.g. a return value, an anonymous object, an array index). Think about how
     these semantics would mesh with the reference system I am considering, and with pointers.

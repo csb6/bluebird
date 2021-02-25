@@ -611,6 +611,9 @@ void CodeGenerator::declare_globals()
             new llvm::GlobalVariable(m_module, type, !lvalue->is_mutable,
                                      llvm::GlobalValue::LinkageTypes::InternalLinkage,
                                      init_val, lvalue->name);
+        // Globals with same initializer will be merged
+        // TODO: when pointers/exported symbols added, maybe change this?
+        global_ptr->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
         m_lvalues[lvalue] = global_ptr;
     }
 }
@@ -661,7 +664,10 @@ void CodeGenerator::declare_function_headers()
                                                   ast_function->name,
                                                   m_module);
         assert(curr_funct->getParent() != nullptr);
+        // Disable generation of exception unwind tables (for now)
         curr_funct->addFnAttr(llvm::Attribute::NoUnwind);
+        // Identical functions will be merged
+        curr_funct->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
 
         auto param_name_it = parameter_names.begin();
         for(llvm::Argument& param : curr_funct->args()) {
