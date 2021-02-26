@@ -3,7 +3,13 @@ type IndexType is range 1 thru 7;
 type PosArray is [IndexType] of Positive;
 type PosArrayRef is ref PosArray;
 
+/*function foo(): PosArrayRef is
+  let arr_ref: PosArrayRef;
+  return arr_ref;
+end;*/
+
 function main() is
   let arr: PosArray = { 2, 3, 5 };
-  let arr_ref: PosArrayRef = arr;
+  let arr_ref: PosArrayRef;
+  let arr_ref2: PosArrayRef;
 end;

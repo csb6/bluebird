@@ -168,6 +168,10 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
+    case TypeKind::Ref: {
+        auto* ref_type = static_cast<const RefType*>(ast_type);
+        return llvm::PointerType::get(to_llvm_type(ref_type->inner_type), 0);
+    }
     default:
         // TODO: add support for determining LLVM type for other AST types.
         // Note that literal types should never reach here (see the literal

@@ -104,6 +104,20 @@ static void check_literal_types(Expression* literal, const Other* other,
     }
 }
 
+static void check_legal_op(const Expression* expr, TokenType op, const Type* type)
+{
+    switch(type->kind()) {
+    case TypeKind::Range:
+    case TypeKind::Literal:
+    case TypeKind::Boolean:
+        break;
+    default:
+        Error(expr->line_num()).put("The operator").quote(op)
+            .put("cannot be used with expression:\n ")
+            .put(expr).put("\t").put(expr->type()).raise();
+    }
+}
+
 // TODO: check that unary operators are valid for their values
 void UnaryExpression::check_types()
 {
@@ -145,6 +159,10 @@ void BinaryExpression::check_types()
     right->check_types();
     const Type* left_type = left->type();
     const Type* right_type = right->type();
+
+    check_legal_op(left.get(), op, left_type);
+    check_legal_op(right.get(), op, right_type);
+
     // Check that the types of both sides of the operator match
     if(left_type != right_type) {
         if(right_type->kind() == TypeKind::Literal) {
@@ -385,6 +403,10 @@ void Checker::run()
         if(function->kind() == FunctionKind::Normal) {
             m_curr_funct = static_cast<BBFunction*>(function.get());
             bool always_returns = m_curr_funct->body.check_types(*this);
+            if(m_curr_funct->return_type->kind() == TypeKind::Ref) {
+                Error().put("Function").quote(m_curr_funct->name)
+                    .raise("returns a ref type, which is not allowed");
+            }
             if(!always_returns && m_curr_funct->return_type != &Type::Void) {
                 Error().put("Function").quote(m_curr_funct->name)
                     .raise("does not return in all cases");
