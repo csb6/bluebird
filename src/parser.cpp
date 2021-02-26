@@ -370,7 +370,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
     // Next, parse the arguments, each of which should be some sort of expression
     ++token;
     size_t arg_count = 0;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         switch(token->type) {
         case TokenType::Comma:
             // The comma after an argument expression; continue
@@ -427,7 +427,7 @@ Magnum::Pointer<Expression> Parser::in_init_list()
     check_token_is(TokenType::Open_Curly, "curly bracket", *token);
     auto new_init_list = Magnum::pointer<InitList>(token->line_num);
     ++token;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type == TokenType::Closed_Curly) {
             ++token;
             return new_init_list;
@@ -584,7 +584,7 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
 
     // Next, parse the statements inside the if-block
     ++token;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type == TokenType::Keyword_End) {
             // End of block
             m_names_table.close_scope();
@@ -624,7 +624,7 @@ Magnum::Pointer<Block> Parser::in_else_block()
     auto new_else_block = Magnum::pointer<Block>(token->line_num);
     ++token;
 
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type == TokenType::Keyword_End) {
             // End of block
             m_names_table.close_scope();
@@ -657,7 +657,7 @@ Magnum::Pointer<WhileLoop> Parser::in_while_loop()
 
     // Parse the statements inside the loop body
     ++token;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type == TokenType::Keyword_End) {
             // End of block
             m_names_table.close_scope();
@@ -741,7 +741,7 @@ void Parser::in_function_definition()
     m_names_table.open_scope();
     // Next, parse the parameters
     ++token;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
             LValue* param = new_funct->parameters.emplace_back(
@@ -776,7 +776,7 @@ void Parser::in_function_definition()
 
     // Finally, parse the body of the function
     ++token;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         if(token->type != TokenType::Keyword_End) {
             // Found a statement, parse it
             new_funct->body.statements.emplace_back(in_statement());
@@ -904,7 +904,7 @@ void Parser::in_type_definition()
 void Parser::run()
 {
     token = m_input_begin;
-    while(token != m_input_end) {
+    while(token < m_input_end) {
         switch(token->type) {
         case TokenType::Keyword_Funct:
             in_function_definition();
