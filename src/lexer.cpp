@@ -58,7 +58,8 @@ Lexer::Lexer(std::string::const_iterator input_begin,
          {"true", TokenType::Keyword_True},
          {"false", TokenType::Keyword_False},
          {"of", TokenType::Keyword_Of},
-         {"loop", TokenType::Keyword_Loop}
+         {"loop", TokenType::Keyword_Loop},
+         {"ref", TokenType::Keyword_Ref}
       }
 {}
 

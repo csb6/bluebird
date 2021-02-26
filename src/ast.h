@@ -43,7 +43,7 @@ enum class StatementKind : char {
 };
 
 enum class TypeKind : char {
-    Range, Normal, Literal, Boolean, Array
+    Range, Normal, Literal, Boolean, Array, Ref
 };
 
 enum class FunctionKind : char {
@@ -132,6 +132,19 @@ struct ArrayType final : public Type {
     // Gives element type's bit size, not the array itself
     unsigned short bit_size() const override { return element_type->bit_size(); }
     TypeKind       kind() const override { return TypeKind::Array; }
+    void           print(std::ostream&) const override;
+};
+
+// A special kind of pointer that can only point to valid objects on stack;
+// is never null and can't be returned/stored in records
+struct RefType final : public Type {
+    Type* inner_type;
+
+    using Type::Type;
+    RefType(const std::string& n, Type* t) : Type(n), inner_type(t) {}
+
+    unsigned short bit_size() const override { return sizeof(int*); }
+    TypeKind       kind() const override { return TypeKind::Ref; }
     void           print(std::ostream&) const override;
 };
 

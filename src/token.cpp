@@ -47,6 +47,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Loop:
         output << "Keyword `loop` ";
         break;
+    case TokenType::Keyword_Ref:
+        output << "Keyword `ref` ";
+        break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses";
         break;

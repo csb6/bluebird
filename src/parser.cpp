@@ -867,6 +867,19 @@ void Parser::in_array_type_definition(const std::string& type_name)
     m_names_table.add_type(new_type);
 }
 
+void Parser::in_ref_type_definition(const std::string& type_name)
+{
+    check_token_is(TokenType::Name, "typename", *token);
+    auto match = m_names_table.find(token->text);
+    if(!match || match.value().kind != NameType::Type) {
+        raise_error_expected("name of a type", *token);
+    }
+    ++token;
+
+    Type* new_type = create<RefType>(m_type_list, type_name, match.value().type);
+    m_names_table.add_type(new_type);
+}
+
 void Parser::in_type_definition()
 {
     check_token_is(TokenType::Keyword_Type, "keyword `type`", *token);
@@ -885,14 +898,21 @@ void Parser::in_type_definition()
 
     // TODO: add ability to distinguish between new distinct types and new subtypes
     ++token;
-    if(token->type == TokenType::Keyword_Range) {
+    switch(token->type) {
+    case TokenType::Keyword_Range:
         // Handle discrete types
         ++token; // Eat keyword `range`
         in_range_type_definition(type_name);
-    } else if(token->type == TokenType::Open_Bracket) {
+        break;
+    case TokenType::Open_Bracket:
         ++token;
         in_array_type_definition(type_name);
-    } else {
+        break;
+    case TokenType::Keyword_Ref:
+        ++token;
+        in_ref_type_definition(type_name);
+        break;
+    default:
         // TODO: handle record types, etc. here
         raise_error_expected("type definition", *token);
     }

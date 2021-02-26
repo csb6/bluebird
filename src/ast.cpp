@@ -35,6 +35,12 @@ void ArrayType::print(std::ostream& output) const
     element_type->print(output);
 }
 
+void RefType::print(std::ostream& output) const
+{
+    output << "Type: " << name << " Ref ";
+    inner_type->print(output);
+}
+
 Range::Range(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       is_signed(lower.is_negative())
