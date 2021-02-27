@@ -256,6 +256,13 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
     return gen.m_ir_builder.CreateLoad(src_lvalue, name);
 }
 
+llvm::Value* RefExpression::codegen(CodeGenerator& gen)
+{
+    llvm::Value* value = gen.m_lvalues[lvalue];
+    assert(value != nullptr);
+    return value;
+}
+
 llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 {
     llvm::Value* operand = right->codegen(gen);

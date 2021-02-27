@@ -92,6 +92,12 @@ void LValueExpression::print(std::ostream& output) const
     output << name;
 }
 
+void RefExpression::print(std::ostream& output) const
+{
+    output << "Ref to: ";
+    lvalue->print(output);
+}
+
 void StringLiteral::print(std::ostream& output) const
 {
     output << "\"";
@@ -331,3 +337,5 @@ const LiteralType LiteralType::Bool{"BoolLiteral"};
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
 RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};
 RangeType RangeType::Character{"Character", multi_int{"0"}, multi_int{"255"}};
+
+RefType RefType::UndefinedRefType{"UndefinedRefType", &Type::Void};

@@ -10,6 +10,7 @@ end;*/
 
 function main() is
   let arr: PosArray = { 2, 3, 5 };
-  let arr_ref: PosArrayRef;
+  let arr_ref: PosArrayRef = ref arr;
   let arr_ref2: PosArrayRef;
+  arr_ref2 = arr_ref;
 end;

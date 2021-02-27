@@ -112,6 +112,7 @@ private:
     friend struct BoolLiteral;
     friend struct FloatLiteral;
     friend struct LValueExpression;
+    friend struct RefExpression;
     friend struct UnaryExpression;
     friend struct BinaryExpression;
     friend struct FunctionCall;

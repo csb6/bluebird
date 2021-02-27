@@ -280,9 +280,19 @@ bool Initialization::check_types(Checker&)
     if(expression == nullptr)
         return false;
     expression->check_types();
-    if(expression->type() != lvalue->type) {
-        if(expression->type()->kind() == TypeKind::Literal) {
+    const auto* expr_type = expression->type();
+    if(expr_type != lvalue->type) {
+        if(expr_type->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), lvalue.get(), lvalue->type);
+        } else if(expr_type->kind() == TypeKind::Ref
+                  && lvalue->type->kind() == TypeKind::Ref) {
+            auto* ref_expr = static_cast<RefExpression*>(expression.get());
+            auto* lval_ref_type = static_cast<const RefType*>(lvalue->type);
+            if(ref_expr->lvalue->type != lval_ref_type->inner_type) {
+                print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
+            } else {
+                ref_expr->ref_type = lval_ref_type;
+            }
         } else {
             print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
         }
@@ -293,9 +303,19 @@ bool Initialization::check_types(Checker&)
 bool Assignment::check_types(Checker&)
 {
     expression->check_types();
-    if(expression->type() != lvalue->type) {
-        if(expression->type()->kind() == TypeKind::Literal) {
+    const auto* expr_type = expression->type();
+    if(expr_type != lvalue->type) {
+        if(expr_type->kind() == TypeKind::Literal) {
             check_literal_types(expression.get(), lvalue, lvalue->type);
+        } else if(expr_type->kind() == TypeKind::Ref
+                  && lvalue->type->kind() == TypeKind::Ref) {
+            auto* ref_expr = static_cast<RefExpression*>(expression.get());
+            auto* lval_ref_type = static_cast<const RefType*>(lvalue->type);
+            if(ref_expr->lvalue->type != lval_ref_type->inner_type) {
+                print_type_mismatch(expression.get(), lvalue, lvalue->type);
+            } else {
+                ref_expr->ref_type = lval_ref_type;
+            }
         } else {
             print_type_mismatch(expression.get(), lvalue, lvalue->type);
         }

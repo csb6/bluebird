@@ -84,10 +84,10 @@ void optimize(llvm::Module& module)
     module_manager.addPass(llvm::GlobalOptPass());
 
     llvm::PassBuilder pass_builder;
-    llvm::ModuleAnalysisManager module_analysis;
     llvm::LoopAnalysisManager loop_analysis;
     llvm::FunctionAnalysisManager funct_analysis;
     llvm::CGSCCAnalysisManager cg_analysis;
+    llvm::ModuleAnalysisManager module_analysis;
 
     pass_builder.registerFunctionAnalyses(funct_analysis);
     pass_builder.registerModuleAnalyses(module_analysis);
