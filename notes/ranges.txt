@@ -1,0 +1,129 @@
+Ranges need to be a core part of expressing iteration and reading streams of data.
+
+A collection of ranges should be provided by the standard library, as well as
+generic functions that work on any range.
+
+# What is a range?
+
+A range is an object that represents a sequence of values, allowing the traversal
+of the sequence and the reading/writing of values into it.
+
+Ranges can be created from one of the following:
+- Range types
+- Arrays
+- Records whose types have certain functions defined for them
+- Generators (note I may want to generalize generator-like things, so maybe only
+  a specific subset of coroutines will be considered as ranges)
+
+Ex:
+    # String is a record object; its type definition guarantees that it can be iterated
+    # over.
+    let s: String = "Hello, world";
+    for letter in s loop  # s is converted into a range here
+        IO.put(letter);
+    end for;
+
+Ex:
+    # Egg_Amt is a range type, so the legal values for this type can be iterated
+    # over.
+    type Egg_Amt is range 0 thru 12;
+    for value in Egg_Amt loop # Egg_Amt is converted into a range here
+        IO.put(value);
+    end for;
+
+Ex:
+    generator odd_numbers(): return Positive is
+        let val: Positive = 1;
+        loop
+            yield val;
+            val += 2;
+        end loop;
+    end odd_numbers;
+
+    # odd_numbers is a generator, and when it is returned and passed as an argument
+    # to `take(range, n)`, it is converted into a range. The `odd_numbers().take(100)`
+    # range is evaluated lazily, so the generator is only called when needed
+    for value in odd_numbers().take(100) loop
+        IO.put(value)
+    end;
+
+# What kinds of ranges are there?
+
+See [On Iteration](https://www.informit.com/articles/printerfriendly/1407357) by
+Andrei Alexandrescu for the basic concepts.
+
+There are a few types of ranges:
+- ConsumableRanges
+- ForwardRanges
+- TwoEndedRanges
+- RandomAccessRanges
+
+## ConsumableRanges
+
+These are ranges that can only be moved from the start of the range forwards
+to the end. There is no way to save a copy of the range's state at a particular
+point in time. It can be represented by this concept:
+
+    concept ConsumableRange(ItemT: Type) is
+        # Checks if there are any more items to
+        function is_empty(self: constant ref ConsumableRange): Boolean;
+
+        # Returns a pointer to the first item currently in the range
+        function front(self: ref ConsumableRange): ptr ItemT;
+
+        # Removes the first item from the range
+        function pop_front(self: ref ConsumableRange);
+    end;
+
+## ForwardRanges
+
+These are ranges that can only be moved from the start of the range forwards
+to the end, but instead of consuming the elements as they go, they are simply
+traversing something, meaning that copies of the various states that the range
+was in can be saved. Here is the concept:
+
+    concept ForwardRange(ItemT: Type) is
+        # Returns a copy of this range object, which is not modified when other
+        # range objects are modified. The underlying data may be modify, but not
+        # this range object's position in the data structure
+        function save(self: constant ref ForwardRange): ForwardRange;
+    requires
+        ConsumableRange(ItemT);
+    end;
+
+## TwoEndedRanges
+
+These are like ForwardRanges, but they can be traversed starting from the front
+or starting from the end.
+
+    concept TwoEndedRange(ItemT: Type) is
+        # Returns pointer to last element in range
+        function back(self: ref ForwardRange): ptr ItemT;
+
+        # Removes the last item from the range
+        function pop_back(self: ref ForwardRange);
+    requires
+        ForwardRange(ItemT);
+    end;
+
+## RandomAccessRanges
+
+These allow ranges to be sliced, preferably in constant time. They allow content
+in the middle of the range to be modified.
+
+    concept RandomAccessRange(ItemT: Type, IndexT: Number := Natural) is
+        function "[]"(self: ref RandomAccessRange, index: IndexT): ptr ItemT;
+        function slice(self: ref RandomAccessRange, start: IndexT, end: IndexT): RandomAccessRange;
+    requires
+        ForwardRange(ItemT);
+    end;
+
+# Unresolved Questions
+
+- How to go about invalidating ranges
+- How best to make it clear which requirements of these concepts aren't being met if
+  a user attempts to implement them incorrectly
+- Which functions should take constant refs and which should not
+- Whether to return some kind of reference or some kind of pointer
+- How to make it easy and intuitive to create/work with ranges
+- How to make sure that ranges are performant and able to be optimized by LLVM
