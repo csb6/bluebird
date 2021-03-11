@@ -424,12 +424,13 @@ struct BasicStatement final : public Statement {
 struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
     Magnum::Pointer<LValue> lvalue;
+    unsigned int line;
 
-    explicit Initialization(Magnum::Pointer<LValue>&& lval)
-        : lvalue(std::forward<Magnum::Pointer<LValue>>(lval)) {}
+    explicit Initialization(unsigned int l, Magnum::Pointer<LValue>&& lval)
+        : lvalue(std::forward<Magnum::Pointer<LValue>>(lval)), line(l) {}
 
     StatementKind kind() const override { return StatementKind::Initialization; }
-    unsigned int  line_num() const override { return expression->line_num(); }
+    unsigned int  line_num() const override { return line; }
     void          print(std::ostream& output) const override;
     bool          check_types(Checker&) override;
 };

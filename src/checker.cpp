@@ -301,8 +301,12 @@ static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
 
 bool Initialization::check_types(Checker&)
 {
-    if(expression == nullptr)
+    if(expression == nullptr) {
+        if(lvalue->type->kind() == TypeKind::Ref) {
+            Error(line_num()).raise("Reference variables must be given an initial value");
+        }
         return false;
+    }
     assign_typecheck(expression, lvalue.get());
     return false;
 }

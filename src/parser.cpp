@@ -489,8 +489,9 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
 Magnum::Pointer<Initialization> Parser::in_initialization()
 {
     check_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
+    unsigned int line = token->line_num;
     ++token;
-    auto new_statement = Magnum::pointer<Initialization>(in_lvalue_declaration());
+    auto new_statement = Magnum::pointer<Initialization>(line, in_lvalue_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
