@@ -175,6 +175,30 @@ void BinaryExpression::check_types()
     }
 }
 
+static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
+                             const LValue* assign_lval)
+{
+    assign_expr->check_types();
+    const auto* assign_expr_type = assign_expr->type();
+    if(assign_expr_type != assign_lval->type) {
+        if(assign_expr_type->kind() == TypeKind::Literal) {
+            check_literal_types(assign_expr.get(), assign_lval, assign_lval->type);
+        } else if(assign_lval->type->kind() == TypeKind::Ref
+                  && assign_expr->kind() == ExpressionKind::LValue) {
+            auto* ref_type = static_cast<const RefType*>(assign_lval->type);
+            if(ref_type->inner_type == assign_expr_type) {
+                auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
+                assign_expr = Magnum::pointer<RefExpression>(rhs->line,
+                                                             rhs->lvalue, ref_type);
+            } else {
+                print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+            }
+        } else {
+            print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+        }
+    }
+}
+
 void FunctionCall::check_types()
 {
     if(arguments.size() != definition->parameters.size()) {
@@ -184,19 +208,7 @@ void FunctionCall::check_types()
     }
     const size_t arg_count = arguments.size();
     for(size_t i = 0; i < arg_count; ++i) {
-        Expression* arg = arguments[i].get();
-        // Ensure each argument expression is internally typed correctly
-        arg->check_types();
-        // Make sure each arg type matches corresponding parameter type
-        const LValue* param = definition->parameters[i].get();
-        if(arg->type() != param->type) {
-            if(arg->type()->kind() == TypeKind::Literal) {
-                check_literal_types(arg, param, param->type);
-            } else {
-                print_type_mismatch(arg, param, param->type, "Expected function parameter",
-                                    "Actual function argument");
-            }
-        }
+        assign_typecheck(arguments[i], definition->parameters[i].get());
     }
 }
 
@@ -275,39 +287,15 @@ bool BasicStatement::check_types(Checker&)
     return false;
 }
 
-static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
-                             const LValue* assign_lval)
-{
-    assign_expr->check_types();
-    const auto* assign_expr_type = assign_expr->type();
-    if(assign_expr_type != assign_lval->type) {
-        if(assign_expr_type->kind() == TypeKind::Literal) {
-            check_literal_types(assign_expr.get(), assign_lval, assign_lval->type);
-        } else if(assign_lval->type->kind() == TypeKind::Ref
-                  && assign_expr->kind() == ExpressionKind::LValue) {
-            auto* ref_type = static_cast<const RefType*>(assign_lval->type);
-            if(ref_type->inner_type != assign_expr_type) {
-                print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
-            } else {
-                auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
-                assign_expr = Magnum::pointer<RefExpression>(rhs->line,
-                                                             rhs->lvalue, ref_type);
-            }
-        } else {
-            print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
-        }
-    }
-}
-
 bool Initialization::check_types(Checker&)
 {
     if(expression == nullptr) {
         if(lvalue->type->kind() == TypeKind::Ref) {
             Error(line_num()).raise("Reference variables must be given an initial value");
         }
-        return false;
+    } else {
+        assign_typecheck(expression, lvalue.get());
     }
-    assign_typecheck(expression, lvalue.get());
     return false;
 }
 

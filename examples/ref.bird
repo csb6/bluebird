@@ -4,10 +4,9 @@ type PosArray is [IndexType] of Positive;
 type PosArrayRef is ref PosArray;
 type IntRef is ref Integer;
 
-/*function foo(): PosArrayRef is
-  let arr_ref: PosArrayRef;
-  return arr_ref;
-end;*/
+function foo(arr_ref: PosArrayRef) is
+  let a: PosArrayRef = arr_ref;
+end;
 
 function main() is
   let arr: PosArray = { 2, 3, 5 };
@@ -16,4 +15,5 @@ function main() is
   arr_ref2 = arr_ref;
   let i: Integer = 67;
   let iref: IntRef = i;
+  foo(arr);
 end;
