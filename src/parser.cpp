@@ -287,8 +287,7 @@ Magnum::Pointer<Expression> Parser::in_lvalue_expression()
             .put("Expected name of variable/constant, but").quote(current->text)
             .raise("is already being used as a name");
     } else {
-        return Magnum::pointer<LValueExpression>(
-            current->line_num, current->text, match.value().lvalue);
+        return Magnum::pointer<LValueExpression>(current->line_num, match.value().lvalue);
     }
 }
 
@@ -332,8 +331,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
         auto* temp_definition = create<BBFunction>(m_temp_function_list, token->text);
-        new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
-                                                          token->text, temp_definition);
+        new_function_call = Magnum::pointer<FunctionCall>(token->line_num, temp_definition);
         m_names_table.add_unresolved(new_function_call.get());
     } else {
         const SymbolInfo& match_value = match.value();
@@ -341,13 +339,13 @@ Magnum::Pointer<Expression> Parser::in_function_call()
         case NameType::DeclaredFunct:
             // A temp declaration (one without definition) has been declared, but haven't
             // resolved its definition yet
-            new_function_call = Magnum::pointer<FunctionCall>(token->line_num, token->text,
+            new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
                                                               match_value.function);
             m_names_table.add_unresolved(new_function_call.get());
             break;
         case NameType::Funct:
             // Found a function with a full definition
-            new_function_call = Magnum::pointer<FunctionCall>(token->line_num, token->text,
+            new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
                                                               match_value.function);
             is_resolved = true;
             if(match_value.function->kind() == FunctionKind::Builtin) {
@@ -1064,9 +1062,9 @@ void SymbolTable::resolve_usages()
 
         // Try and resolve function calls to functions declared later
         for(FunctionCall* funct_call : scope.unresolved_funct_calls) {
-            std::optional<SymbolInfo> match = find(funct_call->name, NameType::Funct);
+            std::optional<SymbolInfo> match = find(funct_call->name(), NameType::Funct);
             if(!match) {
-                Error().put("Function").quote(funct_call->name)
+                Error().put("Function").quote(funct_call->name())
                     .raise("is used but has no definition");
             } else {
                 // Update call to point to the actual function

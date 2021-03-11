@@ -252,12 +252,10 @@ struct FloatLiteral final : public Expression {
 
 // An expression consisting solely of an lvalue
 struct LValueExpression final : public Expression {
-    std::string name;
     const struct LValue *lvalue;
     unsigned int line;
 
-    LValueExpression(unsigned int line_n, const std::string &n, const LValue *v)
-        : name(n), lvalue(v), line(line_n) {}
+    LValueExpression(unsigned int line_n, const LValue *v) : lvalue(v), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::LValue; }
     const Type*    type() const override;
@@ -326,13 +324,13 @@ struct BinaryExpression final : public Expression {
 
 // A usage of a function
 struct FunctionCall final : public Expression {
-    std::string name;
     std::vector<Magnum::Pointer<Expression>> arguments;
     unsigned int line;
     struct Function* definition;
 
-    FunctionCall(unsigned int line_n, const std::string& name, Function* def)
-        : name(name), line(line_n), definition(def) {}
+    FunctionCall(unsigned int line_n, Function* def) : line(line_n), definition(def) {}
+
+    const std::string& name() const;
 
     ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
     const Type*    type() const override;

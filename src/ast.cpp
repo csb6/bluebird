@@ -89,7 +89,7 @@ const Type* LValueExpression::type() const
 
 void LValueExpression::print(std::ostream& output) const
 {
-    output << name;
+    output << lvalue->name;
 }
 
 void RefExpression::print(std::ostream& output) const
@@ -162,11 +162,13 @@ void BinaryExpression::print(std::ostream& output) const
     output << ")";
 }
 
+const std::string& FunctionCall::name() const { return definition->name; }
+
 const Type* FunctionCall::type() const { return definition->return_type; }
 
 void FunctionCall::print(std::ostream& output) const
 {
-    output << name << "(";
+    output << name() << "(";
     for(const auto& argument : arguments) {
         argument->print(output);
         output << ", ";

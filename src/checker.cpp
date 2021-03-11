@@ -178,7 +178,7 @@ void BinaryExpression::check_types()
 void FunctionCall::check_types()
 {
     if(arguments.size() != definition->parameters.size()) {
-        Error(line_num()).put("Function").quote(name).put("expects ")
+        Error(line_num()).put("Function").quote(name()).put("expects ")
             .put(definition->parameters.size()).put(" arguments, but ")
             .put(arguments.size()).raise(" were provided");
     }

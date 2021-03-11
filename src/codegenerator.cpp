@@ -253,7 +253,7 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 {
     llvm::Value* src_lvalue = gen.m_lvalues[lvalue];
     assert(src_lvalue != nullptr);
-    return gen.m_ir_builder.CreateLoad(src_lvalue, name);
+    return gen.m_ir_builder.CreateLoad(src_lvalue, lvalue->name);
 }
 
 llvm::Value* RefExpression::codegen(CodeGenerator& gen)
@@ -361,7 +361,7 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
 
 llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 {
-    llvm::Function* funct_to_call = gen.m_module.getFunction(name);
+    llvm::Function* funct_to_call = gen.m_module.getFunction(name());
     assert(funct_to_call != nullptr);
 
     llvm::SmallVector<llvm::Value*, 6> args;
@@ -371,7 +371,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
     // Can't name result of void function calls (they don't return anything)
     if(type() != &Type::Void)
-        call_instr->setName("call" + name);
+        call_instr->setName("call" + name());
     return call_instr;
 }
 
