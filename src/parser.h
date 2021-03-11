@@ -117,7 +117,6 @@ private:
     // Parse each type of expression
     Magnum::Pointer<Expression> in_literal();
     Magnum::Pointer<Expression> in_lvalue_expression();
-    Magnum::Pointer<Expression> in_ref_expression();
     Magnum::Pointer<Expression> in_parentheses();
     Magnum::Pointer<Expression> in_expression();
     Magnum::Pointer<Expression> in_function_call();

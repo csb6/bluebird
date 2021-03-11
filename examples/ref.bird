@@ -2,6 +2,7 @@ type Positive is range 1 thru 1000;
 type IndexType is range 1 thru 7;
 type PosArray is [IndexType] of Positive;
 type PosArrayRef is ref PosArray;
+type IntRef is ref Integer;
 
 /*function foo(): PosArrayRef is
   let arr_ref: PosArrayRef;
@@ -10,7 +11,9 @@ end;*/
 
 function main() is
   let arr: PosArray = { 2, 3, 5 };
-  let arr_ref: PosArrayRef = ref arr;
+  let arr_ref: PosArrayRef = arr;
   let arr_ref2: PosArrayRef;
   arr_ref2 = arr_ref;
+  let i: Integer = 67;
+  let iref: IntRef = i;
 end;

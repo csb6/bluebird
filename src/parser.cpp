@@ -292,28 +292,6 @@ Magnum::Pointer<Expression> Parser::in_lvalue_expression()
     }
 }
 
-Magnum::Pointer<Expression> Parser::in_ref_expression()
-{
-    check_token_is(TokenType::Keyword_Ref, "`ref` operator", *token);
-    const unsigned int line = token->line_num;
-    ++token;
-
-    check_token_is(TokenType::Name, "variable/constant name", *token);
-    const std::string& name = token->text;
-    ++token;
-    const auto match = m_names_table.find(name);
-    if(!match) {
-        Error(token->line_num)
-            .put("Unknown variable/constant").quote(name).raise();
-    } else if(match.value().kind != NameType::LValue) {
-        Error(token->line_num)
-            .put("Expected name of variable/constant, but").quote(name)
-            .raise("is already being used as a name");
-    } else {
-        return Magnum::pointer<RefExpression>(line, match.value().lvalue);
-    }
-}
-
 Magnum::Pointer<Expression> Parser::in_expression()
 {
     switch(token->type) {
@@ -325,8 +303,6 @@ Magnum::Pointer<Expression> Parser::in_expression()
         } else {
             return in_lvalue_expression();
         }
-    case TokenType::Keyword_Ref:
-        return in_ref_expression();
     case TokenType::Open_Parentheses:
         return in_parentheses();
     case TokenType::Open_Curly:

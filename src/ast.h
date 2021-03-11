@@ -138,7 +138,6 @@ struct ArrayType final : public Type {
 // A special kind of pointer that can only point to valid objects on stack;
 // is never null and can't be returned/stored in records
 struct RefType final : public Type {
-    static RefType UndefinedRefType;
     Type* inner_type;
 
     using Type::Type;
@@ -272,10 +271,11 @@ struct LValueExpression final : public Expression {
 
 struct RefExpression final : public Expression {
     const LValue* lvalue;
-    const Type* ref_type = &RefType::UndefinedRefType;
+    const RefType* ref_type;
     unsigned int line;
 
-    RefExpression(unsigned int line_n, const LValue *v) : lvalue(v), line(line_n) {}
+    RefExpression(unsigned int line_n, const LValue *v,
+                  const RefType* rt) : lvalue(v), ref_type(rt), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Ref; }
     const Type*    type() const override { return ref_type; }

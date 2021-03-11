@@ -275,51 +275,41 @@ bool BasicStatement::check_types(Checker&)
     return false;
 }
 
+static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
+                             const LValue* assign_lval)
+{
+    assign_expr->check_types();
+    const auto* assign_expr_type = assign_expr->type();
+    if(assign_expr_type != assign_lval->type) {
+        if(assign_expr_type->kind() == TypeKind::Literal) {
+            check_literal_types(assign_expr.get(), assign_lval, assign_lval->type);
+        } else if(assign_lval->type->kind() == TypeKind::Ref
+                  && assign_expr->kind() == ExpressionKind::LValue) {
+            auto* ref_type = static_cast<const RefType*>(assign_lval->type);
+            if(ref_type->inner_type != assign_expr_type) {
+                print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+            } else {
+                auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
+                assign_expr = Magnum::pointer<RefExpression>(rhs->line,
+                                                             rhs->lvalue, ref_type);
+            }
+        } else {
+            print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+        }
+    }
+}
+
 bool Initialization::check_types(Checker&)
 {
     if(expression == nullptr)
         return false;
-    expression->check_types();
-    const auto* expr_type = expression->type();
-    if(expr_type != lvalue->type) {
-        if(expr_type->kind() == TypeKind::Literal) {
-            check_literal_types(expression.get(), lvalue.get(), lvalue->type);
-        } else if(expr_type->kind() == TypeKind::Ref
-                  && lvalue->type->kind() == TypeKind::Ref) {
-            auto* ref_expr = static_cast<RefExpression*>(expression.get());
-            auto* lval_ref_type = static_cast<const RefType*>(lvalue->type);
-            if(ref_expr->lvalue->type != lval_ref_type->inner_type) {
-                print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
-            } else {
-                ref_expr->ref_type = lval_ref_type;
-            }
-        } else {
-            print_type_mismatch(expression.get(), lvalue.get(), lvalue->type);
-        }
-    }
+    assign_typecheck(expression, lvalue.get());
     return false;
 }
 
 bool Assignment::check_types(Checker&)
 {
-    expression->check_types();
-    const auto* expr_type = expression->type();
-    if(expr_type != lvalue->type) {
-        if(expr_type->kind() == TypeKind::Literal) {
-            check_literal_types(expression.get(), lvalue, lvalue->type);
-        } else if(expr_type->kind() == TypeKind::Ref
-                  && lvalue->type->kind() == TypeKind::Ref) {
-            auto* ref_expr = static_cast<RefExpression*>(expression.get());
-            auto* lval_ref_type = static_cast<const RefType*>(lvalue->type);
-            if(ref_expr->lvalue->type != lval_ref_type->inner_type) {
-                print_type_mismatch(expression.get(), lvalue, lvalue->type);
-            } else {
-                ref_expr->ref_type = lval_ref_type;
-            }
-        } else {
-            print_type_mismatch(expression.get(), lvalue, lvalue->type);
-        }
-    }
+    assign_typecheck(expression, lvalue);
     return false;
 }
 
