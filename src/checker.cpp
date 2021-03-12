@@ -1,18 +1,18 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+   Copyright (C) 2020-2021  Cole Blakley
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as published
-    by the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU Affero General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "checker.h"
 #include "ast.h"
@@ -49,9 +49,11 @@ void nonbool_condition_error(const Expression* condition,
 // so each of their check_types() member functions are empty, defined in header
 
 template<typename Other>
-static void check_literal_types(Expression* literal, const Other* other,
-                                const Type* other_type)
+static bool matched_literal(Expression* literal, const Other* other,
+                            const Type* other_type)
 {
+    if(literal->type()->kind() != TypeKind::Literal)
+        return false;
     if(other_type->kind() == TypeKind::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const Range& range = range_type->range;
@@ -102,6 +104,7 @@ static void check_literal_types(Expression* literal, const Other* other,
     } else {
         print_type_mismatch(literal, other, other_type, "Used with", "Literal");
     }
+    return true;
 }
 
 static void check_legal_op(const Expression* expr, TokenType op, const Type* type)
@@ -162,17 +165,12 @@ void BinaryExpression::check_types()
 
     check_legal_op(left.get(), op, left_type);
     check_legal_op(right.get(), op, right_type);
+    if(left_type == right_type
+       || matched_literal(left.get(), right.get(), right_type)
+       || matched_literal(right.get(), left.get(), left_type))
+        return;
 
-    // Check that the types of both sides of the operator match
-    if(left_type != right_type) {
-        if(right_type->kind() == TypeKind::Literal) {
-            check_literal_types(right.get(), left.get(), left_type);
-        } else if(left_type->kind() == TypeKind::Literal) {
-            check_literal_types(left.get(), right.get(), right_type);
-        } else {
-            print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
-        }
-    }
+    print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
 }
 
 static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
@@ -180,23 +178,21 @@ static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
 {
     assign_expr->check_types();
     const auto* assign_expr_type = assign_expr->type();
-    if(assign_expr_type != assign_lval->type) {
-        if(assign_expr_type->kind() == TypeKind::Literal) {
-            check_literal_types(assign_expr.get(), assign_lval, assign_lval->type);
-        } else if(assign_lval->type->kind() == TypeKind::Ref
-                  && assign_expr->kind() == ExpressionKind::LValue) {
-            auto* ref_type = static_cast<const RefType*>(assign_lval->type);
-            if(ref_type->inner_type == assign_expr_type) {
-                auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
-                assign_expr = Magnum::pointer<RefExpression>(rhs->line,
-                                                             rhs->lvalue, ref_type);
-            } else {
-                print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
-            }
-        } else {
-            print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+    if(assign_expr_type == assign_lval->type
+       || matched_literal(assign_expr.get(), assign_lval, assign_lval->type))
+        return;
+
+    if(assign_lval->type->kind() == TypeKind::Ref
+       && assign_expr->kind() == ExpressionKind::LValue) {
+        auto* ref_type = static_cast<const RefType*>(assign_lval->type);
+        if(ref_type->inner_type == assign_expr_type) {
+            auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
+            assign_expr = Magnum::pointer<RefExpression>(rhs->line,
+                                                         rhs->lvalue, ref_type);
+            return;
         }
     }
+    print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
 }
 
 void FunctionCall::check_types()
@@ -227,15 +223,12 @@ void IndexOp::check_types()
     }
     auto* arr_type = static_cast<const ArrayType*>(base_type);
     index_expr->check_types();
-    const Type* index_expr_type = index_expr->type();
-    if(index_expr_type != arr_type->index_type) {
-        if(index_expr_type->kind() == TypeKind::Literal) {
-            check_literal_types(index_expr.get(), base_expr.get(), arr_type->index_type);
-        } else {
-            print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
-                                "Expected array index",
-                                "Actual");
-        }
+    if(index_expr->type() == arr_type->index_type
+       || matched_literal(index_expr.get(), base_expr.get(), arr_type->index_type)) {
+        return;
+    } else {
+        print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
+                            "Expected array index", "Actual");
     }
 }
 
@@ -261,15 +254,12 @@ void InitList::check_types()
 
         for(auto& value : values) {
             value->check_types();
-            auto* val_type = value->type();
-            if(val_type != arr_type->element_type) {
-                if(val_type->kind() == TypeKind::Literal) {
-                    check_literal_types(value.get(), lvalue, arr_type->element_type);
-                } else {
-                    print_type_mismatch(value.get(), lvalue, arr_type->element_type,
-                                        "Expected initializer list item",
-                                        "Actual item");
-                }
+            if(value->type() == arr_type->element_type
+               || matched_literal(value.get(), lvalue, arr_type->element_type)) {
+                continue;
+            } else {
+                print_type_mismatch(value.get(), lvalue, arr_type->element_type,
+                                    "Expected initializer list item", "Actual item");
             }
         }
     } else {
@@ -365,23 +355,19 @@ bool ReturnStatement::check_types(Checker& checker)
     expression->check_types();
 
     const Type* return_type = expression->type();
-    if(curr_funct->return_type != return_type) {
-        if(return_type->kind() == TypeKind::Literal) {
-            check_literal_types(expression.get(), curr_funct, curr_funct->return_type);
-        } else {
-            if(curr_funct->return_type == &Type::Void) {
-                Error(expression->line_num())
-                    .put("Did not expect void function").quote(curr_funct->name)
-                    .raise("to return something");
-            } else {
-                Error(expression->line_num())
-                    .put("Expected function").quote(curr_funct->name)
-                    .put("to return:\n  ").put(curr_funct->return_type).newline()
-                    .put("not:\n  ").put(return_type).raise();
-            }
-        }
+    if(curr_funct->return_type == return_type
+       || matched_literal(expression.get(), curr_funct, curr_funct->return_type)) {
+        return true;
+    } else if(curr_funct->return_type == &Type::Void) {
+        Error(expression->line_num())
+            .put("Did not expect void function").quote(curr_funct->name)
+            .raise("to return something");
+    } else {
+        Error(expression->line_num())
+            .put("Expected function").quote(curr_funct->name)
+            .put("to return:\n  ").put(curr_funct->return_type).newline()
+            .put("not:\n  ").put(return_type).raise();
     }
-    return true;
 }
 
 void Checker::run()

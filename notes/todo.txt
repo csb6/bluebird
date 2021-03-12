@@ -28,7 +28,7 @@ Todo:
 [X] Add a ref type, which is like a pointer except it cannot be returned or stored in a
     record. It has to refer to an object on the stack. Useful as a safer pointer in common
     usages.
-[ ] Add a "fixup" pass after the parser but before the checker. This would do constant literal
+[X] Add a "fixup" pass after the parser but before the checker. This would do constant literal
     folding and assign literals their types, as well as create RefExpressions where needed.
     Will have some error checking (i.e. when using a literal improperly), but will make rest
     of typechecker much simpler. Right now the checker is full of special cases to deal with
@@ -36,7 +36,8 @@ Todo:
     and the parser does constant literal folding, which isn't very elegant/fitting to its
     responsibility (plus it decreases parser error message readability). Would be nice to
     have the typechecker be able to assume that if two expressions' types aren't equal, then
-    they are being used improperly.
+    they are being used improperly. (Decided not to do this since logic for resolving
+    actual types of literals is deeply connected with logic for the rest of typechecking)
 [ ] Figure out if ref types should be explicitly or implicitly dereferenced when used in
     larger expressions; what does assigning a ref to another ref mean?
 [ ] Add a pointer type. Initially, don't put major restrictions on their usage, just get
