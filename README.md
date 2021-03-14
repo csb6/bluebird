@@ -8,11 +8,13 @@ very strong typing.
 It is still in the early stages, but right now it has a lexer, a parser,
 a semantic analyzer, a code generator, and an optimizer. All stages of the compiler are still
 a work-in-progress. At the moment, the compiler has only been built on macOS, but
-it should work on any platform that LLVM targets.
+it should work on any platform that LLVM supports.
 
 ## Currently Implemented Features
 
 - Functions, variables, constants, and assignment
+- Integer, boolean, character, reference, and array types
+- Initializer lists and assignment for arrays
 - Module-global variables
 - If, else-if, and else statements
 - While loops
@@ -82,8 +84,8 @@ reassignment or modification) by adding the `constant` keyword to the declaratio
 let age: constant Age = 99;
 ```
 
-Two default types, `Integer` (a 32-bit integer) and `Character` (an 8-bit character),
-do not have to be defined.
+Three default types, `Integer` (a 32-bit integer), `Character` (an 8-bit character), and
+`Boolean` do not have to be defined.
 
 An arbitrary number of additional integer types can be defined, each of which is incompatible
 with all others. To define an integer type, specify the desired range. The compiler
@@ -159,7 +161,7 @@ the last given flag will override any prior debug/optimization flags.
 
 - `(no options given)`: Build with no optimizations or debug symbols
 - `-g` or `--debug`: Build with debug symbols, no optimizations
-- `-O`: Build with optimizations, no debug symbols
+- `-O` or `--optimize`: Build with optimizations, no debug symbols
 
 ## License
 
