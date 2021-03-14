@@ -169,13 +169,8 @@ void BinaryExpression::check_types()
     check_legal_op(right.get(), op, right_type);
     if(left_type == right_type
        || matched_literal(left.get(), right.get(), right_type)
-       || matched_literal(right.get(), left.get(), left_type)) {
-        if(op == TokenType::Op_Eq && left->kind() == ExpressionKind::LValue) {
-            Error(left->line_num()).raise("Equality operator is `=`, assignment operator"
-                                          " is `:=`; use assignment");
-        }
+       || matched_literal(right.get(), left.get(), left_type))
         return;
-    }
 
     print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
 }
@@ -282,6 +277,14 @@ void InitList::check_types()
 bool BasicStatement::check_types(Checker&)
 {
     expression->check_types();
+    if(expression->kind() == ExpressionKind::Binary) {
+        auto* bin_expr = static_cast<const BinaryExpression*>(expression.get());
+        if(bin_expr->op == TokenType::Op_Eq) {
+            Error(bin_expr->line_num())
+                .raise("Equality operator is `=`, assignment operator"
+                       " is `:=`; use assignment");
+        }
+    }
     return false;
 }
 
