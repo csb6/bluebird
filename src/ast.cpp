@@ -295,7 +295,7 @@ void ReturnStatement::print(std::ostream& output) const
     }
 }
 
-void LValue::print(std::ostream& output) const
+void NamedLValue::print(std::ostream& output) const
 {
     if(is_mutable) {
         output << "Variable: ";
@@ -303,6 +303,16 @@ void LValue::print(std::ostream& output) const
         output << "Constant: ";
     }
     output << name;
+}
+
+void IndexLValue::print(std::ostream& output) const
+{
+    if(is_mutable) {
+        output << "Variable: ";
+    } else {
+        output << "Constant: ";
+    }
+    array_access->print(output);
 }
 
 void BBFunction::print(std::ostream& output) const

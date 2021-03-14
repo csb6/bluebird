@@ -71,7 +71,7 @@ public:
     void setLocation(unsigned int line_num, llvm::IRBuilder<>&);
     /* Register a local (auto duration) variable in the debugger's current
        scope */
-    void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct LValue*,
+    void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct NamedLValue*,
                     unsigned int line_num);
     /* Resolve all entities in the debugger. Needs to be done before module
        is printed/generated */
@@ -99,7 +99,7 @@ private:
 
     std::vector<Magnum::Pointer<Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
-    std::unordered_map<const LValue*, llvm::Value*> m_lvalues;
+    std::unordered_map<const NamedLValue*, llvm::Value*> m_lvalues;
 
     DebugGenerator m_dbg_gen;
     Mode m_build_mode;

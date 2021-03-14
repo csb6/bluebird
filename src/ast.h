@@ -50,6 +50,10 @@ enum class FunctionKind : char {
     Normal, Builtin
 };
 
+enum class LValueKind : char {
+    Named, Index
+};
+
 // A lazily-evaluated sequence
 // Upper/lower bounds are inclusive
 struct Range {
@@ -252,10 +256,10 @@ struct FloatLiteral final : public Expression {
 
 // An expression consisting solely of an lvalue
 struct LValueExpression final : public Expression {
-    const struct LValue *lvalue;
+    const struct NamedLValue *lvalue;
     unsigned int line;
 
-    LValueExpression(unsigned int line_n, const LValue *v) : lvalue(v), line(line_n) {}
+    LValueExpression(unsigned int line_n, const NamedLValue *v) : lvalue(v), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::LValue; }
     const Type*    type() const override;
@@ -268,11 +272,11 @@ struct LValueExpression final : public Expression {
 };
 
 struct RefExpression final : public Expression {
-    const LValue* lvalue;
+    const NamedLValue* lvalue;
     const RefType* ref_type;
     unsigned int line;
 
-    RefExpression(unsigned int line_n, const LValue *v,
+    RefExpression(unsigned int line_n, const NamedLValue *v,
                   const RefType* rt) : lvalue(v), ref_type(rt), line(line_n) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Ref; }
@@ -291,7 +295,7 @@ struct UnaryExpression final : public Expression {
     Magnum::Pointer<Expression> right;
 
     UnaryExpression(TokenType tok, Magnum::Pointer<Expression>&& expr)
-        : op(tok), right(std::forward<Magnum::Pointer<Expression>>(expr)) {}
+        : op(tok), right(std::forward<decltype(right)>(expr)) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Unary; }
     const Type*    type() const override { return right->type(); }
@@ -310,8 +314,8 @@ struct BinaryExpression final : public Expression {
 
     BinaryExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
                      Magnum::Pointer<Expression>&& r)
-        : left(std::forward<Magnum::Pointer<Expression>>(l)), op(oper),
-          right(std::forward<Magnum::Pointer<Expression>>(r)) {}
+        : left(std::forward<decltype(left)>(l)), op(oper),
+          right(std::forward<decltype(right)>(r)) {}
 
     ExpressionKind kind() const override { return ExpressionKind::Binary; }
     const Type*    type() const override;
@@ -351,10 +355,10 @@ struct IndexOp final : public Expression {
 
     IndexOp(unsigned int line_n, Magnum::Pointer<Expression>&& b,
             Magnum::Pointer<Expression>&& ind)
-        : base_expr(std::forward<Magnum::Pointer<Expression>>(b)),
-          index_expr(std::forward<Magnum::Pointer<Expression>>(ind)), line(line_n) {}
+        : base_expr(std::forward<decltype(base_expr)>(b)),
+          index_expr(std::forward<decltype(index_expr)>(ind)), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::InitList; }
+    ExpressionKind kind() const override { return ExpressionKind::IndexOp; }
     const Type*    type() const override;
     unsigned int   line_num() const override { return line; }
     void           print(std::ostream&) const override;
@@ -368,7 +372,7 @@ struct InitList final : public Expression {
     std::vector<Magnum::Pointer<Expression>> values;
     unsigned int line;
     // Expects lvalue to be set by the containing statement before end of parsing
-    const LValue *lvalue = nullptr;
+    const struct LValue *lvalue = nullptr;
 
     InitList(unsigned int line_n) : line(line_n) {}
 
@@ -381,18 +385,41 @@ struct InitList final : public Expression {
     llvm::Value* codegen(CodeGenerator&) override;
 };
 
-
-// A named object that holds a value and can be assigned at least once
+// An object that can be assigned to
 struct LValue {
-    std::string name;
     Type* type;
     bool is_mutable = true;
 
-    explicit LValue(const std::string& n) : name(n) {}
-    LValue(const std::string& n, Type* t) : name(n), type(t) {}
+    LValue() = default;
+    explicit LValue(Type* t) : type(t) {}
+    virtual ~LValue() noexcept = default;
 
-    void print(std::ostream&) const;
+    virtual void print(std::ostream&) const = 0;
+    virtual LValueKind kind() const = 0;
 };
+
+// A named object that can be assigned to (i.e. a variable or constant)
+struct NamedLValue final : public LValue {
+    std::string name;
+
+    explicit NamedLValue(const std::string& n) : name(n) {}
+    NamedLValue(const std::string& n, Type* t) : LValue(t), name(n) {}
+
+    void       print(std::ostream&) const override;
+    LValueKind kind() const override { return LValueKind::Named; }
+};
+
+// An element in an array that is going to be assigned to
+struct IndexLValue final : public LValue {
+    Magnum::Pointer<IndexOp> array_access;
+
+    explicit IndexLValue(Magnum::Pointer<IndexOp>&& op)
+        : LValue((Type*)op->type()), array_access(std::forward<decltype(array_access)>(op)) {}
+
+    void       print(std::ostream&) const override;
+    LValueKind kind() const override { return LValueKind::Index; }
+};
+
 
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
@@ -411,7 +438,7 @@ struct BasicStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
     explicit BasicStatement(Magnum::Pointer<Expression>&& expr)
-        : expression(std::forward<Magnum::Pointer<Expression>>(expr)) {}
+        : expression(std::forward<decltype(expression)>(expr)) {}
 
     StatementKind kind() const override { return StatementKind::Basic; }
     unsigned int  line_num() const override { return expression->line_num(); }
@@ -423,11 +450,11 @@ struct BasicStatement final : public Statement {
 // value of some expression
 struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
-    Magnum::Pointer<LValue> lvalue;
+    Magnum::Pointer<NamedLValue> lvalue;
     unsigned int line;
 
-    explicit Initialization(unsigned int l, Magnum::Pointer<LValue>&& lval)
-        : lvalue(std::forward<Magnum::Pointer<LValue>>(lval)), line(l) {}
+    explicit Initialization(unsigned int l, Magnum::Pointer<NamedLValue>&& lval)
+        : lvalue(std::forward<decltype(lvalue)>(lval)), line(l) {}
 
     StatementKind kind() const override { return StatementKind::Initialization; }
     unsigned int  line_num() const override { return line; }
@@ -441,7 +468,7 @@ struct Assignment final : public Statement {
     LValue* lvalue;
 
     Assignment(Magnum::Pointer<Expression>&& expr, LValue* lv)
-        : expression(std::forward<Magnum::Pointer<Expression>>(expr)), lvalue(lv) {}
+        : expression(std::forward<decltype(expression)>(expr)), lvalue(lv) {}
 
     StatementKind kind() const override { return StatementKind::Assignment; }
     unsigned int  line_num() const override { return expression->line_num(); }
@@ -469,7 +496,7 @@ struct IfBlock final : public Block {
 
     explicit IfBlock(Magnum::Pointer<Expression>&& cond)
         : Block(cond->line_num()),
-          condition(std::forward<Magnum::Pointer<Expression>>(cond)) {}
+          condition(std::forward<decltype(condition)>(cond)) {}
 
     StatementKind kind() const override { return StatementKind::IfBlock; }
     void          print(std::ostream&) const override;
@@ -482,7 +509,7 @@ struct WhileLoop final : public Block {
 
     explicit WhileLoop(Magnum::Pointer<Expression>&& cond)
         : Block(cond->line_num()),
-          condition(std::forward<Magnum::Pointer<Expression>>(cond)) {}
+          condition(std::forward<decltype(condition)>(cond)) {}
 
     StatementKind kind() const override { return StatementKind::While; }
     void          print(std::ostream&) const override;
@@ -496,7 +523,7 @@ struct ReturnStatement final : public Statement {
     explicit ReturnStatement(unsigned int line_n)
         : expression(nullptr), line(line_n) {}
     explicit ReturnStatement(Magnum::Pointer<Expression>&& expr)
-        : expression(std::forward<Magnum::Pointer<Expression>>(expr)) {}
+        : expression(std::forward<decltype(expression)>(expr)) {}
 
     StatementKind kind() const override { return StatementKind::Return; }
     unsigned int  line_num() const override;
@@ -508,7 +535,7 @@ struct ReturnStatement final : public Statement {
 struct Function {
     std::string name;
     Type* return_type = &Type::Void;
-    std::vector<Magnum::Pointer<LValue>> parameters;
+    std::vector<Magnum::Pointer<NamedLValue>> parameters;
 
     explicit Function(const std::string& n) : name(n) {}
     Function(const Function&) = default;

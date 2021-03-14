@@ -49,8 +49,9 @@ void nonbool_condition_error(const Expression* condition,
 // so each of their check_types() member functions are empty, defined in header
 
 template<typename Other>
-static bool matched_literal(Expression* literal, const Other* other,
-                            const Type* other_type)
+static
+bool matched_literal(Expression* literal, const Other* other,
+                     const Type* other_type)
 {
     if(literal->type()->kind() != TypeKind::Literal)
         return false;
@@ -107,7 +108,8 @@ static bool matched_literal(Expression* literal, const Other* other,
     return true;
 }
 
-static void check_legal_op(const Expression* expr, TokenType op, const Type* type)
+static
+void check_legal_op(const Expression* expr, TokenType op, const Type* type)
 {
     switch(type->kind()) {
     case TypeKind::Range:
@@ -173,8 +175,9 @@ void BinaryExpression::check_types()
     print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
 }
 
-static void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
-                             const LValue* assign_lval)
+static
+void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
+                      const LValue* assign_lval)
 {
     assign_expr->check_types();
     const auto* assign_expr_type = assign_expr->type();
@@ -292,10 +295,14 @@ bool Initialization::check_types(Checker&)
 bool Assignment::check_types(Checker&)
 {
     assign_typecheck(expression, lvalue);
+    if(lvalue->kind() == LValueKind::Index) {
+        static_cast<IndexLValue*>(lvalue)->array_access->check_types();
+    }
     return false;
 }
 
-static bool is_bool_condition(const Expression* condition)
+static
+bool is_bool_condition(const Expression* condition)
 {
     const Type* cond_type = condition->type();
     return cond_type->kind() == TypeKind::Boolean

@@ -1,0 +1,8 @@
+type IndexT is range 1 thru 10;
+type IntArray is [IndexT] of Integer;
+
+function main() is
+  let arr: IntArray;
+  let i: IndexT = 9;
+  arr[i] = 56;
+end main;

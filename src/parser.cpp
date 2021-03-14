@@ -218,7 +218,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     {
         // function putchar(c : Character): Integer
         auto* put_char = new BuiltinFunction("putchar");
-        auto* c = new LValue("c", &RangeType::Character);
+        auto* c = new NamedLValue("c", &RangeType::Character);
         put_char->parameters.emplace_back(c);
         put_char->return_type = &RangeType::Integer;
         m_names_table.add_function(put_char);
@@ -438,7 +438,7 @@ Magnum::Pointer<Expression> Parser::in_init_list()
 }
 
 // Creates LValue, but does not add to symbol table
-Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
+Magnum::Pointer<NamedLValue> Parser::in_lvalue_declaration()
 {
     check_token_is(TokenType::Name, "the name of an lvalue", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
@@ -446,7 +446,7 @@ Magnum::Pointer<LValue> Parser::in_lvalue_declaration()
             .quote(token->text)
             .raise("cannot be used as an lvalue name. It is already defined as a name");
     }
-    auto new_lvalue = Magnum::pointer<LValue>(token->text);
+    auto new_lvalue = Magnum::pointer<NamedLValue>(token->text);
 
     ++token;
     check_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
@@ -528,16 +528,33 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
         Error(token->line_num)
             .put("Cannot assign to constant:").quote(token->text).raise();
     }
+    LValue* target_lvalue = lval_match->lvalue;
 
-    std::advance(token, 2); // skip varname and `=` operator
+    if(std::next(token)->type == TokenType::Open_Bracket) {
+        // Array element assignment
+        Magnum::Pointer<Expression> index_op{parse_expression()};
+        if(index_op->kind() != ExpressionKind::IndexOp) {
+            Error(index_op->line_num()).raise("Expected an assignment to an array element");
+        }
+        auto* index_op_act = static_cast<IndexOp*>(index_op.release());
+        target_lvalue = create<IndexLValue>(m_index_lvalue_list,
+                                            Magnum::Pointer<IndexOp>{index_op_act});
+        assert(target_lvalue != nullptr);
+    } else {
+        // Named variable assignment; skip the varname
+        ++token;
+    }
+    check_token_is(TokenType::Op_Assign, "assignment operator", *token);
+    ++token;
     Magnum::Pointer<Expression> expr{parse_expression()};
+    check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
     if(expr->kind() == ExpressionKind::InitList) {
         // Initialization lists need a backpointer to the lvalue they are used with
         auto* init_list = static_cast<InitList*>(expr.get());
-        init_list->lvalue = lval_match->lvalue;
+        init_list->lvalue = target_lvalue;
     }
-    return Magnum::pointer<Assignment>(std::move(expr), lval_match->lvalue);
+    return Magnum::pointer<Assignment>(std::move(expr), target_lvalue);
 }
 
 Magnum::Pointer<Statement> Parser::in_statement()
@@ -552,11 +569,13 @@ Magnum::Pointer<Statement> Parser::in_statement()
     case TokenType::Keyword_Return:
         return in_return_statement();
     default:
-        if(std::next(token)->type == TokenType::Op_Assign) {
-            return in_assignment();
-        } else {
-            return in_basic_statement();
+        for(auto lookahead = std::next(token);
+            lookahead->type != TokenType::End_Statement; ++lookahead) {
+            if(lookahead->type == TokenType::Op_Assign) {
+                return in_assignment();
+            }
         }
+        return in_basic_statement();
     };
 }
 
@@ -742,7 +761,7 @@ void Parser::in_function_definition()
     while(token < m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            LValue* param = new_funct->parameters.emplace_back(
+            NamedLValue* param = new_funct->parameters.emplace_back(
                 in_lvalue_declaration()).get();
             m_names_table.add_lvalue(param);
 
@@ -1007,7 +1026,7 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name, NameType ki
     return {};
 }
 
-void SymbolTable::add_lvalue(LValue* lval)
+void SymbolTable::add_lvalue(NamedLValue* lval)
 {
     m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
 }
@@ -1022,7 +1041,7 @@ void SymbolTable::add_function(Function* function)
     m_scopes[m_curr_scope].symbols[function->name] = SymbolInfo{NameType::Funct, function};
 }
 
-void SymbolTable::add_unresolved(LValue* lvalue)
+void SymbolTable::add_unresolved(NamedLValue* lvalue)
 {
     m_scopes[m_curr_scope].unresolved_types.push_back(&lvalue->type);
 }
