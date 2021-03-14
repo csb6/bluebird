@@ -188,12 +188,6 @@ llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value,
         m_context, llvm::APInt(bit_size, value.str(), 10));
 }
 
-llvm::ConstantInt* CodeGenerator::to_llvm_int(uint64_t value, unsigned short bit_size,
-                                              bool isSigned)
-{
-    return llvm::ConstantInt::get(m_context, llvm::APInt(bit_size, value, isSigned));
-}
-
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
                              std::vector<Magnum::Pointer<Initialization>>& global_vars,
@@ -231,7 +225,7 @@ llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
 llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
 {
     // Create a signed `char` type
-    return gen.to_llvm_int(value, 8, true);
+    return gen.m_ir_builder.getInt8(value);
 }
 
 llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
@@ -241,7 +235,7 @@ llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
 
 llvm::Value* BoolLiteral::codegen(CodeGenerator& gen)
 {
-    return gen.to_llvm_int(value, type()->bit_size());
+    return gen.m_ir_builder.getIntN(type()->bit_size(), value);
 }
 
 llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
@@ -258,7 +252,7 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 
 llvm::Value* RefExpression::codegen(CodeGenerator& gen)
 {
-    llvm::Value* value = gen.m_lvalues[static_cast<const NamedLValue*>(lvalue)];
+    llvm::Value* value = gen.m_lvalues[lvalue];
     assert(value != nullptr);
     return value;
 }
@@ -394,7 +388,7 @@ llvm::Value* IndexOp::codegen(CodeGenerator& gen)
         gen.m_ir_builder.CreateSub(offset_index,
                                    gen.to_llvm_int(index_type->range.lower_bound,
                                                    index_type->bit_size()));
-    llvm::Value* indexes[] = { gen.to_llvm_int(0, 32), gep_index };
+    llvm::Value* indexes[] = { gen.m_ir_builder.getIntN(32, 0), gep_index };
     assert(indexes[1] != nullptr);
     assert(indexes[1]->getType()->isIntegerTy());
     auto* array_type = llvm::cast<llvm::ArrayType>(gen.to_llvm_type(lval->type));
@@ -415,11 +409,11 @@ llvm::Value* InitList::codegen(CodeGenerator& gen)
     llvm::Value* alloc = match->second;
     gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
 
-    llvm::Value* indexes[2] = { gen.to_llvm_int(0, 32) };
+    llvm::Value* indexes[2] = { gen.m_ir_builder.getIntN(32, 0) };
     llvm::Type* array_type = gen.to_llvm_type(lvalue->type);
     for(uint64_t i = 0; i < values.size(); ++i) {
         // index 0: 0 bytes past the array ptr; index i: index into array
-        indexes[1] = gen.to_llvm_int(i, lvalue->type->bit_size());
+        indexes[1] = gen.m_ir_builder.getIntN(lvalue->type->bit_size(), i);
         // Get a pointer to to the current array element
         auto* element_ptr = gen.m_ir_builder.CreateInBoundsGEP(
             array_type, alloc, indexes, "elem_ptr");
