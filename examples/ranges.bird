@@ -1,5 +1,5 @@
 function main() is
-   let a: Positive = 90;
+   let a: Positive := 90;
    //foo(100);
    //a * a + 100;
 end;

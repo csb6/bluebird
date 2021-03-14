@@ -1,4 +1,4 @@
 function main() is
-  let a: Boolean = not false;
-  let b: Boolean = not a and not a;
+  let a: Boolean := not false;
+  let b: Boolean := not a and not a;
 end;

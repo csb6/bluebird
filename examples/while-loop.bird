@@ -1,12 +1,12 @@
 function main() is
-   let a: Integer = 9;
-   let b: Integer = 0;
+   let a: Integer := 9;
+   let b: Integer := 0;
    while b < a loop
-       b = b + 1;
-       let d: Integer = -80;
+       b := b + 1;
+       let d: Integer := -80;
        while d <= b loop
-           d = d + 90;
+           d := d + 90;
        end while;
    end while;
-   let c: Integer = a;
+   let c: Integer := a;
 end main;

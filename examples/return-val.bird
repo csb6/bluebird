@@ -3,7 +3,7 @@ function get_ch(a : Character): Character is
 end get_ch;
 
 function main() is
-    let b: Character = get_ch('y');
+    let b: Character := get_ch('y');
     putchar(b);
     putchar('\n');
 end main;

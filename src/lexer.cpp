@@ -192,6 +192,7 @@ void Lexer::run()
                     break;
                 case '!':
                     if(*std::next(input_iter) == '=') {
+                        // "!="
                         m_tokens.emplace_back(line_num, TokenType::Op_Ne);
                         ++input_iter;
                     } else {
@@ -204,22 +205,20 @@ void Lexer::run()
                     m_tokens.emplace_back(line_num, TokenType::Comma);
                     break;
                 case '=':
+                    m_tokens.emplace_back(line_num, TokenType::Op_Eq);
+                    break;
+                case ':':
                     switch(*std::next(input_iter)) {
                     case '=':
-                        // "=="
-                        m_tokens.emplace_back(line_num, TokenType::Op_Eq);
+                        // Assignment operator
+                        m_tokens.emplace_back(line_num, TokenType::Op_Assign);
                         ++input_iter;
                         break;
                     default:
-                        // Assignment operator
-                        m_tokens.emplace_back(line_num, TokenType::Op_Assign);
+                        // Type indicator
+                        m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
                         break;
                     }
-                    break;
-                case ':':
-                    // Type indicator
-                    m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
-                    break;
                 }
             }
             break;

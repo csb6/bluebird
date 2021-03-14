@@ -81,7 +81,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "Keyword `false` ";
         break;
     case TokenType::End_Statement:
-        output << "End Statement Marker (a.k.a `;`) ";
+        output << "End Statement (a.k.a `;`) ";
         break;
     case TokenType::String_Literal:
         output << "String Literal";
@@ -114,7 +114,7 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         output << "not";
         break;
     case TokenType::Op_Eq:
-        output << "==";
+        output << "=";
         break;
     case TokenType::Op_Ne:
         output << "!=";

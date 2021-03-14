@@ -59,11 +59,11 @@ type Positive is range 1 thru 500;
 
 function fizzbuzz() is
     for n in Positive do
-        if n mod 15 == 0 do
+        if n mod 15 = 0 do
             print("fizzbuzz");
-        else if n mod 3 == 0 do
+        else if n mod 3 = 0 do
             print("fizz");
-        else if n mod 5 == 0 do
+        else if n mod 5 = 0 do
             print("buzz")
         else
             print_num(n);
@@ -81,7 +81,7 @@ Variables are mutable by default; they can be made constant (i.e. allowing no
 reassignment or modification) by adding the `constant` keyword to the declaration:
 
 ```
-let age: constant Age = 99;
+let age: constant Age := 99;
 ```
 
 Three default types, `Integer` (a 32-bit integer), `Character` (an 8-bit character), and
@@ -96,12 +96,12 @@ type Dalmation_Count is range 1 thru 101;
 // Or, equivalently:
 type Dalmation_Count is range 1 upto 102;
 
-let original_amt: Dalmation_Count = 96;
-let puppy_amt: Dalmation_Count = 5;
-let new_amt: Dalmation_Count = original_amt + puppy_amt; // Allowed
-let pupp_amt2: Integer = 5;
+let original_amt: Dalmation_Count := 96;
+let puppy_amt: Dalmation_Count := 5;
+let new_amt: Dalmation_Count := original_amt + puppy_amt; // Allowed
+let pupp_amt2: Integer := 5;
 // Compilation error (below): cannot use Dalmation_Count and Integer together
-let new_amt2: Dalmation_Count = original_amt + puppy_amt2;
+let new_amt2: Dalmation_Count := original_amt + puppy_amt2;
 ```
 
 ## Building

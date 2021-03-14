@@ -6,10 +6,10 @@ type One_Number is range 89 thru 89;
 
 // This is a line comment
 function foo(a : Natural, b : Integer) is
-   let n : constant Number = 41;
-   let x : Number = 23;
-   x = 4 + 1;
-   x = n;
+   let n : constant Number := 41;
+   let x : Number := 23;
+   x := 4 + 1;
+   x := n;
    let p : Integer;
    n - x + (n / 6);
    4 + 5 + (9 - 6);
@@ -23,7 +23,7 @@ function not_really is end not_really
 
 */
 function main() is
-    let n : constant Number = 8;
+    let n : constant Number := 8;
     1 + 1;
     // More comments
     2 * 10 + 4;

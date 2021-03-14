@@ -1,6 +1,6 @@
 function main() is
 
-    let i: Integer = 0;
+    let i: Integer := 0;
     while i < 5 loop
         putchar('h');
         putchar('e');
@@ -15,7 +15,7 @@ function main() is
         putchar('d');
         putchar('!');
         putchar('\n');
-        i = i + 1;
+        i := i + 1;
     end while;
 
 end main;

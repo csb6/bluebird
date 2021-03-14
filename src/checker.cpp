@@ -169,8 +169,13 @@ void BinaryExpression::check_types()
     check_legal_op(right.get(), op, right_type);
     if(left_type == right_type
        || matched_literal(left.get(), right.get(), right_type)
-       || matched_literal(right.get(), left.get(), left_type))
+       || matched_literal(right.get(), left.get(), left_type)) {
+        if(op == TokenType::Op_Eq && left->kind() == ExpressionKind::LValue) {
+            Error(left->line_num()).raise("Equality operator is `=`, assignment operator"
+                                          " is `:=`; use assignment");
+        }
         return;
+    }
 
     print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
 }

@@ -5,15 +5,15 @@ type PosArrayRef is ref PosArray;
 type IntRef is ref Integer;
 
 function foo(arr_ref: PosArrayRef) is
-  let a: PosArrayRef = arr_ref;
+  let a: PosArrayRef := arr_ref;
 end;
 
 function main() is
-  let arr: PosArray = { 2, 3, 5 };
-  let arr_ref: PosArrayRef = arr;
-  let arr_ref2: PosArrayRef = arr;
-  arr_ref2 = arr_ref;
-  let i: Integer = 67;
-  let iref: IntRef = i;
+  let arr: PosArray := { 2, 3, 5 };
+  let arr_ref: PosArrayRef := arr;
+  let arr_ref2: PosArrayRef := arr;
+  arr_ref2 := arr_ref;
+  let i: Integer := 67;
+  let iref: IntRef := i;
   foo(arr);
 end;

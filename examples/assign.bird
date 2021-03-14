@@ -1,0 +1,4 @@
+function main() is
+   let a: Integer := 78;
+   a = 70;
+end;

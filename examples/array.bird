@@ -1,10 +1,11 @@
 type Positive is range 1 thru 100;
 
-type IntArray is [1 thru 5] of Positive;
+type IndexT is range 1 thru 5;
+type IntArray is [IndexT] of Positive;
 
 function main() is
-  let i: Positive = 90;
-  let a: IntArray = { i };
-  let b: IntArray = {};
-  let c: IntArray = {1, i, 3, 5, 8 + 9, 3};
+  let i: Positive := 90;
+  let a: IntArray := { i };
+  let b: IntArray := {};
+  let c: IntArray := {1, i, 3, 5, 8 + 9};
 end;

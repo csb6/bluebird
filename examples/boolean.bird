@@ -1,7 +1,7 @@
 function main() is
-    let a: Boolean = true;
-    let b: Boolean = true or false and a;
-    let c: Boolean = a;
+    let a: Boolean := true;
+    let b: Boolean := true or false and a;
+    let c: Boolean := a;
     if b do
       putchar('t');
     end;

@@ -1,12 +1,12 @@
 function main() is
-  let a : Int100 = 1 + 2 + 3 + 4;
-  let b : Int100 = (1 + 2) * 3 + 4;
+  let a : Int100 := 1 + 2 + 3 + 4;
+  let b : Int100 := (1 + 2) * 3 + 4;
   // Right now, Int100's size is 7 bits, so if
   // c is 64 or greater, we get overflow
-  let c : Int100 = 60;
-  let z : Int100 = c + 2;
-  let g : Negative = -10;
-  let h : Negative = g;
+  let c : Int100 := 60;
+  let z : Int100 := c + 2;
+  let g : Negative := -10;
+  let h : Negative := g;
 
   1 + 1;
   1 + 2 * 3;

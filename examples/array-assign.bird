@@ -3,6 +3,6 @@ type IntArray is [IndexT] of Integer;
 
 function main() is
   let arr: IntArray;
-  let i: IndexT = 9;
-  arr[i] = 56;
+  let i: IndexT := 9;
+  arr[i] := 56;
 end main;

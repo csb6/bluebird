@@ -7,5 +7,5 @@ function factorial(n : Integer): Integer is
 end;
 
 function main() is
-    let n: Integer = factorial(6);
+    let n: Integer := factorial(6);
 end;

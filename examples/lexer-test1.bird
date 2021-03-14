@@ -1,21 +1,21 @@
 function main() is
     print("\"Hello\"" + "There");
-    let a : Natural = 78;
-    let b : constant Natural = 6 + 89;
+    let a : Natural := 78;
+    let b : constant Natural := 6 + 89;
     print('\\');
     print(346_000_000);
     1 + 1_0000 + 67 + 56 + 0 - 6 / print(89);
     print(100_000.08);
     1 + 1 + print("ayy");
     0 and 2 or 7 and 8;
-    9 or 8 == 10 and 80;
+    9 or 8 = 10 and 80;
     7 and 8 & 7 or 8;
-    8 <= 9 >= 78 < 0 > 1 == 1 != 9;
+    8 <= 9 >= 78 < 0 > 1 = 1 != 9;
     foo();
 end main;
 
 function foo() is
-    let hello_world : Natural = 89;
+    let hello_world : Natural := 89;
     print(print("No"));
     print("Yes");
     print(98 + 89);

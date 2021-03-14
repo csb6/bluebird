@@ -229,7 +229,7 @@ void Initialization::print(std::ostream& output) const
 {
     output << "Initialize ";
     lvalue->print(output);
-    output << " = ";
+    output << " := ";
     if(expression) {
         expression->print(output);
     } else {
@@ -241,7 +241,7 @@ void Assignment::print(std::ostream& output) const
 {
     output << "Assign ";
     lvalue->print(output);
-    output << " = ";
+    output << " := ";
     expression->print(output);
 }
 

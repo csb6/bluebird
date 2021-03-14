@@ -1,9 +1,9 @@
 let a: Integer;
-let b: Integer = -90;
+let b: Integer := -90;
 
 function main() is
-   let d: Integer = b + 90;
-   a = 90;
+   let d: Integer := b + 90;
+   a := 90;
 end;
 
 let c: Integer;
