@@ -18,17 +18,13 @@ cmake_minimum_required(VERSION 3.19.1)
 
 project(Bluebird)
 
-if(CMAKE_SYSTEM MATCHES "Darwin")
-    # For some reason CMake can't find LLVM on macOS,
-    # so we need to give it some help
-    find_package(LLVM 10.0 REQUIRED CONFIG
-        HINTS /usr/local/opt/llvm/lib/cmake/llvm)
-else()
-    find_package(LLVM 10.0 REQUIRED CONFIG)
-endif()
+# For some reason CMake can't find LLVM on macOS,
+# so we need to give it some help
+find_package(LLVM 10.0 REQUIRED CONFIG
+    HINTS /usr/local/opt/llvm/lib/cmake/llvm)
+
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-# To find the lld .a files
 link_directories(${LLVM_LIBRARY_DIR})
 
 set(CMAKE_CXX_STANDARD 17)
@@ -47,19 +43,12 @@ add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
 list(APPEND LLVM_LIBS lldDriver lldCommon lldCore lldYAML lldReaderWriter)
+target_link_libraries(bluebird ${LLVM_LIBS})
 
-#Try to link only parts of lld that generate this platform's executables
 if(CMAKE_SYSTEM MATCHES "Darwin")
-    list(APPEND LLVM_LIBS lldMachO)
     # Without this, won't link proper std::filesystem code
     set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
-elseif(CMAKE_SYSTEM MATCHES "Windows")
-    list(APPEND LLVM_LIBS WindowsManifest lldCOFF)
-elseif(CMAKE_SYSTEM MATCHES "Linux")
-    list(APPEND LLVM_LIBS lldELF)
 endif()
-
-target_link_libraries(bluebird ${LLVM_LIBS})
 
 #libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")

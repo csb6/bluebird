@@ -21,8 +21,9 @@
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/raw_ostream.h>
 #include <iostream>
-#include <lld/Common/Driver.h>
+#include <cstdlib>
 #pragma GCC diagnostic pop
 
 void emit(llvm::Module& module, llvm::TargetMachine* target_machine,
@@ -46,28 +47,27 @@ void emit(llvm::Module& module, llvm::TargetMachine* target_machine,
 void link(const std::filesystem::path& object_file,
           const std::filesystem::path& exe_file)
 {
+    int error_code;
+
 #ifdef __APPLE__
-    const char* args[] = { "lld", "-sdk_version", "10.14", "-o", exe_file.c_str(),
-                           object_file.c_str(), "-lSystem" };
-    if(!lld::mach_o::link(args, false, llvm::outs(), llvm::errs())) {
-        std::cerr << "Linker failed\n";
-        exit(1);
-    }
+    error_code = system(("ld -sdk_version 10.14 -o " + exe_file.string()
+                         + " " + object_file.string()
+                         + " -lSystem").c_str());
 #elif defined _WIN32
-    const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
-    if(!lld::coff::link(args, false, llvm::outs(), llvm::errs())) {
-        std::cerr << "Linker failed\n";
-        exit(1);
-    }
+    error_code = system(("link /WX /nologo " + exe_file.string()
+                         + " " + object_file.string()).c_str());
 #elif defined __linux__
-    const char* args[] = { "lld", "-o", exe_file.c_str(), object_file.c_str() };
-    if(!lld::elf::link(args, false, llvm::outs(), llvm::errs())) {
-        std::cerr << "Linker failed\n";
-        exit(1);
-    }
+    error_code = system(("ld -o" + exe_file.string()
+                         + " " + object_file.string() + " -lc").c_str());
 #else
+    error_code = 0;
     std::cerr << "Note: linking not implemented for this platform, so"
         " no executable will be produced. Manually use linker to turn emitted"
         " object file into an executable\n";
 #endif
+
+    if(error_code != 0) {
+        std::cerr << "Linker failed with error code: " << error_code << std::endl;
+        exit(1);
+    }
 }
