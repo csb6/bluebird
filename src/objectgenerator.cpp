@@ -14,7 +14,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include "objectgenerator.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wall"
@@ -22,9 +21,10 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Support/raw_ostream.h>
-#include <iostream>
-#include <cstdlib>
 #pragma GCC diagnostic pop
+#include <cstdlib>
+#include "objectgenerator.h"
+#include "error.h"
 
 void emit(llvm::Module& module, llvm::TargetMachine* target_machine,
           const std::filesystem::path& object_file)
@@ -32,8 +32,7 @@ void emit(llvm::Module& module, llvm::TargetMachine* target_machine,
     std::error_code file_error;
     llvm::raw_fd_ostream output{object_file.string(), file_error};
     if(file_error) {
-        std::cerr << "Codegen error: " << file_error.message() << "\n";
-        return;
+        Error().put("During LLVM emit process:").quote(file_error.message()).raise();
     }
 
     // We need this for some reason? Not really sure how to get around using it
@@ -61,13 +60,12 @@ void link(const std::filesystem::path& object_file,
                          + " " + object_file.string() + " -lc").c_str());
 #else
     error_code = 0;
-    std::cerr << "Note: linking not implemented for this platform, so"
-        " no executable will be produced. Manually use linker to turn emitted"
-        " object file into an executable\n";
+    Error().put("Note: linking not implemented for this platform, so"
+                " no executable will be produced. Manually use linker to turn emitted"
+                " object file into an executable\n");
 #endif
 
     if(error_code != 0) {
-        std::cerr << "Linker failed with error code: " << error_code << std::endl;
-        exit(1);
+        Error().put("Linker failed with error code:").quote(error_code).raise();
     }
 }
