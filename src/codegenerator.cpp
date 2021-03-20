@@ -30,122 +30,6 @@
 #include "error.h"
 #include <string>
 
-DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
-                               const char* source_filename)
-    : m_dbg_builder(module), m_is_active(is_active)
-{
-    if(is_active) {
-        m_dbg_unit = m_dbg_builder.createCompileUnit(
-            llvm::dwarf::DW_LANG_C, m_dbg_builder.createFile(source_filename, "."),
-            "Bluebird Compiler", false, "", 0);
-        m_file = m_dbg_builder.createFile(m_dbg_unit->getFilename(),
-                                          m_dbg_unit->getDirectory());
-        // dbg_unit is root scope
-        m_scopes.push_back(m_dbg_unit);
-    }
-}
-
-llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
-{
-    // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
-    // TODO: add support for determining LLVM debug type for other AST types
-    unsigned encoding;
-    auto bit_size = ast_type->bit_size();
-    switch(ast_type->kind()) {
-    case TypeKind::Range: {
-        auto* type = static_cast<const RangeType*>(ast_type);
-        if(type->range.is_signed)
-            encoding = llvm::dwarf::DW_ATE_signed;
-        else
-            encoding = llvm::dwarf::DW_ATE_unsigned;
-        break;
-    }
-    case TypeKind::Boolean:
-        encoding = llvm::dwarf::DW_ATE_boolean;
-        // While the correct bit_size is 1, lldb crashes if bit_size < 8;
-        // lldb expects at least a full byte, it seems
-        bit_size = 8;
-        break;
-    case TypeKind::Array: {
-        auto* arr_type = static_cast<const ArrayType*>(ast_type);
-        multi_int start{arr_type->index_type->range.lower_bound};
-        multi_int end{arr_type->index_type->range.upper_bound};
-        llvm::Metadata* subscript =
-            m_dbg_builder.getOrCreateSubrange(to_int(std::move(start)),
-                                              to_int(std::move(end)));
-        llvm::DINodeArray array = m_dbg_builder.getOrCreateArray(subscript);
-        // TODO: check if alignment of zero (arg #2) is always correct
-        return m_dbg_builder.createArrayType(
-            arr_type->index_type->range.size() * arr_type->bit_size(), 0,
-            to_dbg_type(arr_type->element_type), array);
-    }
-    default:
-        assert(ast_type == &Type::Void);
-        return nullptr;
-    }
-
-    return m_dbg_builder.createBasicType(ast_type->name, bit_size, encoding);
-}
-
-llvm::DISubroutineType* DebugGenerator::to_dbg_type(const Function* ast_funct)
-{
-    llvm::SmallVector<llvm::Metadata*, 8> type_list;
-    // Return type is always at index 0
-    type_list.push_back(to_dbg_type(ast_funct->return_type));
-    for(auto& arg : ast_funct->parameters) {
-        type_list.push_back(to_dbg_type(arg->type));
-    }
-
-    return m_dbg_builder.createSubroutineType(m_dbg_builder.getOrCreateTypeArray(type_list));
-}
-
-void DebugGenerator::addFunction(llvm::IRBuilder<>& ir_builder,
-                                 const Function* ast_funct, llvm::Function* funct)
-{
-    if(m_is_active) {
-        llvm::DISubprogram* dbg_data = m_dbg_builder.createFunction(
-            m_file, ast_funct->name, "", m_file, ast_funct->line_num(),
-            to_dbg_type(ast_funct), ast_funct->line_num(), llvm::DINode::FlagZero,
-            llvm::DISubprogram::SPFlagDefinition);
-        funct->setSubprogram(dbg_data);
-        m_scopes.push_back(dbg_data);
-        // Tells debugger to skip over function prologue asm instructions
-        ir_builder.SetCurrentDebugLocation(llvm::DebugLoc::get(0, 0, nullptr));
-    }
-}
-
-void DebugGenerator::closeScope()
-{
-    if(m_is_active)
-        m_scopes.pop_back();
-}
-
-void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_builder)
-{
-    if(m_is_active) {
-        ir_builder.SetCurrentDebugLocation(
-            llvm::DebugLoc::get(line_num, 1, m_scopes.back()));
-    }
-}
-
-void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
-                                const NamedLValue* var, unsigned int line_num)
-{
-    if(m_is_active) {
-        llvm::DILocalVariable* dbg_var = m_dbg_builder.createAutoVariable(
-            m_scopes.back(), var->name, m_file, line_num, to_dbg_type(var->type));
-        m_dbg_builder.insertDeclare(
-            llvm_var, dbg_var, m_dbg_builder.createExpression(),
-            llvm::DebugLoc::get(line_num, 1, m_scopes.back()), block);
-    }
-}
-
-void DebugGenerator::finalize()
-{
-    if(m_is_active)
-        m_dbg_builder.finalize();
-}
-
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
@@ -730,4 +614,121 @@ void CodeGenerator::run()
 
     m_module.print(llvm::errs(), nullptr);
     assert(!llvm::verifyModule(m_module, &llvm::errs()));
+}
+
+
+DebugGenerator::DebugGenerator(bool is_active, llvm::Module& module,
+                               const char* source_filename)
+    : m_dbg_builder(module), m_is_active(is_active)
+{
+    if(is_active) {
+        m_dbg_unit = m_dbg_builder.createCompileUnit(
+            llvm::dwarf::DW_LANG_C, m_dbg_builder.createFile(source_filename, "."),
+            "Bluebird Compiler", false, "", 0);
+        m_file = m_dbg_builder.createFile(m_dbg_unit->getFilename(),
+                                          m_dbg_unit->getDirectory());
+        // dbg_unit is root scope
+        m_scopes.push_back(m_dbg_unit);
+    }
+}
+
+llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
+{
+    // See http://www.dwarfstd.org/doc/DWARF5.pdf, page 227
+    // TODO: add support for determining LLVM debug type for other AST types
+    unsigned encoding;
+    auto bit_size = ast_type->bit_size();
+    switch(ast_type->kind()) {
+    case TypeKind::Range: {
+        auto* type = static_cast<const RangeType*>(ast_type);
+        if(type->range.is_signed)
+            encoding = llvm::dwarf::DW_ATE_signed;
+        else
+            encoding = llvm::dwarf::DW_ATE_unsigned;
+        break;
+    }
+    case TypeKind::Boolean:
+        encoding = llvm::dwarf::DW_ATE_boolean;
+        // While the correct bit_size is 1, lldb crashes if bit_size < 8;
+        // lldb expects at least a full byte, it seems
+        bit_size = 8;
+        break;
+    case TypeKind::Array: {
+        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        multi_int start{arr_type->index_type->range.lower_bound};
+        multi_int end{arr_type->index_type->range.upper_bound};
+        llvm::Metadata* subscript =
+            m_dbg_builder.getOrCreateSubrange(to_int(std::move(start)),
+                                              to_int(std::move(end)));
+        llvm::DINodeArray array = m_dbg_builder.getOrCreateArray(subscript);
+        // TODO: check if alignment of zero (arg #2) is always correct
+        return m_dbg_builder.createArrayType(
+            arr_type->index_type->range.size() * arr_type->bit_size(), 0,
+            to_dbg_type(arr_type->element_type), array);
+    }
+    default:
+        assert(ast_type == &Type::Void);
+        return nullptr;
+    }
+
+    return m_dbg_builder.createBasicType(ast_type->name, bit_size, encoding);
+}
+
+llvm::DISubroutineType* DebugGenerator::to_dbg_type(const Function* ast_funct)
+{
+    llvm::SmallVector<llvm::Metadata*, 8> type_list;
+    // Return type is always at index 0
+    type_list.push_back(to_dbg_type(ast_funct->return_type));
+    for(auto& arg : ast_funct->parameters) {
+        type_list.push_back(to_dbg_type(arg->type));
+    }
+
+    return m_dbg_builder.createSubroutineType(m_dbg_builder.getOrCreateTypeArray(type_list));
+}
+
+void DebugGenerator::addFunction(llvm::IRBuilder<>& ir_builder,
+                                 const Function* ast_funct, llvm::Function* funct)
+{
+    if(m_is_active) {
+        llvm::DISubprogram* dbg_data = m_dbg_builder.createFunction(
+            m_file, ast_funct->name, "", m_file, ast_funct->line_num(),
+            to_dbg_type(ast_funct), ast_funct->line_num(), llvm::DINode::FlagZero,
+            llvm::DISubprogram::SPFlagDefinition);
+        funct->setSubprogram(dbg_data);
+        m_scopes.push_back(dbg_data);
+        // Tells debugger to skip over function prologue asm instructions
+        ir_builder.SetCurrentDebugLocation(llvm::DebugLoc::get(0, 0, nullptr));
+    }
+}
+
+void DebugGenerator::closeScope()
+{
+    if(m_is_active)
+        m_scopes.pop_back();
+}
+
+void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_builder)
+{
+    if(m_is_active) {
+        ir_builder.SetCurrentDebugLocation(
+            llvm::DebugLoc::get(line_num, 1, m_scopes.back()));
+    }
+}
+
+void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
+                                const NamedLValue* var, unsigned int line_num)
+{
+    if(m_is_active) {
+        llvm::DILocalVariable* dbg_var = m_dbg_builder.createAutoVariable(
+            m_scopes.back(), var->name, m_file, line_num, to_dbg_type(var->type));
+        m_dbg_builder.insertDeclare(
+            llvm_var, dbg_var, m_dbg_builder.createExpression(),
+            llvm::DebugLoc::get(line_num, 1, m_scopes.back()), block);
+    }
+}
+
+void DebugGenerator::finalize()
+{
+    if(m_is_active)
+        m_dbg_builder.finalize();
 }

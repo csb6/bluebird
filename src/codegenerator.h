@@ -51,14 +51,14 @@ namespace llvm {
    being generated */
 class DebugGenerator {
 private:
-    llvm::DIBuilder m_dbg_builder;
+    llvm::DIBuilder      m_dbg_builder;
     llvm::DICompileUnit* m_dbg_unit;
-    llvm::DIFile* m_file;
+    llvm::DIFile*        m_file;
     // true if currently in debug mode
-    bool m_is_active;
+    bool                        m_is_active;
     std::vector<llvm::DIScope*> m_scopes;
 
-    llvm::DIType* to_dbg_type(const struct Type* ast_type);
+    llvm::DIType*           to_dbg_type(const struct Type* ast_type);
     llvm::DISubroutineType* to_dbg_type(const struct Function* ast_funct);
 public:
     DebugGenerator(bool is_active, llvm::Module&, const char* source_filename);
@@ -93,14 +93,14 @@ public:
 private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
-    llvm::Module m_module;
+    llvm::Module      m_module;
 
-    std::vector<Magnum::Pointer<Function>>& m_functions;
+    std::vector<Magnum::Pointer<Function>>&              m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
     std::unordered_map<const NamedLValue*, llvm::Value*> m_lvalues;
 
     DebugGenerator m_dbg_gen;
-    Mode m_build_mode;
+    Mode           m_build_mode;
 
     // For codegen, virtual functions attached to each Expression subclass.
     // These functions are defined in codegenerator.cpp
@@ -117,22 +117,22 @@ private:
     friend struct IndexOp;
     friend struct InitList;
 
-    void declare_globals();
-    void declare_builtin_functions();
-    void declare_function_headers();
-    void define_functions();
-    llvm::Type* to_llvm_type(const Type* ast_type);
+    void               declare_globals();
+    void               declare_builtin_functions();
+    void               declare_function_headers();
+    void               define_functions();
+    llvm::Type*        to_llvm_type(const Type* ast_type);
     llvm::ConstantInt* to_llvm_int(const class multi_int&, unsigned short bit_size);
-    llvm::AllocaInst* prepend_alloca(llvm::Function*, llvm::Type*,
-                                     const std::string& name);
+    llvm::AllocaInst*  prepend_alloca(llvm::Function*, llvm::Type*,
+                                      const std::string& name);
     void store_expr_result(struct Expression*, llvm::Value* alloc);
     // Generate code for initializing lvalues
     void add_lvalue_init(llvm::Function*, struct Statement*);
     void in_statement(llvm::Function*, Statement*);
     void in_assignment(struct Assignment*);
     void in_return_statement(struct ReturnStatement*);
-    // successor is nullptr -> if-block
-    // sucessor isn't nullptr -> else-if-block
+    // If successor is nullptr, then arg 2 is an if-block
+    // If sucessor isn't nullptr, then arg 2 is an else-if-block
     void in_if_block(llvm::Function*, struct IfBlock*,
                      llvm::BasicBlock* successor = nullptr);
     void in_block(llvm::Function*, struct Block*,
