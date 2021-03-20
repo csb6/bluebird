@@ -44,8 +44,6 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     case TypeKind::Array: {
         auto* arr_type = static_cast<const ArrayType*>(ast_type);
-        // TODO: when adding indexing support, add offset so element 0 lines
-        // up with the array type's start index value
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
@@ -663,8 +661,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
         llvm::DINodeArray array = m_dbg_builder.getOrCreateArray(subscript);
         // TODO: check if alignment of zero (arg #2) is always correct
         return m_dbg_builder.createArrayType(
-            arr_type->index_type->range.size() * arr_type->bit_size(), 0,
-            to_dbg_type(arr_type->element_type), array);
+            bit_size, 0, to_dbg_type(arr_type->element_type), array);
     }
     default:
         assert(ast_type == &Type::Void);

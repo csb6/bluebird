@@ -25,6 +25,11 @@ Todo:
 [ ] Add support for rvalues, which are objects in the program that do not have names, but can
     still be read from/modified (e.g. a return value, an anonymous object, an array index).
     Think about how these semantics would mesh with the reference system and with pointers.
+[ ] Fix bug where ArrayType::bit_size() returns bit size of element, not of the entire array.
+    This will cause problems when doing nested arrays, since array layouts/init lists
+    assume that bit_size() gives the size of the entire object, and do not want to manually
+    check actual type everywhere. Will also need to change bit_size() to return a 32-bit
+    unsigned integer instead of a 16-bit one; arrays can have very large bit sizes.
 [X] Add a ref type, which is like a pointer except it cannot be returned or stored in a
     record. It has to refer to an object on the stack. Useful as a safer pointer in common
     usages.

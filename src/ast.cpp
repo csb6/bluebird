@@ -27,6 +27,12 @@ void RangeType::print(std::ostream& output) const
     output << "Type: " << name << " Range: " << range;
 }
 
+unsigned short ArrayType::bit_size() const
+{
+    // TODO: account for padding of elements
+    return index_type->range.size() * element_type->bit_size();
+}
+
 void ArrayType::print(std::ostream& output) const
 {
     output << "Type: " << name << " Array(";

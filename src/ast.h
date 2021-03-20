@@ -133,8 +133,7 @@ struct ArrayType final : public Type {
     ArrayType(const std::string &n, const RangeType* ind_type, Type* el_type)
         : Type(n), index_type(ind_type), element_type(el_type) {}
 
-    // Gives element type's bit size, not the array itself
-    unsigned short bit_size() const override { return element_type->bit_size(); }
+    unsigned short bit_size() const override;
     TypeKind       kind() const override { return TypeKind::Array; }
     void           print(std::ostream&) const override;
 };
