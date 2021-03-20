@@ -36,7 +36,6 @@ namespace Magnum = Corrade::Containers;
 namespace llvm {
     class Value;
     class ConstantInt;
-    class TargetMachine;
 };
 
 /* This file contains a class that can generate LLVM IR (and optionally debug
@@ -95,7 +94,6 @@ private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
     llvm::Module m_module;
-    llvm::TargetMachine* m_target_machine;
 
     std::vector<Magnum::Pointer<Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
@@ -146,9 +144,8 @@ public:
                   std::vector<Magnum::Pointer<Function>>&,
                   std::vector<Magnum::Pointer<Initialization>>& global_vars,
                   Mode build_mode = Mode::Default);
-    /* Generate LLVM IR, optionally optimize it, emit the
-       module into an object file, and then link the object file into
-       an executable */
+    llvm::Module& module() { return m_module; }
+    /* Generate LLVM IR, then optionally optimize it */
     void run();
 };
 #endif

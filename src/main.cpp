@@ -18,6 +18,7 @@
 #include "parser.h"
 #include "checker.h"
 #include "codegenerator.h"
+#include "objectgenerator.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -42,6 +43,7 @@ int main(int argc, char **argv)
     }
 
     CodeGenerator::Mode build_mode = CodeGenerator::Mode::Default;
+    const char* linker_exe_path = nullptr;
     int arg_index = 1;
     while(argv[arg_index][0] == '-') {
         if(strcmp(argv[arg_index], "--debug") == 0
@@ -53,6 +55,16 @@ int main(int argc, char **argv)
                   || strcmp(argv[arg_index], "-O") == 0) {
             // Build executables with optimizations enabled
             build_mode = CodeGenerator::Mode::Optimize;
+            ++arg_index;
+        } else if(strcmp(argv[arg_index], "--linker-exe-path") == 0) {
+            // Use a linker other than the default (see objectgenerator.cpp)
+            if(arg_index + 1 >= argc) {
+                std::cerr << "Error: Option`--linker-exe-path` expects an argument"
+                             " after it\n";
+                return 1;
+            }
+            ++arg_index;
+            linker_exe_path = argv[arg_index];
             ++arg_index;
         } else {
             std::cerr << "Error: unknown option '" << argv[arg_index] << "'\n";
@@ -78,6 +90,10 @@ int main(int argc, char **argv)
     CodeGenerator codegen{source_filename, parser.functions(),
                           parser.global_vars(), build_mode};
     codegen.run();
+
+    ObjectGenerator objgen{linker_exe_path, codegen.module()};
+    objgen.emit();
+    objgen.link("a.out");
 
     std::cout << parser;
 

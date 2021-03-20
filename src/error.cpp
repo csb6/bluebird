@@ -44,6 +44,15 @@ Error& Error::put(const char* message, unsigned int indent)
     return *this;
 }
 
+Error& Error::put(const std::string& message, unsigned int indent)
+{
+    for(; indent > 0; --indent) {
+        std::cerr << " ";
+    }
+    std::cerr << message;
+    return *this;
+}
+
 Error& Error::put(const Expression* expr)
 {
     expr->print(std::cerr);

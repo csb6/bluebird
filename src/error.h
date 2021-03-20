@@ -28,6 +28,7 @@ public:
     Error& quote(TokenType);
     Error& put(size_t);
     Error& put(const char* message, unsigned int indent = 0);
+    Error& put(const std::string& message, unsigned int indent = 0);
     Error& put(const struct Expression*);
     Error& put(const struct Statement*);
     Error& put(const struct Type*);

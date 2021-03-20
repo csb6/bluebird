@@ -23,8 +23,16 @@ namespace llvm {
     class TargetMachine;
 };
 
-void emit(llvm::Module&, llvm::TargetMachine*,
-          const std::filesystem::path& object_file);
-void link(const std::filesystem::path& object_file,
-          const std::filesystem::path& exe_file = "a.out");
+class ObjectGenerator {
+public:
+    ObjectGenerator(const char* linker_exe_path, llvm::Module&);
+    // Emit the object file for this module first, then link it into an executable
+    void emit();
+    void link(std::filesystem::path&& exe);
+private:
+    std::filesystem::path m_object_file;
+    const char* m_linker_exe_path;
+    llvm::Module& m_module;
+    llvm::TargetMachine* m_target_machine;
+};
 #endif

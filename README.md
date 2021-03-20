@@ -162,6 +162,8 @@ the last given flag will override any prior debug/optimization flags.
 - `(no options given)`: Build with no optimizations or debug symbols
 - `-g` or `--debug`: Build with debug symbols, no optimizations
 - `-O` or `--optimize`: Build with optimizations, no debug symbols
+- `--linker-exe-path /path/to/linker`: Link the generated object files using a linker
+ different from the default system linker
 
 ## License
 
