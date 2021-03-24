@@ -251,7 +251,7 @@ void InitList::check_types()
         if(values.size() > arr_type->index_type->range.size()) {
             Error(line_num()).put(" Array ").put(lvalue->type)
                 .put(" expects at most ").put(arr_type->index_type->range.size())
-                .put(" values, bit this initializer list provides ")
+                .put(" values, but this initializer list provides ")
                 .put(values.size()).raise(" value(s)");
         }
 

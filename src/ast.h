@@ -82,9 +82,9 @@ struct Type {
 
     // TODO: fix bug where this is called for some boolean literals
     //  (Type::bit_size should never be called)
-    virtual unsigned short bit_size() const { return 1; }
-    virtual TypeKind       kind() const { return TypeKind::Normal; }
-    virtual void           print(std::ostream&) const;
+    virtual size_t   bit_size() const { return 1; }
+    virtual TypeKind kind() const { return TypeKind::Normal; }
+    virtual void     print(std::ostream&) const;
 };
 
 struct LiteralType final : public Type {
@@ -103,8 +103,8 @@ struct EnumType final : public Type {
 
     using Type::Type;
 
-    unsigned short bit_size() const override { return 1; }
-    TypeKind       kind() const override { return category; }
+    size_t   bit_size() const override { return 1; }
+    TypeKind kind() const override { return category; }
 };
 
 // Type with integer bounds
@@ -119,10 +119,10 @@ struct RangeType final : public Type {
               const multi_int& upper_limit)
         : Type(n), range(lower_limit, upper_limit) {}
 
-    unsigned short bit_size() const override { return range.bit_size; }
-    TypeKind       kind() const override { return TypeKind::Range; }
-    void           print(std::ostream&) const override;
-    bool           is_signed() const { return range.is_signed; }
+    size_t   bit_size() const override { return range.bit_size; }
+    TypeKind kind() const override { return TypeKind::Range; }
+    void     print(std::ostream&) const override;
+    bool     is_signed() const { return range.is_signed; }
 };
 
 struct ArrayType final : public Type {
@@ -133,9 +133,9 @@ struct ArrayType final : public Type {
     ArrayType(const std::string &n, const RangeType* ind_type, Type* el_type)
         : Type(n), index_type(ind_type), element_type(el_type) {}
 
-    unsigned short bit_size() const override;
-    TypeKind       kind() const override { return TypeKind::Array; }
-    void           print(std::ostream&) const override;
+    size_t   bit_size() const override;
+    TypeKind kind() const override { return TypeKind::Array; }
+    void     print(std::ostream&) const override;
 };
 
 // A special kind of pointer that can only point to valid objects on stack;
@@ -146,9 +146,9 @@ struct RefType final : public Type {
     using Type::Type;
     RefType(const std::string& n, Type* t) : Type(n), inner_type(t) {}
 
-    unsigned short bit_size() const override { return sizeof(int*); }
-    TypeKind       kind() const override { return TypeKind::Ref; }
-    void           print(std::ostream&) const override;
+    size_t   bit_size() const override { return sizeof(int*); }
+    TypeKind kind() const override { return TypeKind::Ref; }
+    void     print(std::ostream&) const override;
 };
 
 // An abstract object or non-standalone group of expressions

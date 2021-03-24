@@ -122,7 +122,7 @@ private:
     void               declare_function_headers();
     void               define_functions();
     llvm::Type*        to_llvm_type(const Type* ast_type);
-    llvm::ConstantInt* to_llvm_int(const class multi_int&, unsigned short bit_size);
+    llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
     llvm::AllocaInst*  prepend_alloca(llvm::Function*, llvm::Type*,
                                       const std::string& name);
     void store_expr_result(struct Expression*, llvm::Value* alloc);

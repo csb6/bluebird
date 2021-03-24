@@ -61,7 +61,7 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 }
 
 llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value,
-                                              unsigned short bit_size)
+                                              size_t bit_size)
 {
     return llvm::ConstantInt::get(
         m_context, llvm::APInt(bit_size, value.str(), 10));
