@@ -1,70 +1,39 @@
 Todo:
 
-[X] Reorganize how Type objects are represented so that fewer structs (e.g. LValue)
-    depend specifically on RangeTypes
-[X] Add while-loops
-[X] Add support for using parameters within a function definition
-[X] Fix bug where programs ending with a single-line comment (maybe any comment?)
-    and no trailing newline segfault
-[X] Add return statement and return types, enabling non-void functions
-[X] Add checks to ensure all paths out of a function have a return statement ending them
-[X] Consider reading characters on-demand from an iostream in the lexer instead
-    of reading everything into a big string at the start (this doesn't seem worth it;
-    it is pretty simple to have a file loaded into memory, allowing bidirectional iteration,
-    a big convenience that the iostream iterators can't do)
-[X] In codegen, generate offsets so that indexes starting at non-zero values
-    still access starting at element 0 of the underlying array pointer
-[X] Replace use of mini-GMP and its wrapper class multi_int with llvm::APInt. This will remove
-    a dependency and simplify interoperating with LLVM. If I ever decide to create a non-LLVM
-    backend, I can fairly easily extract the APInt class from LLVM, or simply conditionally
-    compile and use a different bigint library. Trying to follow the YAGNI rule. (Changed
-    my mind on this since APInt doesn't easily handle adding two differently-sized bigints)
-[ ] Fix bug where lldb does not properly stop on breakpoints and does not map source locations
-    correctly
-[ ] Fix weird exit codes of compiled executables (probably from main not returning 0)
-[ ] Add support for rvalues, which are objects in the program that do not have names, but can
-    still be read from/modified (e.g. a return value, an anonymous object, an array index).
-    Think about how these semantics would mesh with the reference system and with pointers.
-[ ] Fix bug where ArrayType::bit_size() returns bit size of element, not of the entire array.
-    This will cause problems when doing nested arrays, since array layouts/init lists
-    assume that bit_size() gives the size of the entire object, and do not want to manually
-    check actual type everywhere. Will also need to change bit_size() to return a 32-bit
-    unsigned integer instead of a 16-bit one; arrays can have very large bit sizes.
-[X] Add a ref type, which is like a pointer except it cannot be returned or stored in a
-    record. It has to refer to an object on the stack. Useful as a safer pointer in common
-    usages.
-[X] Add a "fixup" pass after the parser but before the checker. This would do constant literal
-    folding and assign literals their types, as well as create RefExpressions where needed.
-    Will have some error checking (i.e. when using a literal improperly), but will make rest
-    of typechecker much simpler. Right now the checker is full of special cases to deal with
-    all the possible ways refs and literals could be used in different kinds of expressions,
-    and the parser does constant literal folding, which isn't very elegant/fitting to its
-    responsibility (plus it decreases parser error message readability). Would be nice to
-    have the typechecker be able to assume that if two expressions' types aren't equal, then
-    they are being used improperly. (Decided not to do this since logic for resolving
-    actual types of literals is deeply connected with logic for the rest of typechecking)
+# High Priority
+[ ] Add support for anonymous objects (besides literals, which already exist). Start
+    with anonymous array objects, which can be represented using an initializer list
+    and take on the type of its context
 [ ] Figure out if ref types should be explicitly or implicitly dereferenced when used in
     larger expressions; what does assigning a ref to another ref mean?
 [ ] Add a pointer type. Initially, don't put major restrictions on their usage, just get
     something working
-[ ] Add support for writing to arrays (should tie in with rvalue support)
 [ ] Consider switching to using visitor pattern for traversing AST for greater flexibility/
-    modularity, as opposed to writing virtual member functions for this kind of work.
-    Wish C++ had the ability to dispatch on non-member functions easily
-[ ] Figure out how strings should work
-[ ] Add standard interface for adding builtin functions/types
+    modularity, as opposed to writing virtual member functions for this kind of work. This
+    also would make the state/context used during the traveral more explicit.
+    Wish C++ had the ability to dispatch on non-member functions more easily.
+
+# Middle Priority
+[ ] Fix bug where lldb does not properly stop on breakpoints and does not map source locations
+    correctly
+[ ] Fix weird exit codes of compiled executables (probably from main not returning 0)
+[ ] Figure out how strings should work. To start, might want to enable string literals
+    to be used as initializer-list-like values for initializing Character arrays.
+[ ] Add support for for-loops that iterate over a RangeType's range
 [ ] Add support for user-defined record types
 [ ] Add support for creating ranges and using them within larger expressions/variables
 [ ] Add simple for-loops that iterate over a range
-[ ] Add support for for-loops that iterate over a RangeType's range
-[ ] Add short-circuiting to logical operators, with non-short-circuiting options
+[ ] Think about using LLVM's builtin optimization pipelines (with some customization)
+    as enabled in llvm::PassBuilder
+[ ] Add short-circuiting to logical operators (while keeping non-short-circuiting options)
+
+# Low Priority
+[ ] Work on the various TODOs throughout the codebase
+[ ] Add standard interface for adding builtin functions/types
 [ ] Consider adding support for syntactic sugar for chained comparison:
     "`a op1 b op2 c ... y opN z` is equivalent to `a op1 b and b op2 c and ... y opN z`,
     except that each expression is evaluated at most once." (from Python docs)
 [ ] Consider adding a viceversa keyword to be used with binary expressions
-[ ] Think about using LLVM's builtin optimization pipelines (with some customization)
-    as enabled in llvm::PassBuilder
-[ ] Work on the various TODOs throughout the codebase
 [ ] Use property-based testing to test lexer (Update: I've run libfuzzer over the lexer some.
     Still could do more)
 [ ] Consider rewriting frontend/part of frontend in Ada (this is unlikely
