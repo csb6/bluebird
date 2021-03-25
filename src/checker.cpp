@@ -57,7 +57,7 @@ bool matched_literal(Expression* literal, const Other* other,
         return false;
     if(other_type->kind() == TypeKind::Range) {
         auto* range_type = static_cast<const RangeType*>(other_type);
-        const Range& range = range_type->range;
+        const IntRange& range = range_type->range;
         switch(literal->kind()) {
         case ExpressionKind::IntLiteral: {
             auto* int_literal = static_cast<IntLiteral*>(literal);

@@ -54,21 +54,21 @@ enum class LValueKind : char {
     Named, Index
 };
 
-// A lazily-evaluated sequence
-// Upper/lower bounds are inclusive
-struct Range {
+// A continuous sequence of integers.
+// Upper/lower bounds are inclusive.
+struct IntRange {
     multi_int lower_bound, upper_bound;
     bool is_signed;
     unsigned short bit_size;
 
-    Range() : is_signed(true), bit_size(0) {}
-    Range(const multi_int& lower, const multi_int& upper);
+    IntRange() : is_signed(true), bit_size(0) {}
+    IntRange(const multi_int& lower, const multi_int& upper);
 
     bool              contains(const multi_int&) const;
     // The number of integers the range contains 
     unsigned long int size() const;
 };
-std::ostream& operator<<(std::ostream& output, const Range&);
+std::ostream& operator<<(std::ostream& output, const IntRange&);
 
 // A kind of object
 struct Type {
@@ -111,7 +111,7 @@ struct EnumType final : public Type {
 struct RangeType final : public Type {
     // Some more default types that don't have to be declared
     static RangeType Integer, Character;
-    Range range;
+    IntRange range;
 
     using Type::Type;
     RangeType(const std::string &n,

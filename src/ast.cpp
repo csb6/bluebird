@@ -47,7 +47,7 @@ void RefType::print(std::ostream& output) const
     inner_type->print(output);
 }
 
-Range::Range(const multi_int& lower, const multi_int& upper)
+IntRange::IntRange(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       is_signed(lower.is_negative())
 {
@@ -68,12 +68,12 @@ Range::Range(const multi_int& lower, const multi_int& upper)
     }
 }
 
-bool Range::contains(const multi_int& value) const
+bool IntRange::contains(const multi_int& value) const
 {
     return value >= lower_bound && value <= upper_bound;
 }
 
-unsigned long int Range::size() const
+unsigned long int IntRange::size() const
 {
     multi_int low_copy{lower_bound};
     low_copy.negate();
@@ -82,7 +82,7 @@ unsigned long int Range::size() const
     return to_int(std::move(low_copy));
 }
 
-std::ostream& operator<<(std::ostream& output, const Range& range)
+std::ostream& operator<<(std::ostream& output, const IntRange& range)
 {
     output << "(" << range.lower_bound << ", " << range.upper_bound << ")";
     return output;
