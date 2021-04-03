@@ -260,27 +260,42 @@ llvm::Value* IndexOp::codegen(CodeGenerator& gen)
     return gen.m_ir_builder.CreateLoad(array_type->getElementType(), ptr, "arr_elem");
 }
 
-// Always returns nullptr; should only be called by store_expr_result()
 llvm::Value* InitList::codegen(CodeGenerator& gen)
 {
-    assert(lvalue->kind() == LValueKind::Named);
-    const auto match = gen.m_lvalues.find(static_cast<const NamedLValue*>(lvalue));
-    assert(match != gen.m_lvalues.end());
-    llvm::Value* alloc = match->second;
+    assert(use_kind != Kind::None);
+    llvm::Value* alloc;
+    llvm::Type* array_type;
+    llvm::Value* return_obj;
+    if(use_kind == Kind::InInit) {
+        // InitList is part of an initialization or assignment
+        assert(lvalue->kind() == LValueKind::Named);
+        const auto match = gen.m_lvalues.find(static_cast<const NamedLValue*>(lvalue));
+        assert(match != gen.m_lvalues.end());
+        alloc = match->second;
+        array_type = gen.to_llvm_type(lvalue->type);
+        // Returns nullptr since no new object emitted;
+        // this case should only be called by store_expr_result()
+        return_obj = nullptr;
+    } else {
+        // InitList is acting as an anonymous object
+        array_type = gen.to_llvm_type(anon_type);
+        alloc = gen.prepend_alloca(gen.m_ir_builder.GetInsertBlock()->getParent(),
+                                   array_type, "anon_array");
+        return_obj = gen.m_ir_builder.CreateLoad(array_type, alloc, "anon_array");
+    }
     gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
-
     llvm::Value* indexes[2] = { gen.m_ir_builder.getIntN(32, 0) };
-    llvm::Type* array_type = gen.to_llvm_type(lvalue->type);
+    auto bit_size = type()->bit_size();
     for(uint64_t i = 0; i < values.size(); ++i) {
         // index 0: 0 bytes past the array ptr; index i: index into array
-        indexes[1] = gen.m_ir_builder.getIntN(lvalue->type->bit_size(), i);
+        indexes[1] = gen.m_ir_builder.getIntN(bit_size, i);
         // Get a pointer to to the current array element
         auto* element_ptr = gen.m_ir_builder.CreateInBoundsGEP(
             array_type, alloc, indexes, "elem_ptr");
         // Store the value at that array element
         gen.m_ir_builder.CreateStore(values[i]->codegen(gen), element_ptr);
     }
-    return nullptr;
+    return return_obj;
 }
 
 llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
@@ -303,7 +318,8 @@ void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = expr->codegen(*this);
     if(input_instr != nullptr) {
-        // See InitList::codegen (which makes this store instruction redundant)
+        // See InitList::codegen (which makes this store instruction redundant
+        // in some cases)
         m_ir_builder.CreateStore(input_instr, alloc);
     }
 }

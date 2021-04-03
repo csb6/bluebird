@@ -88,7 +88,7 @@ struct Type {
 };
 
 struct LiteralType final : public Type {
-    static const LiteralType Char, Int, Bool;
+    static const LiteralType Char, Int, Bool, InitList;
 
     using Type::Type;
 
@@ -368,13 +368,27 @@ struct IndexOp final : public Expression {
 
 // A bracketed list of values assigned all at once to an array/record
 struct InitList final : public Expression {
+    enum class Kind : char {
+        None, InInit, AnonObj
+    };
+
     std::vector<Magnum::Pointer<Expression>> values;
     unsigned int line;
-    // Expects lvalue to be set by the containing statement before end of parsing
-    const struct LValue *lvalue = nullptr;
-
+private:
+    union {
+        // When InitList is part of an assignment/initialization;
+        // expects lvalue to be set before end of parsing
+        const struct LValue *lvalue;
+        // When InitList is an anonymous object; takes on type of the
+        // lvalue it is used with
+        const Type* anon_type;
+    };
+    Kind use_kind = Kind::None;
+public:
     InitList(unsigned int line_n) : line(line_n) {}
 
+    void           set(const LValue*);
+    void           set(const Type*);
     ExpressionKind kind() const override { return ExpressionKind::InitList; }
     const Type*    type() const override;
     unsigned int   line_num() const override { return line; }

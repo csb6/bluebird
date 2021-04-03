@@ -48,6 +48,9 @@ void nonbool_condition_error(const Expression* condition,
 // No need to typecheck for literal/lvalue expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
+static
+void typecheck_init_list(InitList*, const LValue*, const ArrayType*);
+
 template<typename Other>
 static
 bool matched_literal(Expression* literal, const Other* other,
@@ -102,6 +105,21 @@ bool matched_literal(Expression* literal, const Other* other,
                 .put("Expected a boolean literal, but instead found expression:\n  ")
                 .put(literal).put("\t").put(literal->type()).raise();
         }
+    } else if(other_type->kind() == TypeKind::Array) {
+        if constexpr (std::is_same_v<decltype(other), const LValue*>) {
+            if(literal->kind() == ExpressionKind::InitList) {
+                auto* init_list = static_cast<InitList*>(literal);
+                auto* lvalue_type = static_cast<const ArrayType*>(other_type);
+                typecheck_init_list(init_list, other, lvalue_type);
+                init_list->set(other_type);
+            } else {
+                Error(literal->line_num())
+                    .put("Expected an initializer list, but instead found expression:\n  ")
+                    .put(literal).put("\t").put(literal->type()).raise();
+            }
+        } else {
+             print_type_mismatch(literal, other, other_type, "Used with", "Literal");
+        }
     } else {
         print_type_mismatch(literal, other, other_type, "Used with", "Literal");
     }
@@ -109,12 +127,41 @@ bool matched_literal(Expression* literal, const Other* other,
 }
 
 static
+void typecheck_init_list(InitList* init_list, const LValue* lvalue,
+                         const ArrayType* lvalue_type)
+{
+    // TODO: zero-initialize all other indices
+    if(init_list->values.size() > lvalue_type->index_type->range.size()) {
+        Error(init_list->line_num()).put(" Array ").put(lvalue_type)
+            .put(" expects at most ").put(lvalue_type->index_type->range.size())
+            .put(" values, but this initializer list provides ")
+            .put(init_list->values.size()).raise(" value(s)");
+    }
+
+    for(auto& value : init_list->values) {
+        value->check_types();
+        if(value->type() == lvalue_type->element_type
+           || matched_literal(value.get(), lvalue, lvalue_type->element_type)) {
+            continue;
+        } else {
+            print_type_mismatch(value.get(), lvalue, lvalue_type->element_type,
+                                "Expected initializer list item", "Actual item");
+        }
+    }
+}
+
+static
 void check_legal_op(const Expression* expr, TokenType op, const Type* type)
 {
     switch(type->kind()) {
     case TypeKind::Range:
-    case TypeKind::Literal:
     case TypeKind::Boolean:
+        break;
+    case TypeKind::Literal:
+        if(expr->kind() == ExpressionKind::InitList) {
+            Error(expr->line_num())
+                .raise("Operators cannot be used with initializer lists");
+        }
         break;
     default:
         Error(expr->line_num()).put("The operator").quote(op)
@@ -237,34 +284,14 @@ void IndexOp::check_types()
 
 void InitList::check_types()
 {
-    if(lvalue == nullptr) {
-        Error(line_num())
-            .raise("Initializer list used in incorrect context."
-                   " Initializer lists can only be used to initialize/assign"
-                   " a variable or constant of array/record types, not as part"
-                   " of a larger expression");
+    if(use_kind != Kind::InInit) {
+        // This is an InitList literal (i.e. it is not part of an Initialization
+        // or Assignment statement). It will be typechecked by match_literals.
+        return;
     }
 
     if(lvalue->type->kind() == TypeKind::Array) {
-        auto* arr_type = static_cast<ArrayType*>(lvalue->type);
-        // TODO: zero-initialize all other indices
-        if(values.size() > arr_type->index_type->range.size()) {
-            Error(line_num()).put(" Array ").put(lvalue->type)
-                .put(" expects at most ").put(arr_type->index_type->range.size())
-                .put(" values, but this initializer list provides ")
-                .put(values.size()).raise(" value(s)");
-        }
-
-        for(auto& value : values) {
-            value->check_types();
-            if(value->type() == arr_type->element_type
-               || matched_literal(value.get(), lvalue, arr_type->element_type)) {
-                continue;
-            } else {
-                print_type_mismatch(value.get(), lvalue, arr_type->element_type,
-                                    "Expected initializer list item", "Actual item");
-            }
-        }
+        typecheck_init_list(this, lvalue, static_cast<const ArrayType*>(lvalue->type));
     } else {
         // TODO: add support for record type initializer lists
         // Non-aggregate types cannot have initializer lists

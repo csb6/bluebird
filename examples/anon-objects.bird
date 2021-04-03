@@ -1,0 +1,14 @@
+type IndexT is range 9 thru 18;
+type IntArray is [IndexT] of Integer;
+
+function foo(arr: IntArray) is
+   arr[10];
+end;
+
+function main() is
+    //let a: IntArray := { 4, -90, 9, 0 };
+    //a := { 1, 2 };
+    //foo({2, 3, 4, -90, 100, 10000} + {1, 3, 4, 4, 4, 4});
+    foo({2, 3, 4, -90, 100, 10000});
+    //foo(a);
+end;

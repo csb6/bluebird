@@ -506,7 +506,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         if(new_statement->expression->kind() == ExpressionKind::InitList) {
             // Initialization lists need a backpointer to the lvalue they are used with
             auto* init_list = static_cast<InitList*>(new_statement->expression.get());
-            init_list->lvalue = new_statement->lvalue.get();
+            init_list->set(new_statement->lvalue.get());
         }
     }
     m_names_table.add_lvalue(new_statement->lvalue.get());
@@ -552,7 +552,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
     if(expr->kind() == ExpressionKind::InitList) {
         // Initialization lists need a backpointer to the lvalue they are used with
         auto* init_list = static_cast<InitList*>(expr.get());
-        init_list->lvalue = target_lvalue;
+        init_list->set(target_lvalue);
     }
     return Magnum::pointer<Assignment>(std::move(expr), target_lvalue);
 }

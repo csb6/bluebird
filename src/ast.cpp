@@ -202,12 +202,29 @@ void IndexOp::print(std::ostream& output) const
     output << "]";
 }
 
+void InitList::set(const LValue* lval)
+{
+    assert(use_kind == Kind::None);
+    use_kind = Kind::InInit;
+    lvalue = lval;
+}
+
+void InitList::set(const Type* new_type)
+{
+    assert(use_kind == Kind::None);
+    use_kind = Kind::AnonObj;
+    anon_type = new_type;
+}
+
 const Type* InitList::type() const
 {
-    if(lvalue == nullptr) {
-        return &Type::Void;
-    } else {
+    switch(use_kind) {
+    case Kind::InInit:
         return lvalue->type;
+    case Kind::AnonObj:
+        return anon_type;
+    default:
+        return &LiteralType::InitList;
     }
 }
 
@@ -351,6 +368,7 @@ EnumType EnumType::Boolean{"Boolean"};
 const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};
 const LiteralType LiteralType::Bool{"BoolLiteral"};
+const LiteralType LiteralType::InitList{"InitList"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
 RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};
