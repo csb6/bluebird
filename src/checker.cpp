@@ -286,7 +286,7 @@ void InitList::check_types()
 {
     if(use_kind != Kind::InInit) {
         // This is an InitList literal (i.e. it is not part of an Initialization
-        // or Assignment statement). It will be typechecked by match_literals.
+        // statement). It will be typechecked by match_literals.
         return;
     }
 

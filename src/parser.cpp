@@ -549,11 +549,6 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
     Magnum::Pointer<Expression> expr{parse_expression()};
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
-    if(expr->kind() == ExpressionKind::InitList) {
-        // Initialization lists need a backpointer to the lvalue they are used with
-        auto* init_list = static_cast<InitList*>(expr.get());
-        init_list->set(target_lvalue);
-    }
     return Magnum::pointer<Assignment>(std::move(expr), target_lvalue);
 }
 
