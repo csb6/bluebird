@@ -874,9 +874,11 @@ void Parser::in_array_type_definition(const std::string& type_name)
     check_token_is(TokenType::Keyword_Of, "keyword `of`", *token);
     ++token;
     match = m_names_table.find(token->text);
-    if(!match || (match && match.value().kind != NameType::Type)) {
+    if(!match || match.value().kind != NameType::Type) {
         // TODO: support unresolved array element types
         raise_error_expected("defined type", *token);
+    } else if(match.value().type->kind() == TypeKind::Ref) {
+        Error(token->line_num).raise("reference types cannot be elements in an array");
     }
     ++token;
     Type* new_type = create<ArrayType>(m_type_list, type_name, index_type,

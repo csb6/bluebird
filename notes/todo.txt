@@ -1,7 +1,7 @@
 Todo:
 
 # High Priority
-[ ] Add support for anonymous objects (besides literals, which already exist). Start
+[X] Add support for anonymous objects (besides literals, which already exist). Start
     with anonymous array objects, which can be represented using an initializer list
     and take on the type of its context
 [ ] Figure out if ref types should be explicitly or implicitly dereferenced when used in
