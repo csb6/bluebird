@@ -91,7 +91,7 @@ int main(int argc, char **argv)
                           parser.global_vars(), build_mode};
     codegen.run();
 
-    ObjectGenerator objgen{linker_exe_path, codegen.module()};
+    ObjectGenerator objgen{linker_exe_path, codegen.m_module};
     objgen.emit();
     objgen.link("a.out");
 

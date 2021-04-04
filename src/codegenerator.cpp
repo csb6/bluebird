@@ -324,22 +324,6 @@ void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
     }
 }
 
-void CodeGenerator::add_lvalue_init(llvm::Function* function, Statement* statement)
-{
-    auto* init = static_cast<Initialization*>(statement);
-    NamedLValue* lvalue = init->lvalue.get();
-
-    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(lvalue->type),
-                                             lvalue->name);
-    m_lvalues[lvalue] = alloc;
-
-    if(init->expression != nullptr) {
-        m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
-        m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
-        store_expr_result(init->expression.get(), alloc);
-    }
-}
-
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
 {
     switch(statement->kind()) {
@@ -350,7 +334,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
         break;
     }
     case StatementKind::Initialization:
-        add_lvalue_init(curr_funct, statement);
+        in_initialization(curr_funct, static_cast<Initialization*>(statement));
         break;
     case StatementKind::Assignment:
         in_assignment(static_cast<Assignment*>(statement));
@@ -367,6 +351,20 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     case StatementKind::Block:
         // TODO: add support for anonymous blocks
         break;
+    }
+}
+
+void CodeGenerator::in_initialization(llvm::Function* function, Initialization* init)
+{
+    NamedLValue* lvalue = init->lvalue.get();
+    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(lvalue->type),
+                                             lvalue->name);
+    m_lvalues[lvalue] = alloc;
+
+    if(init->expression != nullptr) {
+        m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
+        m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
+        store_expr_result(init->expression.get(), alloc);
     }
 }
 

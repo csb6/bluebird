@@ -93,8 +93,9 @@ public:
 private:
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_ir_builder;
-    llvm::Module      m_module;
-
+public:
+    llvm::Module m_module;
+private:
     std::vector<Magnum::Pointer<Function>>&              m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
     std::unordered_map<const NamedLValue*, llvm::Value*> m_lvalues;
@@ -127,8 +128,8 @@ private:
                                       const std::string& name);
     void store_expr_result(struct Expression*, llvm::Value* alloc);
     // Generate code for initializing lvalues
-    void add_lvalue_init(llvm::Function*, struct Statement*);
-    void in_statement(llvm::Function*, Statement*);
+    void in_statement(llvm::Function*, struct Statement*);
+    void in_initialization(llvm::Function*, struct Initialization*);
     void in_assignment(struct Assignment*);
     void in_return_statement(struct ReturnStatement*);
     // If successor is nullptr, then arg 2 is an if-block
@@ -144,7 +145,6 @@ public:
                   std::vector<Magnum::Pointer<Function>>&,
                   std::vector<Magnum::Pointer<Initialization>>& global_vars,
                   Mode build_mode = Mode::Default);
-    llvm::Module& module() { return m_module; }
     /* Generate LLVM IR, then optionally optimize it */
     void run();
 };
