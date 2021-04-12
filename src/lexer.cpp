@@ -17,6 +17,8 @@
 #include "error.h"
 #include "lexer.h"
 #include <ostream>
+#include <frozen/unordered_map.h>
+#include <frozen/string.h>
 
 #ifdef FUZZER_MODE
 /* ret_val is the return type of the containing function (don't pass an argument
@@ -31,36 +33,38 @@ enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
 };
 
+constexpr static auto identifier_table = frozen::make_unordered_map<frozen::string, TokenType>(
+    {
+        {"function", TokenType::Keyword_Funct},
+        {"is", TokenType::Keyword_Is},
+        {"do", TokenType::Keyword_Do},
+        {"let", TokenType::Keyword_Let},
+        {"constant", TokenType::Keyword_Const},
+        {"type", TokenType::Keyword_Type},
+        {"end", TokenType::Keyword_End},
+        {"mod", TokenType::Op_Mod},
+        {"rem", TokenType::Op_Rem},
+        {"if", TokenType::Keyword_If},
+        {"else", TokenType::Keyword_Else},
+        {"while", TokenType::Keyword_While},
+        {"range", TokenType::Keyword_Range},
+        {"return", TokenType::Keyword_Return},
+        {"and", TokenType::Op_And},
+        {"or", TokenType::Op_Or},
+        {"not", TokenType::Op_Not},
+        {"thru", TokenType::Op_Thru},
+        {"upto", TokenType::Op_Upto},
+        {"true", TokenType::Keyword_True},
+        {"false", TokenType::Keyword_False},
+        {"of", TokenType::Keyword_Of},
+        {"loop", TokenType::Keyword_Loop},
+        {"ref", TokenType::Keyword_Ref}
+    });
+
 Lexer::Lexer(std::string::const_iterator input_begin,
              std::string::const_iterator input_end)
     : m_input_begin(input_begin),
-      m_input_end(input_end),
-      m_identifier_table{
-         {"function", TokenType::Keyword_Funct},
-         {"is", TokenType::Keyword_Is},
-         {"do", TokenType::Keyword_Do},
-         {"let", TokenType::Keyword_Let},
-         {"constant", TokenType::Keyword_Const},
-         {"type", TokenType::Keyword_Type},
-         {"end", TokenType::Keyword_End},
-         {"mod", TokenType::Op_Mod},
-         {"rem", TokenType::Op_Rem},
-         {"if", TokenType::Keyword_If},
-         {"else", TokenType::Keyword_Else},
-         {"while", TokenType::Keyword_While},
-         {"range", TokenType::Keyword_Range},
-         {"return", TokenType::Keyword_Return},
-         {"and", TokenType::Op_And},
-         {"or", TokenType::Op_Or},
-         {"not", TokenType::Op_Not},
-         {"thru", TokenType::Op_Thru},
-         {"upto", TokenType::Op_Upto},
-         {"true", TokenType::Keyword_True},
-         {"false", TokenType::Keyword_False},
-         {"of", TokenType::Keyword_Of},
-         {"loop", TokenType::Keyword_Loop},
-         {"ref", TokenType::Keyword_Ref}
-      }
+      m_input_end(input_end)
 {}
 
 void Lexer::run()
@@ -228,8 +232,8 @@ void Lexer::run()
             if(std::isalnum(curr) || curr == '_') {
                 token_text += curr;
             } else {
-                auto match = m_identifier_table.find(token_text);
-                if(match != m_identifier_table.end()) {
+                auto match = identifier_table.find(std::string_view{token_text});
+                if(match != identifier_table.end()) {
                     // Found a keyword
                     m_tokens.emplace_back(line_num, match->second);
                 } else {

@@ -17,7 +17,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <vector>
-#include <unordered_map>
 #include "token.h"
 
 /* This file contains a class that transforms a stream of characters into
@@ -30,8 +29,6 @@ private:
     std::vector<Token> m_tokens;
     std::string::const_iterator m_input_begin;
     std::string::const_iterator m_input_end;
-    // Maps token strings to keywords
-    std::unordered_map<std::string, TokenType> m_identifier_table;
 public:
     /* Setup the lexer/its data structures */
     Lexer(std::string::const_iterator input_begin,
