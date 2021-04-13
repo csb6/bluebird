@@ -127,6 +127,8 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
         return truncate_to_bool(gen.m_ir_builder, operand);
     case TokenType::Op_Bit_Not:
         return gen.m_ir_builder.CreateNot(operand, "bitnottmp");
+    case TokenType::Op_Minus:
+        return gen.m_ir_builder.CreateNeg(operand, "negtmp");
     default:
         assert(false && "Unknown unary operator");
         return nullptr;
