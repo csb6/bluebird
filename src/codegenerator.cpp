@@ -110,13 +110,6 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
     return gen.m_ir_builder.CreateLoad(src_lvalue, lvalue->name);
 }
 
-llvm::Value* RefExpression::codegen(CodeGenerator& gen)
-{
-    llvm::Value* value = gen.m_lvalues[lvalue];
-    assert(value != nullptr);
-    return value;
-}
-
 llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 {
     llvm::Value* operand = right->codegen(gen);
@@ -215,14 +208,29 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     }
 }
 
+static
+llvm::Value* load_if_needed(LValue* lvalue, Expression* expr, llvm::Value* instr)
+{
+    if(lvalue->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
+        // When assigning a LValueExpression to a reference lvalue, need the pointer,
+        // not the loaded value, of the initialization/assignment expression
+        auto* load_instr = llvm::cast<llvm::LoadInst>(instr);
+        instr = load_instr->getPointerOperand();
+        load_instr->eraseFromParent();
+    }
+    return instr;
+}
+
 llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 {
     llvm::Function* funct_to_call = gen.m_module.getFunction(name());
     assert(funct_to_call != nullptr);
 
     llvm::SmallVector<llvm::Value*, 6> args;
+    auto param_it = definition->parameters.begin();
     for(auto& arg : arguments) {
-        args.push_back(arg->codegen(gen));
+        args.push_back(load_if_needed(param_it->get(), arg.get(), arg->codegen(gen)));
+        ++param_it;
     }
     llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
     // Can't name result of void function calls (they don't return anything)
@@ -317,14 +325,16 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
     return alloc;
 }
 
-void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
+void CodeGenerator::store_expr_result(LValue* lvalue, Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = expr->codegen(*this);
-    if(input_instr != nullptr) {
+    if(input_instr == nullptr) {
         // See InitList::codegen (which makes this store instruction redundant
         // in some cases)
-        m_ir_builder.CreateStore(input_instr, alloc);
+        return;
     }
+
+    m_ir_builder.CreateStore(load_if_needed(lvalue, expr, input_instr), alloc);
 }
 
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
@@ -367,7 +377,7 @@ void CodeGenerator::in_initialization(llvm::Function* function, Initialization* 
     if(init->expression != nullptr) {
         m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
         m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
-        store_expr_result(init->expression.get(), alloc);
+        store_expr_result(lvalue, init->expression.get(), alloc);
     }
 }
 
@@ -395,7 +405,7 @@ void CodeGenerator::in_assignment(Assignment* assgn)
     }
     }
 
-    store_expr_result(assgn->expression.get(), dest_ptr);
+    store_expr_result(lvalue, assgn->expression.get(), dest_ptr);
 }
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)

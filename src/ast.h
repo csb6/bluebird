@@ -35,7 +35,7 @@ enum class NameType : char {
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExpressionKind : char {
     StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
-    LValue, Ref, Binary, Unary, FunctionCall, IndexOp, InitList
+    LValue, Binary, Unary, FunctionCall, IndexOp, InitList
 };
 
 enum class StatementKind : char {
@@ -262,24 +262,6 @@ struct LValueExpression final : public Expression {
 
     ExpressionKind kind() const override { return ExpressionKind::LValue; }
     const Type*    type() const override;
-    unsigned int   line_num() const override { return line; }
-    // Other data should be looked up in the corresponding LValue object
-    void           print(std::ostream&) const override;
-
-    void         check_types() override {}
-    llvm::Value* codegen(CodeGenerator&) override;
-};
-
-struct RefExpression final : public Expression {
-    const NamedLValue* lvalue;
-    const RefType* ref_type;
-    unsigned int line;
-
-    RefExpression(unsigned int line_n, const NamedLValue *v,
-                  const RefType* rt) : lvalue(v), ref_type(rt), line(line_n) {}
-
-    ExpressionKind kind() const override { return ExpressionKind::Ref; }
-    const Type*    type() const override { return ref_type; }
     unsigned int   line_num() const override { return line; }
     // Other data should be looked up in the corresponding LValue object
     void           print(std::ostream&) const override;

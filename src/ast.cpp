@@ -98,12 +98,6 @@ void LValueExpression::print(std::ostream& output) const
     output << lvalue->name;
 }
 
-void RefExpression::print(std::ostream& output) const
-{
-    output << "Ref to: ";
-    lvalue->print(output);
-}
-
 void StringLiteral::print(std::ostream& output) const
 {
     output << "\"";

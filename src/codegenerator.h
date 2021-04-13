@@ -126,7 +126,7 @@ private:
     llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
     llvm::AllocaInst*  prepend_alloca(llvm::Function*, llvm::Type*,
                                       const std::string& name);
-    void store_expr_result(struct Expression*, llvm::Value* alloc);
+    void store_expr_result(struct LValue*, struct Expression*, llvm::Value* alloc);
     // Generate code for initializing lvalues
     void in_statement(llvm::Function*, struct Statement*);
     void in_initialization(llvm::Function*, struct Initialization*);

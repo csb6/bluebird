@@ -236,9 +236,6 @@ void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
        && assign_expr->kind() == ExpressionKind::LValue) {
         auto* ref_type = static_cast<const RefType*>(assign_lval->type);
         if(ref_type->inner_type == assign_expr_type) {
-            auto* rhs = static_cast<const LValueExpression*>(assign_expr.get());
-            assign_expr = Magnum::pointer<RefExpression>(rhs->line,
-                                                         rhs->lvalue, ref_type);
             return;
         }
     }
