@@ -105,11 +105,11 @@ private:
     TokenIterator m_input_begin, m_input_end, token;
     SymbolTable m_names_table;
 
-    std::vector<Magnum::Pointer<Function>> m_function_list;
-    std::vector<Magnum::Pointer<Type>> m_type_list;
-    std::vector<Magnum::Pointer<Initialization>> m_global_var_list;
-    std::vector<Magnum::Pointer<Function>> m_temp_function_list;
-    std::vector<Magnum::Pointer<IndexLValue>> m_index_lvalue_list;
+    std::vector<Magnum::Pointer<Function>> m_functions;
+    std::vector<Magnum::Pointer<Type>> m_types;
+    std::vector<Magnum::Pointer<Initialization>> m_global_vars;
+    std::vector<Magnum::Pointer<Function>> m_temp_functions;
+    std::vector<Magnum::Pointer<IndexLValue>> m_index_lvalues;
 
     Magnum::Pointer<Expression> parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
@@ -147,9 +147,9 @@ public:
            TokenIterator input_end);
     /* Generate the AST */
     void run();
-    auto& functions() { return m_function_list; }
-    auto& types() { return m_type_list; }
-    auto& global_vars() { return m_global_var_list; }
+    auto& functions() { return m_functions; }
+    auto& types() { return m_types; }
+    auto& global_vars() { return m_global_vars; }
     auto& names_table() { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);

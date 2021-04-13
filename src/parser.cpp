@@ -222,7 +222,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
         put_char->parameters.emplace_back(c);
         put_char->return_type = &RangeType::Integer;
         m_names_table.add_function(put_char);
-        m_function_list.emplace_back(put_char);
+        m_functions.emplace_back(put_char);
     }
 }
 
@@ -330,7 +330,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        auto* temp_definition = create<BBFunction>(m_temp_function_list, token->text);
+        auto* temp_definition = create<BBFunction>(m_temp_functions, token->text);
         new_function_call = Magnum::pointer<FunctionCall>(token->line_num, temp_definition);
         m_names_table.add_unresolved(new_function_call.get());
     } else {
@@ -463,7 +463,7 @@ Magnum::Pointer<NamedLValue> Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue->type = create<RangeType>(m_type_list, token->text);
+        new_lvalue->type = create<RangeType>(m_types, token->text);
         m_names_table.add_unresolved(new_lvalue.get());
     } else {
         switch(match.value().kind) {
@@ -537,7 +537,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
             Error(index_op->line_num()).raise("Expected an assignment to an array element");
         }
         auto* index_op_act = static_cast<IndexOp*>(index_op.release());
-        target_lvalue = create<IndexLValue>(m_index_lvalue_list,
+        target_lvalue = create<IndexLValue>(m_index_lvalues,
                                             Magnum::Pointer<IndexOp>{index_op_act});
         assert(target_lvalue != nullptr);
     } else {
@@ -725,7 +725,7 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        funct->return_type = create<RangeType>(m_type_list, token->text);
+        funct->return_type = create<RangeType>(m_types, token->text);
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -744,7 +744,7 @@ void Parser::in_function_definition()
             .put("Name").quote(token->text).raise("is already in use");
     }
     auto* new_funct = new BBFunction(token->text, token->line_num);
-    m_function_list.emplace_back(new_funct);
+    m_functions.emplace_back(new_funct);
     m_names_table.add_function(new_funct);
     ++token;
     check_token_is(TokenType::Open_Parentheses,
@@ -848,7 +848,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
     multi_int lower_limit, upper_limit;
     in_range(lower_limit, upper_limit);
 
-    Type* new_type = create<RangeType>(m_type_list, type_name, lower_limit, upper_limit);
+    Type* new_type = create<RangeType>(m_types, type_name, lower_limit, upper_limit);
     m_names_table.add_type(new_type);
 }
 
@@ -876,8 +876,7 @@ void Parser::in_array_type_definition(const std::string& type_name)
         Error(token->line_num).raise("reference types cannot be elements in an array");
     }
     ++token;
-    Type* new_type = create<ArrayType>(m_type_list, type_name, index_type,
-                                       match.value().type);
+    Type* new_type = create<ArrayType>(m_types, type_name, index_type, match.value().type);
     m_names_table.add_type(new_type);
 }
 
@@ -890,7 +889,7 @@ void Parser::in_ref_type_definition(const std::string& type_name)
     }
     ++token;
 
-    Type* new_type = create<RefType>(m_type_list, type_name, match.value().type);
+    Type* new_type = create<RefType>(m_types, type_name, match.value().type);
     m_names_table.add_type(new_type);
 }
 
@@ -947,7 +946,7 @@ void Parser::run()
             in_type_definition();
             break;
         case TokenType::Keyword_Let:
-            m_global_var_list.push_back(in_initialization());
+            m_global_vars.push_back(in_initialization());
             break;
         default:
             raise_error_expected("start of a variable/type declaration or a "
@@ -961,11 +960,11 @@ void Parser::run()
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {
     output << "Global Variables:\n";
-    for(const auto& decl : parser.m_global_var_list) {
+    for(const auto& decl : parser.m_global_vars) {
         decl->print(output);
     }
     output << "\nFunctions:\n";
-    for(const auto& function_definition : parser.m_function_list) {
+    for(const auto& function_definition : parser.m_functions) {
         function_definition->print(output);
         output << "\n";
     }
