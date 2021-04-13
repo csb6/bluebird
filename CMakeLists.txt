@@ -42,7 +42,6 @@ add_subdirectory(src)
 add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
-list(APPEND LLVM_LIBS lldDriver lldCommon lldCore lldYAML lldReaderWriter)
 target_link_libraries(bluebird ${LLVM_LIBS})
 
 if(CMAKE_SYSTEM MATCHES "Darwin")
