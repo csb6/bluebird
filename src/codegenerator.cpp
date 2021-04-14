@@ -241,7 +241,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 
 llvm::Value* IndexOp::codegen(CodeGenerator& gen)
 {
-    assert(base_expr->kind() == ExpressionKind::LValue);
+    assert(base_expr->kind() == ExprKind::LValue);
     const NamedLValue* lval = static_cast<LValueExpression*>(base_expr.get())->lvalue;
     auto match = gen.m_lvalues.find(lval);
     assert(match == gen.m_lvalues.find(lval));
@@ -340,28 +340,28 @@ void CodeGenerator::store_expr_result(LValue* lvalue, Expression* expr, llvm::Va
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
 {
     switch(statement->kind()) {
-    case StatementKind::Basic: {
+    case StmtKind::Basic: {
         auto* curr_statement = static_cast<BasicStatement*>(statement);
         m_dbg_gen.setLocation(curr_statement->line_num(), m_ir_builder);
         curr_statement->expression->codegen(*this);
         break;
     }
-    case StatementKind::Initialization:
+    case StmtKind::Initialization:
         in_initialization(curr_funct, static_cast<Initialization*>(statement));
         break;
-    case StatementKind::Assignment:
+    case StmtKind::Assignment:
         in_assignment(static_cast<Assignment*>(statement));
         break;
-    case StatementKind::IfBlock:
+    case StmtKind::IfBlock:
         in_if_block(curr_funct, static_cast<IfBlock*>(statement));
         break;
-    case StatementKind::While:
+    case StmtKind::While:
         in_while_loop(curr_funct, static_cast<WhileLoop*>(statement));
         break;
-    case StatementKind::Return:
+    case StmtKind::Return:
         in_return_statement(static_cast<ReturnStatement*>(statement));
         break;
-    case StatementKind::Block:
+    case StmtKind::Block:
         // TODO: add support for anonymous blocks
         break;
     }
@@ -438,14 +438,14 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
     llvm::BasicBlock* if_false = successor;
     if(ifblock->else_or_else_if == nullptr) {
         // No more else-if or else-blocks; do nothing
-    } else if(ifblock->else_or_else_if->kind() == StatementKind::IfBlock) {
+    } else if(ifblock->else_or_else_if->kind() == StmtKind::IfBlock) {
         // Else-if block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
         m_dbg_gen.setLocation(ifblock->else_or_else_if->line_num(), m_ir_builder);
         in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if.get()),
                     successor);
-    } else if(ifblock->else_or_else_if->kind() == StatementKind::Block) {
+    } else if(ifblock->else_or_else_if->kind() == StmtKind::Block) {
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);

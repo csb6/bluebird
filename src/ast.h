@@ -33,12 +33,12 @@ enum class NameType : char {
 };
 
 // Used in place of RTTI for differentiating between actual types of Expression*'s
-enum class ExpressionKind : char {
+enum class ExprKind : char {
     StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
     LValue, Binary, Unary, FunctionCall, IndexOp, InitList
 };
 
-enum class StatementKind : char {
+enum class StmtKind : char {
     Basic, Initialization, Assignment, IfBlock, Block, While, Return
 };
 
@@ -156,12 +156,12 @@ struct Expression {
     virtual ~Expression() noexcept = default;
 
     // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
-    virtual ExpressionKind kind() const = 0;
+    virtual ExprKind     kind() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
-    virtual const Type*    type() const = 0;
-    virtual unsigned int   line_num() const = 0;
-    virtual void           print(std::ostream&) const = 0;
+    virtual const Type*  type() const = 0;
+    virtual unsigned int line_num() const = 0;
+    virtual void         print(std::ostream&) const = 0;
 
     // Used in typechecking. Definitions/overrides defined in checker.cpp
     virtual void         check_types() = 0;
@@ -177,10 +177,10 @@ struct StringLiteral final : public Expression {
     StringLiteral(unsigned int line_n, const std::string& v)
         : value(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::StringLiteral; }
-    const Type*    type() const override { return &Type::String; }
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::StringLiteral; }
+    const Type*  type() const override { return &Type::String; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -193,10 +193,10 @@ struct CharLiteral final : public Expression {
 
     CharLiteral(unsigned int line_n, char v) : value(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::CharLiteral; }
-    const Type*    type() const override { return actual_type; }
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::CharLiteral; }
+    const Type*  type() const override { return actual_type; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -213,10 +213,10 @@ struct IntLiteral final : public Expression {
     IntLiteral(unsigned int line_n, const multi_int& v)
         : value(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::IntLiteral; }
-    const Type*    type() const override { return actual_type; }
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::IntLiteral; }
+    const Type*  type() const override { return actual_type; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -229,10 +229,10 @@ struct BoolLiteral final : public Expression {
 
     BoolLiteral(unsigned int line_n, bool v) : value(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::BoolLiteral; }
-    const Type*    type() const override { return actual_type; }
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::BoolLiteral; }
+    const Type*  type() const override { return actual_type; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -244,10 +244,10 @@ struct FloatLiteral final : public Expression {
 
     FloatLiteral(unsigned int line_n, double v) : value(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::FloatLiteral; }
-    const Type*    type() const override { return &Type::Float; }
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::FloatLiteral; }
+    const Type*  type() const override { return &Type::Float; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -260,11 +260,11 @@ struct LValueExpression final : public Expression {
 
     LValueExpression(unsigned int line_n, const NamedLValue *v) : lvalue(v), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::LValue; }
-    const Type*    type() const override;
-    unsigned int   line_num() const override { return line; }
+    ExprKind     kind() const override { return ExprKind::LValue; }
+    const Type*  type() const override;
+    unsigned int line_num() const override { return line; }
     // Other data should be looked up in the corresponding LValue object
-    void           print(std::ostream&) const override;
+    void         print(std::ostream&) const override;
 
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
@@ -278,10 +278,10 @@ struct UnaryExpression final : public Expression {
     UnaryExpression(TokenType tok, Magnum::Pointer<Expression>&& expr)
         : op(tok), right(std::forward<decltype(right)>(expr)) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::Unary; }
-    const Type*    type() const override { return right->type(); }
-    unsigned int   line_num() const override { return right->line_num(); }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::Unary; }
+    const Type*  type() const override { return right->type(); }
+    unsigned int line_num() const override { return right->line_num(); }
+    void         print(std::ostream&) const override;
 
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
@@ -298,10 +298,10 @@ struct BinaryExpression final : public Expression {
         : left(std::forward<decltype(left)>(l)), op(oper),
           right(std::forward<decltype(right)>(r)) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::Binary; }
-    const Type*    type() const override;
-    unsigned int   line_num() const override { return left->line_num(); }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::Binary; }
+    const Type*  type() const override;
+    unsigned int line_num() const override { return left->line_num(); }
+    void         print(std::ostream&) const override;
 
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
@@ -317,10 +317,10 @@ struct FunctionCall final : public Expression {
 
     const std::string& name() const;
 
-    ExpressionKind kind() const override { return ExpressionKind::FunctionCall; }
-    const Type*    type() const override;
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::FunctionCall; }
+    const Type*  type() const override;
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
@@ -339,10 +339,10 @@ struct IndexOp final : public Expression {
         : base_expr(std::forward<decltype(base_expr)>(b)),
           index_expr(std::forward<decltype(index_expr)>(ind)), line(line_n) {}
 
-    ExpressionKind kind() const override { return ExpressionKind::IndexOp; }
-    const Type*    type() const override;
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    ExprKind     kind() const override { return ExprKind::IndexOp; }
+    const Type*  type() const override;
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
@@ -369,12 +369,12 @@ private:
 public:
     InitList(unsigned int line_n) : line(line_n) {}
 
-    void           set(const LValue*);
-    void           set(const Type*);
-    ExpressionKind kind() const override { return ExpressionKind::InitList; }
-    const Type*    type() const override;
-    unsigned int   line_num() const override { return line; }
-    void           print(std::ostream&) const override;
+    void         set(const LValue*);
+    void         set(const Type*);
+    ExprKind     kind() const override { return ExprKind::InitList; }
+    const Type*  type() const override;
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream&) const override;
 
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
@@ -389,7 +389,7 @@ struct LValue {
     explicit LValue(Type* t) : type(t) {}
     virtual ~LValue() noexcept = default;
 
-    virtual void print(std::ostream&) const = 0;
+    virtual void       print(std::ostream&) const = 0;
     virtual LValueKind kind() const = 0;
 };
 
@@ -421,11 +421,11 @@ struct IndexLValue final : public LValue {
 struct Statement {
     virtual ~Statement() noexcept = default;
 
-    virtual StatementKind kind() const = 0;
-    virtual unsigned int  line_num() const = 0;
-    virtual void          print(std::ostream&) const = 0;
+    virtual StmtKind     kind() const = 0;
+    virtual unsigned int line_num() const = 0;
+    virtual void         print(std::ostream&) const = 0;
     // Returns true if always returns, no matter code path
-    virtual bool          check_types(class Checker&) = 0;
+    virtual bool         check_types(class Checker&) = 0;
 };
 
 // A brief, usually one-line statement that holds a single expression
@@ -435,10 +435,10 @@ struct BasicStatement final : public Statement {
     explicit BasicStatement(Magnum::Pointer<Expression>&& expr)
         : expression(std::forward<decltype(expression)>(expr)) {}
 
-    StatementKind kind() const override { return StatementKind::Basic; }
-    unsigned int  line_num() const override { return expression->line_num(); }
-    void          print(std::ostream&) const override;
-    bool          check_types(Checker&) override;
+    StmtKind     kind() const override { return StmtKind::Basic; }
+    unsigned int line_num() const override { return expression->line_num(); }
+    void         print(std::ostream&) const override;
+    bool         check_types(Checker&) override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -451,10 +451,10 @@ struct Initialization final : public Statement {
     explicit Initialization(unsigned int l, Magnum::Pointer<NamedLValue>&& lval)
         : lvalue(std::forward<decltype(lvalue)>(lval)), line(l) {}
 
-    StatementKind kind() const override { return StatementKind::Initialization; }
-    unsigned int  line_num() const override { return line; }
-    void          print(std::ostream& output) const override;
-    bool          check_types(Checker&) override;
+    StmtKind     kind() const override { return StmtKind::Initialization; }
+    unsigned int line_num() const override { return line; }
+    void         print(std::ostream& output) const override;
+    bool         check_types(Checker&) override;
 };
 
 // Statement where an existing variable is given a value
@@ -465,10 +465,10 @@ struct Assignment final : public Statement {
     Assignment(Magnum::Pointer<Expression>&& expr, LValue* lv)
         : expression(std::forward<decltype(expression)>(expr)), lvalue(lv) {}
 
-    StatementKind kind() const override { return StatementKind::Assignment; }
-    unsigned int  line_num() const override { return expression->line_num(); }
-    void          print(std::ostream& output) const override;
-    bool          check_types(Checker&) override;
+    StmtKind     kind() const override { return StmtKind::Assignment; }
+    unsigned int line_num() const override { return expression->line_num(); }
+    void         print(std::ostream& output) const override;
+    bool         check_types(Checker&) override;
 };
 
 // A group of statements contained in a scope
@@ -478,10 +478,10 @@ struct Block : public Statement {
 
     explicit Block(unsigned int l) : line(l) {}
 
-    StatementKind kind() const override { return StatementKind::Block; }
-    unsigned int  line_num() const override { return line; };
-    void          print(std::ostream&) const override;
-    bool          check_types(Checker&) override;
+    StmtKind     kind() const override { return StmtKind::Block; }
+    unsigned int line_num() const override { return line; };
+    void         print(std::ostream&) const override;
+    bool         check_types(Checker&) override;
 };
 
 // A block that is executed only when its boolean condition is true
@@ -493,9 +493,9 @@ struct IfBlock final : public Block {
         : Block(cond->line_num()),
           condition(std::forward<decltype(condition)>(cond)) {}
 
-    StatementKind kind() const override { return StatementKind::IfBlock; }
-    void          print(std::ostream&) const override;
-    bool          check_types(Checker&) override;
+    StmtKind kind() const override { return StmtKind::IfBlock; }
+    void     print(std::ostream&) const override;
+    bool     check_types(Checker&) override;
 };
 
 // A block that runs repeatedly until its condition is false
@@ -506,9 +506,9 @@ struct WhileLoop final : public Block {
         : Block(cond->line_num()),
           condition(std::forward<decltype(condition)>(cond)) {}
 
-    StatementKind kind() const override { return StatementKind::While; }
-    void          print(std::ostream&) const override;
-    bool          check_types(Checker&) override;
+    StmtKind kind() const override { return StmtKind::While; }
+    void     print(std::ostream&) const override;
+    bool     check_types(Checker&) override;
 };
 
 struct ReturnStatement final : public Statement {
@@ -520,10 +520,10 @@ struct ReturnStatement final : public Statement {
     explicit ReturnStatement(Magnum::Pointer<Expression>&& expr)
         : expression(std::forward<decltype(expression)>(expr)) {}
 
-    StatementKind kind() const override { return StatementKind::Return; }
-    unsigned int  line_num() const override;
-    void          print(std::ostream&) const override;
-    bool          check_types(Checker&) override;
+    StmtKind     kind() const override { return StmtKind::Return; }
+    unsigned int line_num() const override;
+    void         print(std::ostream&) const override;
+    bool         check_types(Checker&) override;
 };
 
 // A callable procedure that optionally takes inputs

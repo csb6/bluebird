@@ -62,7 +62,7 @@ bool matched_literal(Expression* literal, const Other* other,
         auto* range_type = static_cast<const RangeType*>(other_type);
         const IntRange& range = range_type->range;
         switch(literal->kind()) {
-        case ExpressionKind::IntLiteral: {
+        case ExprKind::IntLiteral: {
             auto* int_literal = static_cast<IntLiteral*>(literal);
             if(!range.contains(int_literal->value)) {
                 Error(int_literal->line_num())
@@ -76,7 +76,7 @@ bool matched_literal(Expression* literal, const Other* other,
             int_literal->actual_type = other_type;
             break;
         }
-        case ExpressionKind::CharLiteral: {
+        case ExprKind::CharLiteral: {
             auto* char_literal = static_cast<CharLiteral*>(literal);
             if(other_type != &RangeType::Character) {
                 // TODO: allow user-defined character types to be used with character
@@ -97,7 +97,7 @@ bool matched_literal(Expression* literal, const Other* other,
     } else if(other_type->kind() == TypeKind::Boolean) {
         // TODO: add support for user-created boolean types, which should be usable
         // with Boolean literals
-        if(literal->kind() == ExpressionKind::BoolLiteral) {
+        if(literal->kind() == ExprKind::BoolLiteral) {
             auto* bool_literal = static_cast<BoolLiteral*>(literal);
             bool_literal->actual_type = other_type;
         } else {
@@ -107,7 +107,7 @@ bool matched_literal(Expression* literal, const Other* other,
         }
     } else if(other_type->kind() == TypeKind::Array) {
         if constexpr (std::is_same_v<decltype(other), const LValue*>) {
-            if(literal->kind() == ExpressionKind::InitList) {
+            if(literal->kind() == ExprKind::InitList) {
                 auto* init_list = static_cast<InitList*>(literal);
                 auto* lvalue_type = static_cast<const ArrayType*>(other_type);
                 typecheck_init_list(init_list, other, lvalue_type);
@@ -158,7 +158,7 @@ void check_legal_op(const Expression* expr, TokenType op, const Type* type)
     case TypeKind::Boolean:
         break;
     case TypeKind::Literal:
-        if(expr->kind() == ExpressionKind::InitList) {
+        if(expr->kind() == ExprKind::InitList) {
             Error(expr->line_num())
                 .raise("Operators cannot be used with initializer lists");
         }
@@ -233,7 +233,7 @@ void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
         return;
 
     if(assign_lval->type->kind() == TypeKind::Ref
-       && assign_expr->kind() == ExpressionKind::LValue) {
+       && assign_expr->kind() == ExprKind::LValue) {
         auto* ref_type = static_cast<const RefType*>(assign_lval->type);
         if(ref_type->inner_type == assign_expr_type) {
             return;
@@ -257,7 +257,7 @@ void FunctionCall::check_types()
 
 void IndexOp::check_types()
 {
-    if(base_expr->kind() != ExpressionKind::LValue) {
+    if(base_expr->kind() != ExprKind::LValue) {
         Error(line_num()).put(" Cannot index into the expression:\n  ")
             .put(base_expr.get()).put("\t").put(base_expr->type()).raise();
     }
@@ -301,7 +301,7 @@ void InitList::check_types()
 bool BasicStatement::check_types(Checker&)
 {
     expression->check_types();
-    if(expression->kind() == ExpressionKind::Binary) {
+    if(expression->kind() == ExprKind::Binary) {
         auto* bin_expr = static_cast<const BinaryExpression*>(expression.get());
         if(bin_expr->op == TokenType::Op_Eq) {
             Error(bin_expr->line_num())
@@ -415,8 +415,8 @@ void Checker::run()
         var->check_types(*this);
         if(var->expression != nullptr) {
             switch(var->expression->kind()) {
-            case ExpressionKind::CharLiteral:
-            case ExpressionKind::IntLiteral:
+            case ExprKind::CharLiteral:
+            case ExprKind::IntLiteral:
                 break;
             default:
                 Error(var->expression->line_num())

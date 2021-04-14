@@ -102,7 +102,7 @@ static Magnum::Pointer<Expression>
 fold_constants(Token op, Magnum::Pointer<Expression>&& right)
 {
     switch(right->kind()) {
-    case ExpressionKind::IntLiteral: {
+    case ExprKind::IntLiteral: {
         auto* r_int = static_cast<IntLiteral*>(right.get());
         switch(op.type) {
         case TokenType::Op_Minus:
@@ -116,7 +116,7 @@ fold_constants(Token op, Magnum::Pointer<Expression>&& right)
         }
         return std::move(right);
     }
-    case ExpressionKind::BoolLiteral: {
+    case ExprKind::BoolLiteral: {
         auto* r_bool = static_cast<BoolLiteral*>(right.get());
         if(op.type == TokenType::Op_Not) {
             r_bool->value = !r_bool->value;
@@ -136,7 +136,7 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
 {
     const auto left_kind = left->kind();
     const auto right_kind = right->kind();
-    if(left_kind == ExpressionKind::IntLiteral && right_kind == ExpressionKind::IntLiteral) {
+    if(left_kind == ExprKind::IntLiteral && right_kind == ExprKind::IntLiteral) {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
         auto* l_int = static_cast<IntLiteral*>(left.get());
         auto* r_int = static_cast<IntLiteral*>(right.get());
@@ -178,8 +178,7 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
             raise_error_expected("binary operator that works on integer literals", op);
         }
         return std::move(left);
-    } else if(left_kind == ExpressionKind::BoolLiteral
-              && right_kind == ExpressionKind::BoolLiteral) {
+    } else if(left_kind == ExprKind::BoolLiteral && right_kind == ExprKind::BoolLiteral) {
         // Fold into a single literal
         auto* l_bool = static_cast<BoolLiteral*>(left.get());
         auto* r_bool = static_cast<BoolLiteral*>(right.get());
@@ -503,7 +502,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         ++token;
         new_statement->expression = parse_expression();
         ++token;
-        if(new_statement->expression->kind() == ExpressionKind::InitList) {
+        if(new_statement->expression->kind() == ExprKind::InitList) {
             // Initialization lists need a backpointer to the lvalue they are used with
             auto* init_list = static_cast<InitList*>(new_statement->expression.get());
             init_list->set(new_statement->lvalue.get());
@@ -533,7 +532,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
     if(std::next(token)->type == TokenType::Open_Bracket) {
         // Array element assignment
         Magnum::Pointer<Expression> index_op{parse_expression()};
-        if(index_op->kind() != ExpressionKind::IndexOp) {
+        if(index_op->kind() != ExprKind::IndexOp) {
             Error(index_op->line_num()).raise("Expected an assignment to an array element");
         }
         auto* index_op_act = static_cast<IndexOp*>(index_op.release());
@@ -812,7 +811,7 @@ void Parser::in_function_definition()
 void Parser::in_range(multi_int& low_out, multi_int& high_out)
 {
     Magnum::Pointer<Expression> expr = parse_expression();
-    if(expr->kind() != ExpressionKind::Binary) {
+    if(expr->kind() != ExprKind::Binary) {
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
     auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
@@ -820,10 +819,10 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
 
-    if(range_expr->left->kind() != ExpressionKind::IntLiteral) {
+    if(range_expr->left->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());
-    } else if(range_expr->right->kind() != ExpressionKind::IntLiteral) {
+    } else if(range_expr->right->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's upper bound",
                              range_expr->right.get());
     }

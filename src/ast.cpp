@@ -144,8 +144,8 @@ const Type* BinaryExpression::type() const
         // are in this expression, want to return the type of
         // the typed part (literals implicitly convert to that type)
         switch(left->kind()) {
-        case ExpressionKind::StringLiteral: case ExpressionKind::CharLiteral:
-        case ExpressionKind::IntLiteral:    case ExpressionKind::FloatLiteral:
+        case ExprKind::StringLiteral: case ExprKind::CharLiteral:
+        case ExprKind::IntLiteral:    case ExprKind::FloatLiteral:
             return right->type();
         default:
             return left->type();
