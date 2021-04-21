@@ -608,7 +608,7 @@ void CodeGenerator::define_functions()
         //  instead using it directly, since it will already be in a register
         for(llvm::Argument& arg : curr_funct->args()) {
             llvm::AllocaInst* alloc = prepend_alloca(curr_funct, arg.getType(),
-                                                     arg.getName());
+                                                     arg.getName().str());
             m_lvalues[ast_arg_it->get()] = alloc;
             ++ast_arg_it;
             m_ir_builder.CreateStore(&arg, alloc);
@@ -721,7 +721,8 @@ void DebugGenerator::addFunction(llvm::IRBuilder<>& ir_builder,
         funct->setSubprogram(dbg_data);
         m_scopes.push_back(dbg_data);
         // Tells debugger to skip over function prologue asm instructions
-        ir_builder.SetCurrentDebugLocation(llvm::DebugLoc::get(0, 0, nullptr));
+        ir_builder.SetCurrentDebugLocation(llvm::DILocation::get(m_file->getContext(),
+                                                                 0, 0, m_dbg_unit));
     }
 }
 
@@ -734,8 +735,9 @@ void DebugGenerator::closeScope()
 void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_builder)
 {
     if(m_is_active) {
-        ir_builder.SetCurrentDebugLocation(
-            llvm::DebugLoc::get(line_num, 1, m_scopes.back()));
+        ir_builder.SetCurrentDebugLocation(llvm::DILocation::get(
+                                               m_scopes.back()->getContext(), line_num, 1,
+                                               m_scopes.back()));
     }
 }
 
@@ -747,7 +749,8 @@ void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
             m_scopes.back(), var->name, m_file, line_num, to_dbg_type(var->type));
         m_dbg_builder.insertDeclare(
             llvm_var, dbg_var, m_dbg_builder.createExpression(),
-            llvm::DebugLoc::get(line_num, 1, m_scopes.back()), block);
+            llvm::DILocation::get(m_scopes.back()->getContext(),
+                                  line_num, 1, m_scopes.back()), block);
     }
 }
 

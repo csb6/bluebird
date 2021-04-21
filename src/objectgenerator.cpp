@@ -24,6 +24,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/Host.h>
 #pragma GCC diagnostic pop
 #include <cstdlib>
 #include "objectgenerator.h"

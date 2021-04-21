@@ -51,7 +51,8 @@ void optimize(llvm::Module& module)
             llvm::LoopPassManager loop_manager;
             loop_manager.addPass(llvm::IndVarSimplifyPass());
             loop_manager.addPass(llvm::LICMPass());
-            funct_manager.addPass(llvm::FunctionToLoopPassAdaptor{std::move(loop_manager)});
+            funct_manager.addPass(llvm::createFunctionToLoopPassAdaptor(
+                                      std::move(loop_manager)));
         }
         // Unroll loops where needed
         funct_manager.addPass(llvm::LoopUnrollPass());
@@ -70,7 +71,8 @@ void optimize(llvm::Module& module)
         // Interprocedural Constant Propagation
         funct_manager.addPass(llvm::SCCPPass());
         // Enables function passes to be used on a module
-        module_manager.addPass(llvm::ModuleToFunctionPassAdaptor{std::move(funct_manager)});
+        module_manager.addPass(llvm::createModuleToFunctionPassAdaptor(
+                                   std::move(funct_manager)));
     }
     // Inlines parts of functions (e.g. if-statements if they surround a function body)
     module_manager.addPass(llvm::PartialInlinerPass());

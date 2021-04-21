@@ -110,7 +110,7 @@ let new_amt2: Dalmation_Count := original_amt + puppy_amt2;
 
 - C++17 compiler
 - CMake (>= 3.16.4)
-- LLVM 10
+- LLVM 12
 - All other dependencies will be bundled into the `third_party/` directory
 
 ### Compiling the compiler

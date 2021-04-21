@@ -20,7 +20,7 @@ project(Bluebird)
 
 # For some reason CMake can't find LLVM on macOS,
 # so we need to give it some help
-find_package(LLVM 10.0 REQUIRED CONFIG
+find_package(LLVM 12.0 REQUIRED CONFIG
     HINTS /usr/local/opt/llvm/lib/cmake/llvm)
 
 include_directories(${LLVM_INCLUDE_DIRS})
