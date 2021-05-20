@@ -58,7 +58,9 @@ bool matched_literal(Expression* literal, const Other* other,
 {
     if(literal->type()->kind() != TypeKind::Literal)
         return false;
-    if(other_type->kind() == TypeKind::Range) {
+
+    switch(other_type->kind()) {
+    case TypeKind::Range: {
         auto* range_type = static_cast<const RangeType*>(other_type);
         const IntRange& range = range_type->range;
         switch(literal->kind()) {
@@ -94,7 +96,9 @@ bool matched_literal(Expression* literal, const Other* other,
                 .put("Expected a literal type, but instead found expression:\n  ")
                 .put(literal).put("\t").put(literal->type()).raise();
         }
-    } else if(other_type->kind() == TypeKind::Boolean) {
+        break;
+    }
+    case TypeKind::Boolean:
         // TODO: add support for user-created boolean types, which should be usable
         // with Boolean literals
         if(literal->kind() == ExprKind::BoolLiteral) {
@@ -105,7 +109,8 @@ bool matched_literal(Expression* literal, const Other* other,
                 .put("Expected a boolean literal, but instead found expression:\n  ")
                 .put(literal).put("\t").put(literal->type()).raise();
         }
-    } else if(other_type->kind() == TypeKind::Array) {
+        break;
+    case TypeKind::Array:
         if constexpr (std::is_same_v<decltype(other), const LValue*>) {
             if(literal->kind() == ExprKind::InitList) {
                 auto* init_list = static_cast<InitList*>(literal);
@@ -118,40 +123,72 @@ bool matched_literal(Expression* literal, const Other* other,
                     .put(literal).put("\t").put(literal->type()).raise();
             }
         } else {
-             print_type_mismatch(literal, other, other_type, "Used with", "Literal");
+            print_type_mismatch(literal, other, other_type, "Used with", "Literal");
         }
-    } else {
+        break;
+    case TypeKind::Ref:
+        // References can be implicitly dereferenced when used in expressions
+        return matched_literal(literal, other,
+                               static_cast<const RefType*>(other_type)->inner_type);
+    default:
         print_type_mismatch(literal, other, other_type, "Used with", "Literal");
     }
     return true;
 }
 
+template<typename Other>
 static
-void typecheck_init_list(InitList* init_list, const LValue* lvalue,
-                         const ArrayType* lvalue_type)
+bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
 {
-    // TODO: zero-initialize all other indices
-    if(init_list->values.size() > lvalue_type->index_type->range.size()) {
-        Error(init_list->line_num()).put(" Array ").put(lvalue_type)
-            .put(" expects at most ").put(lvalue_type->index_type->range.size())
-            .put(" values, but this initializer list provides ")
-            .put(init_list->values.size()).raise(" value(s)");
+    if(other_type->kind() != TypeKind::Ref) {
+        return false;
     }
 
-    for(auto& value : init_list->values) {
-        value->check_types();
-        if(value->type() == lvalue_type->element_type
-           || matched_literal(value.get(), lvalue, lvalue_type->element_type)) {
-            continue;
-        } else {
-            print_type_mismatch(value.get(), lvalue, lvalue_type->element_type,
-                                "Expected initializer list item", "Actual item");
-        }
+    auto* ref_type = static_cast<const RefType*>(other_type);
+    if(expr->kind() == ExprKind::LValue && ref_type->inner_type == expr->type()) {
+        return true;
+    } else {
+        print_type_mismatch(expr, other, other_type, "Used with", "Expression");
     }
 }
 
 static
-void check_legal_op(const Expression* expr, TokenType op, const Type* type)
+void check_legal_unary_op(const UnaryExpression* expr, TokenType op, const Type* type)
+{
+    switch(type->kind()) {
+    case TypeKind::Range:
+        if(is_bool_op(op)) {
+            Error(expr->right->line_num()).put("The boolean operator").quote(op)
+                .put("cannot be used with expression:\n  ")
+                .put(expr->right.get()).newline()
+                .put("because the expression type is a range type, not a boolean type")
+                .raise();
+        }
+        break;
+    case TypeKind::Boolean:
+        if(!is_bool_op(op)) {
+            Error(expr->right->line_num()).put("The non-boolean operator")
+                .quote(op).put("cannot be used with expression:\n ")
+                .put(expr->right.get()).put("\t").put(expr->right->type()).newline()
+                .raise("because the expression is a boolean type");
+        }
+        break;
+    case TypeKind::Literal:
+        // Assumes all but float literals are constant folded before this stage
+        assert(false);
+        break;
+    case TypeKind::Ref:
+        check_legal_unary_op(expr, op, static_cast<const RefType*>(type)->inner_type);
+        break;
+    default:
+        Error(expr->line_num()).put("The operator").quote(op)
+            .put("cannot be used with expression:\n ")
+            .put(expr).put("\t").put(expr->type()).raise();
+    }
+}
+
+static
+void check_legal_bin_op(const Expression* expr, TokenType op, const Type* type)
 {
     switch(type->kind()) {
     case TypeKind::Range:
@@ -163,6 +200,9 @@ void check_legal_op(const Expression* expr, TokenType op, const Type* type)
                 .raise("Operators cannot be used with initializer lists");
         }
         break;
+    case TypeKind::Ref:
+        check_legal_bin_op(expr, op, static_cast<const RefType*>(type)->inner_type);
+        break;
     default:
         Error(expr->line_num()).put("The operator").quote(op)
             .put("cannot be used with expression:\n ")
@@ -170,37 +210,10 @@ void check_legal_op(const Expression* expr, TokenType op, const Type* type)
     }
 }
 
-// TODO: check that unary operators are valid for their values
 void UnaryExpression::check_types()
 {
     right->check_types();
-    switch(right->type()->kind()) {
-    case TypeKind::Literal:
-        // Assumes all but float literals are constant folded before this stage
-        assert(false);
-        break;
-    case TypeKind::Boolean:
-        if(!is_bool_op(op)) {
-            Error(right->line_num()).put("The non-boolean operator")
-                .quote(op).put("cannot be used with expression:\n ")
-                .put(right.get()).put("\t").put(right->type()).newline()
-                .raise("because the expression is a boolean type");
-        }
-        break;
-    case TypeKind::Range:
-        if(is_bool_op(op)) {
-            Error(right->line_num()).put("The boolean operator").quote(op)
-                .put("cannot be used with expression:\n  ")
-                .put(right.get()).newline()
-                .put("because the expression type is a range type, not a boolean type")
-                .raise();
-        }
-        break;
-    default:
-        Error(right->line_num()).put("The unary operator").quote(op)
-            .put("cannot be used with expression:\n  ")
-            .put(right.get()).put("\t").put(right->type()).raise();
-    }
+    check_legal_unary_op(this, op, right->type());
 }
 
 // TODO: check if this binary op is legal for this type
@@ -212,33 +225,29 @@ void BinaryExpression::check_types()
     const Type* left_type = left->type();
     const Type* right_type = right->type();
 
-    check_legal_op(left.get(), op, left_type);
-    check_legal_op(right.get(), op, right_type);
+    check_legal_bin_op(left.get(), op, left_type);
+    check_legal_bin_op(right.get(), op, right_type);
     if(left_type == right_type
        || matched_literal(left.get(), right.get(), right_type)
-       || matched_literal(right.get(), left.get(), left_type))
+       || matched_literal(right.get(), left.get(), left_type)
+       || matched_ref(left.get(), right.get(), right_type)
+       || matched_ref(right.get(), left.get(), left_type))
         return;
 
     print_type_mismatch(left.get(), right.get(), right_type, "Right", "Left");
 }
 
 static
-void assign_typecheck(Magnum::Pointer<Expression>& assign_expr,
+void typecheck_assign(Magnum::Pointer<Expression>& assign_expr,
                       const LValue* assign_lval)
 {
     assign_expr->check_types();
     const auto* assign_expr_type = assign_expr->type();
     if(assign_expr_type == assign_lval->type
-       || matched_literal(assign_expr.get(), assign_lval, assign_lval->type))
+       || matched_literal(assign_expr.get(), assign_lval, assign_lval->type)
+       || matched_ref(assign_expr.get(), assign_lval, assign_lval->type))
         return;
 
-    if(assign_lval->type->kind() == TypeKind::Ref
-       && assign_expr->kind() == ExprKind::LValue) {
-        auto* ref_type = static_cast<const RefType*>(assign_lval->type);
-        if(ref_type->inner_type == assign_expr_type) {
-            return;
-        }
-    }
     print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
 }
 
@@ -251,7 +260,7 @@ void FunctionCall::check_types()
     }
     const size_t arg_count = arguments.size();
     for(size_t i = 0; i < arg_count; ++i) {
-        assign_typecheck(arguments[i], definition->parameters[i].get());
+        typecheck_assign(arguments[i], definition->parameters[i].get());
     }
 }
 
@@ -276,6 +285,30 @@ void IndexOp::check_types()
     } else {
         print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
                             "Expected array index", "Actual");
+    }
+}
+
+static
+void typecheck_init_list(InitList* init_list, const LValue* lvalue,
+                         const ArrayType* lvalue_type)
+{
+    // TODO: zero-initialize all other indices
+    if(init_list->values.size() > lvalue_type->index_type->range.size()) {
+        Error(init_list->line_num()).put(" Array ").put(lvalue_type)
+            .put(" expects at most ").put(lvalue_type->index_type->range.size())
+            .put(" values, but this initializer list provides ")
+            .put(init_list->values.size()).raise(" value(s)");
+    }
+
+    for(auto& value : init_list->values) {
+        value->check_types();
+        if(value->type() == lvalue_type->element_type
+           || matched_literal(value.get(), lvalue, lvalue_type->element_type)) {
+            continue;
+        } else {
+            print_type_mismatch(value.get(), lvalue, lvalue_type->element_type,
+                                "Expected initializer list item", "Actual item");
+        }
     }
 }
 
@@ -319,14 +352,14 @@ bool Initialization::check_types(Checker&)
             Error(line_num()).raise("Reference variables must be given an initial value");
         }
     } else {
-        assign_typecheck(expression, lvalue.get());
+        typecheck_assign(expression, lvalue.get());
     }
     return false;
 }
 
 bool Assignment::check_types(Checker&)
 {
-    assign_typecheck(expression, lvalue);
+    typecheck_assign(expression, lvalue);
     if(lvalue->kind() == LValueKind::Index) {
         static_cast<IndexLValue*>(lvalue)->array_access->check_types();
     }

@@ -67,6 +67,33 @@ llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value,
         m_context, llvm::APInt(bit_size, value.str(), 10));
 }
 
+static
+llvm::Value* load_if_needed(llvm::IRBuilder<>& ir_builder, Expression* expr,
+                            llvm::Value* ptr_operand)
+{
+    if(expr->type()->kind() == TypeKind::Ref) {
+        // When using refs within larger expressions, need to load the value of the
+        // pointer (since it will be used in operations with other values)
+        auto* ptr_type = llvm::cast<llvm::PointerType>(ptr_operand->getType());
+        return ir_builder.CreateLoad(ptr_type->getElementType(), ptr_operand, "refloadtemp");
+    } else {
+        return ptr_operand;
+    }
+}
+
+static
+llvm::Value* ref_if_needed(LValue* lvalue, Expression* expr, llvm::Value* instr)
+{
+    if(lvalue->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
+        // When assigning a LValueExpression to a reference lvalue, need the pointer,
+        // not the loaded value, of the initialization/assignment expression
+        auto* load_instr = llvm::cast<llvm::LoadInst>(instr);
+        instr = load_instr->getPointerOperand();
+        load_instr->eraseFromParent();
+    }
+    return instr;
+}
+
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
                              std::vector<Magnum::Pointer<Initialization>>& global_vars,
@@ -112,7 +139,7 @@ llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
 
 llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 {
-    llvm::Value* operand = right->codegen(gen);
+    llvm::Value* operand = load_if_needed(gen.m_ir_builder, right.get(), right->codegen(gen));
 
     switch(op) {
     case TokenType::Op_Not:
@@ -136,8 +163,8 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     } else if(right->type()->kind() == TypeKind::Range) {
         type_is_signed = static_cast<const RangeType*>(right->type())->is_signed();
     }
-    llvm::Value* left_ir = left->codegen(gen);
-    llvm::Value* right_ir = right->codegen(gen);
+    llvm::Value* left_ir = load_if_needed(gen.m_ir_builder, left.get(), left->codegen(gen));
+    llvm::Value* right_ir = load_if_needed(gen.m_ir_builder, right.get(), right->codegen(gen));
 
     // TODO: use float/user-defined versions of all these operators depending
     //   on their type
@@ -208,19 +235,6 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     }
 }
 
-static
-llvm::Value* load_if_needed(LValue* lvalue, Expression* expr, llvm::Value* instr)
-{
-    if(lvalue->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
-        // When assigning a LValueExpression to a reference lvalue, need the pointer,
-        // not the loaded value, of the initialization/assignment expression
-        auto* load_instr = llvm::cast<llvm::LoadInst>(instr);
-        instr = load_instr->getPointerOperand();
-        load_instr->eraseFromParent();
-    }
-    return instr;
-}
-
 llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 {
     llvm::Function* funct_to_call = gen.m_module.getFunction(name());
@@ -229,7 +243,7 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
     llvm::SmallVector<llvm::Value*, 6> args;
     auto param_it = definition->parameters.begin();
     for(auto& arg : arguments) {
-        args.push_back(load_if_needed(param_it->get(), arg.get(), arg->codegen(gen)));
+        args.push_back(ref_if_needed(param_it->get(), arg.get(), arg->codegen(gen)));
         ++param_it;
     }
     llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
@@ -334,7 +348,7 @@ void CodeGenerator::store_expr_result(LValue* lvalue, Expression* expr, llvm::Va
         return;
     }
 
-    m_ir_builder.CreateStore(load_if_needed(lvalue, expr, input_instr), alloc);
+    m_ir_builder.CreateStore(ref_if_needed(lvalue, expr, input_instr), alloc);
 }
 
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)

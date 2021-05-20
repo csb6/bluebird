@@ -5,7 +5,7 @@ Todo:
     with anonymous array objects, which can be represented using an initializer list
     and take on the type of its context
 [X] Figure out semantics of ref assignment/initialization
-[ ] Figure out if ref types should be explicitly or implicitly dereferenced when used in
+[X] Figure out if ref types should be explicitly or implicitly dereferenced when used in
     larger expressions (they should)
 [ ] Allow variables with value types to be assigned refs
 [ ] Add a pointer type. Initially, don't put major restrictions on their usage, just get

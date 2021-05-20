@@ -15,5 +15,8 @@ function main() is
   arr_ref2 := arr_ref;
   let i: Integer := 67;
   let iref: IntRef := i;
+  iref + 3;
+  iref + i;
+  -iref;
   foo(arr);
 end;
