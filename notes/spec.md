@@ -6,7 +6,9 @@
 
 - **Correctness** - the language features should help you write code that is correct, meaning
 it does what your design says it should do. Designs can be expressed using types and
-concepts that enforce invariants, checking for inconsistencies in your implementation
+concepts that enforce invariants, checking for inconsistencies in your implementation.
+Additionally, the compiler itself, which will be implemented to fulfill this specification
+document, should be correct to a reasonable degree of certainty.
 
 - **Performance** - the language should be able to be compiled to efficient machine code
 on par with current C++ or Ada compilers. The language should allow the programmer to
@@ -103,19 +105,20 @@ Text contained within `/` and `/` is a regular expression.
 <funct_call> ::= <identifier>(<expr_list>)
 
 
-<range_op> ::= upto | thru
-<unary_op_expr> ::= <unary_op> <expr>
-<dot_op_expr> ::= <expr> . <expr>
-<bin_op_expr> ::= <expr> <bin_op> <expr> | <dot_op_expr>
 <index_op> ::= <var_expr>[<expr>]
 <unary_op> ::= <see section Operator Precedence/Unary operators>
 <bin_op> ::= <see section Operator Precedence/Binary operators>
+<range_op> ::= <see section Operator Precedence/Binary operators>
+<dot_op> ::= <see section Operator Precedence/Binary operators>
+<unary_op_expr> ::= <unary_op> <expr>
+<dot_op_expr> ::= <expr> <dot_op> <expr>
+<bin_op_expr> ::= <expr> <bin_op> <expr> | <dot_op_expr>
 <assign_symbol> ::= <see section Assignment symbols>
 ```
 
 ### Assignment symbols
 
-Used to associate new values with a variable, potentially evaluating an extra operation
+Used to associate new values with a variable, potentially performing an extra operation
 before doing so.
 
 +--------+-----------+
@@ -365,20 +368,29 @@ Every value has a type, as does every variable. When initializing or assigning a
 variable, the expression will be evaluated to a value; this value must have the
 same type as the variable it is being assigned to.
 
-The type of a variable, once specified in an initialization or declaration, cannot be changed.
+The type of a variable, once specified in an initialization or declaration, cannot be changed
+during execution or by a subsequent statement/expression.
 
 *Primitive types* are builtin types that do not need to be defined explicitly and are available
 in all programs. They are: `Integer`, `Boolean`, `Character`, and `Float`.
 
 Primitive types have a set of *primitive operations*, which are the builtin operators that can
-be used on these types. These operators are inherited when types are derived from primitive
+be used on these types. These operators are inherited when new types are derived from primitive
 types.
 
 *Anonymous types* are types that are created as part of a statement that is not a type definition
-statement. The most common places for this to occur is in initialization statements, the declaration
+statement. The places where this can occur is in initialization statements, the declaration
 of fields in record types, or in the formal parameter lists of functions. These types are structurally
 compatible with other types (e.g. a `ref Integer` parameter can accept any argument with a type that
 has a definition reading `ref Integer` or a descendent subtype of any such type).
+
+*Ref types* are types representing aliases of variable of another type. Variables with this type
+cannot be stored in records or arrays, and cannot be returned from functions. They function much like
+pointer types, except no explicit dereferences are needed and their usage is restricted.
+
+*Pointer types* are types that hold a memory address, typically that of another variable. The
+value at that address can be accessed by dereferencing a variable with this type using the `val`
+unary operator.
 
 ### Assignment/initialization
 
@@ -411,6 +423,9 @@ the following is true:
      fields in `a`.
 
 Otherwise, the usage is illegal and the program is invalid.
+
+If an initialization statement does not include an initial expression (e.g. `let a : Integer;`),
+then the initial value of the variable is undefined.
 
 ### Unary expressions
 
