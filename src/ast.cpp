@@ -88,14 +88,14 @@ std::ostream& operator<<(std::ostream& output, const IntRange& range)
     return output;
 }
 
-const Type* LValueExpression::type() const
+const Type* VariableExpression::type() const
 {
-    return lvalue->type;
+    return variable->type;
 }
 
-void LValueExpression::print(std::ostream& output) const
+void VariableExpression::print(std::ostream& output) const
 {
-    output << lvalue->name;
+    output << variable->name;
 }
 
 void StringLiteral::print(std::ostream& output) const
@@ -196,11 +196,11 @@ void IndexOp::print(std::ostream& output) const
     output << "]";
 }
 
-void InitList::set(const LValue* lval)
+void InitList::set(const Assignable* new_var)
 {
     assert(use_kind == Kind::None);
     use_kind = Kind::InInit;
-    lvalue = lval;
+    assignable = new_var;
 }
 
 void InitList::set(const Type* new_type)
@@ -214,7 +214,7 @@ const Type* InitList::type() const
 {
     switch(use_kind) {
     case Kind::InInit:
-        return lvalue->type;
+        return assignable->type;
     case Kind::AnonObj:
         return anon_type;
     default:
@@ -245,7 +245,7 @@ void BasicStatement::print(std::ostream& output) const
 void Initialization::print(std::ostream& output) const
 {
     output << "Initialize ";
-    lvalue->print(output);
+    variable->print(output);
     output << " := ";
     if(expression) {
         expression->print(output);
@@ -257,7 +257,7 @@ void Initialization::print(std::ostream& output) const
 void Assignment::print(std::ostream& output) const
 {
     output << "Assign ";
-    lvalue->print(output);
+    assignable->print(output);
     output << " := ";
     expression->print(output);
 }
@@ -312,7 +312,7 @@ void ReturnStatement::print(std::ostream& output) const
     }
 }
 
-void NamedLValue::print(std::ostream& output) const
+void Variable::print(std::ostream& output) const
 {
     if(is_mutable) {
         output << "Variable: ";
@@ -322,7 +322,7 @@ void NamedLValue::print(std::ostream& output) const
     output << name;
 }
 
-void IndexLValue::print(std::ostream& output) const
+void IndexedVariable::print(std::ostream& output) const
 {
     if(is_mutable) {
         output << "Variable: ";

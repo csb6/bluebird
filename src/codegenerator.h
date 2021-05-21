@@ -70,7 +70,7 @@ public:
     void setLocation(unsigned int line_num, llvm::IRBuilder<>&);
     /* Register a local (auto duration) variable in the debugger's current
        scope */
-    void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct NamedLValue*,
+    void addAutoVar(llvm::BasicBlock*, llvm::Value*, const struct Variable*,
                     unsigned int line_num);
     /* Resolve all entities in the debugger. Needs to be done before module
        is printed/generated */
@@ -98,7 +98,7 @@ public:
 private:
     std::vector<Magnum::Pointer<Function>>&              m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
-    std::unordered_map<const NamedLValue*, llvm::Value*> m_lvalues;
+    std::unordered_map<const Variable*, llvm::Value*> m_vars;
 
     DebugGenerator m_dbg_gen;
     Mode           m_build_mode;
@@ -110,7 +110,7 @@ private:
     friend struct IntLiteral;
     friend struct BoolLiteral;
     friend struct FloatLiteral;
-    friend struct LValueExpression;
+    friend struct VariableExpression;
     friend struct RefExpression;
     friend struct UnaryExpression;
     friend struct BinaryExpression;
@@ -126,8 +126,7 @@ private:
     llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
     llvm::AllocaInst*  prepend_alloca(llvm::Function*, llvm::Type*,
                                       const std::string& name);
-    void store_expr_result(struct LValue*, struct Expression*, llvm::Value* alloc);
-    // Generate code for initializing lvalues
+    void store_expr_result(struct Assignable*, struct Expression*, llvm::Value* alloc);
     void in_statement(llvm::Function*, struct Statement*);
     void in_initialization(llvm::Function*, struct Initialization*);
     void in_assignment(struct Assignment*);

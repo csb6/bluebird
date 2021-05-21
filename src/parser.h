@@ -40,14 +40,14 @@ struct SymbolInfo {
     NameType kind; // See ast.h
     union {
         Type* type;
-        NamedLValue* lvalue = nullptr;
+        Variable* variable = nullptr;
         Function* function;
     };
 
     SymbolInfo() {}
     explicit SymbolInfo(NameType name) : kind(name) {}
     SymbolInfo(NameType name, Type* t) : kind(name), type(t) {}
-    SymbolInfo(NameType name, NamedLValue* lv) : kind(name), lvalue(lv) {}
+    SymbolInfo(NameType name, Variable* var) : kind(name), variable(var) {}
     SymbolInfo(NameType name, Function* f) : kind(name), function(f) {}
 };
 
@@ -76,11 +76,11 @@ public:
     std::optional<SymbolInfo> find(const std::string& name) const;
 
     // All add functions assume the name isn't already used for something else
-    void add_lvalue(NamedLValue*);
+    void add_var(Variable*);
     void add_type(Type*);
     void add_function(Function*);
 
-    void add_unresolved(NamedLValue*);
+    void add_unresolved(Variable*);
     void add_unresolved(FunctionCall*);
     void add_unresolved_return_type(Function*);
 
@@ -109,15 +109,15 @@ private:
     std::vector<Magnum::Pointer<Type>> m_types;
     std::vector<Magnum::Pointer<Initialization>> m_global_vars;
     std::vector<Magnum::Pointer<Function>> m_temp_functions;
-    std::vector<Magnum::Pointer<IndexLValue>> m_index_lvalues;
+    std::vector<Magnum::Pointer<IndexedVariable>> m_index_vars;
 
     Magnum::Pointer<Expression> parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
-    Magnum::Pointer<NamedLValue> in_lvalue_declaration();
+    Magnum::Pointer<Variable> in_var_declaration();
     void in_return_type(Function*);
     // Parse each type of expression
     Magnum::Pointer<Expression> in_literal();
-    Magnum::Pointer<Expression> in_lvalue_expression();
+    Magnum::Pointer<Expression> in_var_expression();
     Magnum::Pointer<Expression> in_parentheses();
     Magnum::Pointer<Expression> in_expression();
     Magnum::Pointer<Expression> in_function_call();

@@ -11,7 +11,7 @@ Error& Error::put(const Expression*) { return *this; }
 Error& Error::put(const Statement*) { return *this; }
 Error& Error::put(const Type*) { return *this; }
 Error& Error::put(const Function*) { return *this; }
-Error& Error::put(const LValue*) { return *this; }
+Error& Error::put(const Assignable*) { return *this; }
 Error& Error::quote(const std::string&) { return *this; }
 Error& Error::quote(char) { return *this; }
 Error& Error::quote(Token) { return *this; }
@@ -77,9 +77,9 @@ Error& Error::put(const Function* funct)
     return *this;
 }
 
-Error& Error::put(const LValue* lval)
+Error& Error::put(const Assignable* assignable)
 {
-    lval->print(std::cerr);
+    assignable->print(std::cerr);
     return *this;
 }
 

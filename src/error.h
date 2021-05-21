@@ -33,7 +33,7 @@ public:
     Error& put(const struct Statement*);
     Error& put(const struct Type*);
     Error& put(const struct Function*);
-    Error& put(const struct LValue*);
+    Error& put(const struct Assignable*);
     Error& newline();
     // Exits or throws exception; newline printed after message
     [[noreturn]] void raise(const char* message = "", unsigned int indent = 0);

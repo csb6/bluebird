@@ -45,11 +45,11 @@ void nonbool_condition_error(const Expression* condition,
         .put("Expression: ", 2).put(condition).put("\t").put(condition->type()).raise();
 }
 
-// No need to typecheck for literal/lvalue expressions since they aren't composite,
+// No need to typecheck for literal/variable expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
 static
-void typecheck_init_list(InitList*, const LValue*, const ArrayType*);
+void typecheck_init_list(InitList*, const Assignable*, const ArrayType*);
 
 template<typename Other>
 static
@@ -111,11 +111,11 @@ bool matched_literal(Expression* literal, const Other* other,
         }
         break;
     case TypeKind::Array:
-        if constexpr (std::is_same_v<decltype(other), const LValue*>) {
+        if constexpr (std::is_same_v<decltype(other), const Assignable*>) {
             if(literal->kind() == ExprKind::InitList) {
                 auto* init_list = static_cast<InitList*>(literal);
-                auto* lvalue_type = static_cast<const ArrayType*>(other_type);
-                typecheck_init_list(init_list, other, lvalue_type);
+                auto* assignable_type = static_cast<const ArrayType*>(other_type);
+                typecheck_init_list(init_list, other, assignable_type);
                 init_list->set(other_type);
             } else {
                 Error(literal->line_num())
@@ -145,7 +145,7 @@ bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
     }
 
     auto* ref_type = static_cast<const RefType*>(other_type);
-    if(expr->kind() == ExprKind::LValue && ref_type->inner_type == expr->type()) {
+    if(expr->kind() == ExprKind::Variable && ref_type->inner_type == expr->type()) {
         return true;
     } else {
         print_type_mismatch(expr, other, other_type, "Used with", "Expression");
@@ -238,17 +238,16 @@ void BinaryExpression::check_types()
 }
 
 static
-void typecheck_assign(Magnum::Pointer<Expression>& assign_expr,
-                      const LValue* assign_lval)
+void typecheck_assign(Magnum::Pointer<Expression>& assign_expr, const Assignable* assignable)
 {
     assign_expr->check_types();
     const auto* assign_expr_type = assign_expr->type();
-    if(assign_expr_type == assign_lval->type
-       || matched_literal(assign_expr.get(), assign_lval, assign_lval->type)
-       || matched_ref(assign_expr.get(), assign_lval, assign_lval->type))
+    if(assign_expr_type == assignable->type
+       || matched_literal(assign_expr.get(), assignable, assignable->type)
+       || matched_ref(assign_expr.get(), assignable, assignable->type))
         return;
 
-    print_type_mismatch(assign_expr.get(), assign_lval, assign_lval->type);
+    print_type_mismatch(assign_expr.get(), assignable, assignable->type);
 }
 
 void FunctionCall::check_types()
@@ -266,7 +265,7 @@ void FunctionCall::check_types()
 
 void IndexOp::check_types()
 {
-    if(base_expr->kind() != ExprKind::LValue) {
+    if(base_expr->kind() != ExprKind::Variable) {
         Error(line_num()).put(" Cannot index into the expression:\n  ")
             .put(base_expr.get()).put("\t").put(base_expr->type()).raise();
     }
@@ -289,24 +288,24 @@ void IndexOp::check_types()
 }
 
 static
-void typecheck_init_list(InitList* init_list, const LValue* lvalue,
-                         const ArrayType* lvalue_type)
+void typecheck_init_list(InitList* init_list, const Assignable* assignable,
+                         const ArrayType* assignable_type)
 {
     // TODO: zero-initialize all other indices
-    if(init_list->values.size() > lvalue_type->index_type->range.size()) {
-        Error(init_list->line_num()).put(" Array ").put(lvalue_type)
-            .put(" expects at most ").put(lvalue_type->index_type->range.size())
+    if(init_list->values.size() > assignable_type->index_type->range.size()) {
+        Error(init_list->line_num()).put(" Array ").put(assignable_type)
+            .put(" expects at most ").put(assignable_type->index_type->range.size())
             .put(" values, but this initializer list provides ")
             .put(init_list->values.size()).raise(" value(s)");
     }
 
     for(auto& value : init_list->values) {
         value->check_types();
-        if(value->type() == lvalue_type->element_type
-           || matched_literal(value.get(), lvalue, lvalue_type->element_type)) {
+        if(value->type() == assignable_type->element_type
+           || matched_literal(value.get(), assignable, assignable_type->element_type)) {
             continue;
         } else {
-            print_type_mismatch(value.get(), lvalue, lvalue_type->element_type,
+            print_type_mismatch(value.get(), assignable, assignable_type->element_type,
                                 "Expected initializer list item", "Actual item");
         }
     }
@@ -320,8 +319,8 @@ void InitList::check_types()
         return;
     }
 
-    if(lvalue->type->kind() == TypeKind::Array) {
-        typecheck_init_list(this, lvalue, static_cast<const ArrayType*>(lvalue->type));
+    if(assignable->type->kind() == TypeKind::Array) {
+        typecheck_init_list(this, assignable, static_cast<const ArrayType*>(assignable->type));
     } else {
         // TODO: add support for record type initializer lists
         // Non-aggregate types cannot have initializer lists
@@ -348,20 +347,20 @@ bool BasicStatement::check_types(Checker&)
 bool Initialization::check_types(Checker&)
 {
     if(expression == nullptr) {
-        if(lvalue->type->kind() == TypeKind::Ref) {
+        if(variable->type->kind() == TypeKind::Ref) {
             Error(line_num()).raise("Reference variables must be given an initial value");
         }
     } else {
-        typecheck_assign(expression, lvalue.get());
+        typecheck_assign(expression, variable.get());
     }
     return false;
 }
 
 bool Assignment::check_types(Checker&)
 {
-    typecheck_assign(expression, lvalue);
-    if(lvalue->kind() == LValueKind::Index) {
-        static_cast<IndexLValue*>(lvalue)->array_access->check_types();
+    typecheck_assign(expression, assignable);
+    if(assignable->kind() == AssignableKind::Indexed) {
+        static_cast<IndexedVariable*>(assignable)->array_access->check_types();
     }
     return false;
 }

@@ -217,7 +217,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
     {
         // function putchar(c : Character): Integer
         auto* put_char = new BuiltinFunction("putchar");
-        auto* c = new NamedLValue("c", &RangeType::Character);
+        auto* c = new Variable("c", &RangeType::Character);
         put_char->parameters.emplace_back(c);
         put_char->return_type = &RangeType::Integer;
         m_names_table.add_function(put_char);
@@ -271,22 +271,22 @@ Magnum::Pointer<Expression> Parser::in_literal()
     }
 }
 
-Magnum::Pointer<Expression> Parser::in_lvalue_expression()
+Magnum::Pointer<Expression> Parser::in_var_expression()
 {
     const TokenIterator current = token++;
     check_token_is(TokenType::Name, "variable/constant name", *current);
 
-    // Need to find the right LValue that this LValueExpression is a usage of
+    // Need to find the right Variable that this VariableExpression is a usage of
     const auto match = m_names_table.find(current->text);
     if(!match) {
         Error(current->line_num)
             .put("Unknown variable/constant").quote(current->text).raise();
-    } else if(match.value().kind != NameType::LValue) {
+    } else if(match.value().kind != NameType::Variable) {
         Error(current->line_num)
             .put("Expected name of variable/constant, but").quote(current->text)
             .raise("is already being used as a name");
     } else {
-        return Magnum::pointer<LValueExpression>(current->line_num, match.value().lvalue);
+        return Magnum::pointer<VariableExpression>(current->line_num, match.value().variable);
     }
 }
 
@@ -299,7 +299,7 @@ Magnum::Pointer<Expression> Parser::in_expression()
         } else if(std::next(token)->type == TokenType::Open_Bracket) {
             return in_index_op();
         } else {
-            return in_lvalue_expression();
+            return in_var_expression();
         }
     case TokenType::Open_Parentheses:
         return in_parentheses();
@@ -386,13 +386,13 @@ Magnum::Pointer<Expression> Parser::in_function_call()
 Magnum::Pointer<Expression> Parser::in_index_op()
 {
     const unsigned int line = token->line_num;
-    // For now, this will be a single LValueExpression, but in future will want
-    // to support anonymous objects (and other rvalues). Maybe one way to implement
-    // would be to parse a single expression (non-operator-containing) in in_expression(),
-    // then check if `[`, `(`, etc. as the next token, calling the correct parsing
+    // For now, this will be a single VariableExpression, but in future will want
+    // to support anonymous objects. Maybe one way to implement would be to parse
+    // a single expression (non-operator-containing) in in_expression(), then
+    // check if `[`, `(`, etc. as the next token, calling the correct parsing
     // function based on this next token and using the expression as its left side
     check_token_is(TokenType::Name, "name of array variable/constant", *token);
-    Magnum::Pointer<Expression> base_expr{in_lvalue_expression()};
+    Magnum::Pointer<Expression> base_expr{in_var_expression()};
 
     check_token_is(TokenType::Open_Bracket, "array open bracket `[`", *token);
     ++token;
@@ -436,24 +436,24 @@ Magnum::Pointer<Expression> Parser::in_init_list()
     Error(token->line_num).raise("Initializer list definition ended early");
 }
 
-// Creates LValue, but does not add to symbol table
-Magnum::Pointer<NamedLValue> Parser::in_lvalue_declaration()
+// Creates Variable, but does not add to symbol table
+Magnum::Pointer<Variable> Parser::in_var_declaration()
 {
-    check_token_is(TokenType::Name, "the name of an lvalue", *token);
+    check_token_is(TokenType::Name, "the name of a variable", *token);
     if(auto name_exists = m_names_table.find(token->text); name_exists) {
         Error(token->line_num)
             .quote(token->text)
-            .raise("cannot be used as an lvalue name. It is already defined as a name");
+            .raise("cannot be used as a variable name. It is already defined as a name");
     }
-    auto new_lvalue = Magnum::pointer<NamedLValue>(token->text);
+    auto new_var = Magnum::pointer<Variable>(token->text);
 
     ++token;
     check_token_is(TokenType::Type_Indicator, "`:` before typename", *token);
 
     ++token;
     if(token->type == TokenType::Keyword_Const) {
-        // `constant` keyword marks kind of lvalue
-        new_lvalue->is_mutable = false;
+        // `constant` keyword marks kind of variable
+        new_var->is_mutable = false;
         ++token;
     }
     check_token_is(TokenType::Name, "typename", *token);
@@ -462,18 +462,18 @@ Magnum::Pointer<NamedLValue> Parser::in_lvalue_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_lvalue->type = create<RangeType>(m_types, token->text);
-        m_names_table.add_unresolved(new_lvalue.get());
+        new_var->type = create<RangeType>(m_types, token->text);
+        m_names_table.add_unresolved(new_var.get());
     } else {
         switch(match.value().kind) {
         case NameType::DeclaredType:
             // A temp type (one that lacks a definition) has already been declared, but
             // the actual definition of it hasn't been resolved yet
-            new_lvalue->type = match.value().type;
-            m_names_table.add_unresolved(new_lvalue.get());
+            new_var->type = match.value().type;
+            m_names_table.add_unresolved(new_var.get());
             break;
         case NameType::Type:
-            new_lvalue->type = match.value().type;
+            new_var->type = match.value().type;
             break;
         default:
             Error(token->line_num)
@@ -482,7 +482,7 @@ Magnum::Pointer<NamedLValue> Parser::in_lvalue_declaration()
         }
     }
 
-    return new_lvalue;
+    return new_var;
 }
 
 Magnum::Pointer<Initialization> Parser::in_initialization()
@@ -490,7 +490,7 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     check_token_is(TokenType::Keyword_Let, "keyword `let`", *token);
     unsigned int line = token->line_num;
     ++token;
-    auto new_statement = Magnum::pointer<Initialization>(line, in_lvalue_declaration());
+    auto new_statement = Magnum::pointer<Initialization>(line, in_var_declaration());
 
     ++token;
     if(token->type == TokenType::End_Statement) {
@@ -503,31 +503,31 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
         new_statement->expression = parse_expression();
         ++token;
         if(new_statement->expression->kind() == ExprKind::InitList) {
-            // Initialization lists need a backpointer to the lvalue they are used with
+            // Initialization lists need a backpointer to the variable they are used with
             auto* init_list = static_cast<InitList*>(new_statement->expression.get());
-            init_list->set(new_statement->lvalue.get());
+            init_list->set(new_statement->variable.get());
         }
     }
-    m_names_table.add_lvalue(new_statement->lvalue.get());
+    m_names_table.add_var(new_statement->variable.get());
     return new_statement;
 }
 
 Magnum::Pointer<Assignment> Parser::in_assignment()
 {
-    auto lval_match = m_names_table.find(token->text);
-    if(!lval_match) {
+    auto match = m_names_table.find(token->text);
+    if(!match) {
         Error(token->line_num)
             .quote(token->text)
             .raise("is not a variable name and so cannot be assigned to");
-    } else if(lval_match->kind != NameType::LValue) {
+    } else if(match->kind != NameType::Variable) {
         Error(token->line_num)
             .put("Expected").quote(token->text)
             .raise("to be a variable, but it is defined as another kind of name");
-    } else if(!lval_match->lvalue->is_mutable) {
+    } else if(!match->variable->is_mutable) {
         Error(token->line_num)
             .put("Cannot assign to constant:").quote(token->text).raise();
     }
-    LValue* target_lvalue = lval_match->lvalue;
+    Assignable* assgn_target = match->variable;
 
     if(std::next(token)->type == TokenType::Open_Bracket) {
         // Array element assignment
@@ -536,9 +536,9 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
             Error(index_op->line_num()).raise("Expected an assignment to an array element");
         }
         auto* index_op_act = static_cast<IndexOp*>(index_op.release());
-        target_lvalue = create<IndexLValue>(m_index_lvalues,
-                                            Magnum::Pointer<IndexOp>{index_op_act});
-        assert(target_lvalue != nullptr);
+        assgn_target = create<IndexedVariable>(m_index_vars,
+                                               Magnum::Pointer<IndexOp>{index_op_act});
+        assert(assgn_target != nullptr);
     } else {
         // Named variable assignment; skip the varname
         ++token;
@@ -548,7 +548,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
     Magnum::Pointer<Expression> expr{parse_expression()};
     check_token_is(TokenType::End_Statement, "end of statement (a.k.a. `;`)", *token);
     ++token;
-    return Magnum::pointer<Assignment>(std::move(expr), target_lvalue);
+    return Magnum::pointer<Assignment>(std::move(expr), assgn_target);
 }
 
 Magnum::Pointer<Statement> Parser::in_statement()
@@ -755,9 +755,8 @@ void Parser::in_function_definition()
     while(token < m_input_end) {
         if(token->type == TokenType::Name) {
             // Add a new parameter declaration
-            NamedLValue* param = new_funct->parameters.emplace_back(
-                in_lvalue_declaration()).get();
-            m_names_table.add_lvalue(param);
+            Variable* param = new_funct->parameters.emplace_back(in_var_declaration()).get();
+            m_names_table.add_var(param);
 
             ++token;
             // Check for a comma separator after typename
@@ -1021,9 +1020,9 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name, NameType ki
     return {};
 }
 
-void SymbolTable::add_lvalue(NamedLValue* lval)
+void SymbolTable::add_var(Variable* var)
 {
-    m_scopes[m_curr_scope].symbols[lval->name] = SymbolInfo{NameType::LValue, lval};
+    m_scopes[m_curr_scope].symbols[var->name] = SymbolInfo{NameType::Variable, var};
 }
 
 void SymbolTable::add_type(Type* type)
@@ -1036,9 +1035,9 @@ void SymbolTable::add_function(Function* function)
     m_scopes[m_curr_scope].symbols[function->name] = SymbolInfo{NameType::Funct, function};
 }
 
-void SymbolTable::add_unresolved(NamedLValue* lvalue)
+void SymbolTable::add_unresolved(Variable* var)
 {
-    m_scopes[m_curr_scope].unresolved_types.push_back(&lvalue->type);
+    m_scopes[m_curr_scope].unresolved_types.push_back(&var->type);
 }
 
 void SymbolTable::add_unresolved(FunctionCall* funct)

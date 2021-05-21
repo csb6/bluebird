@@ -28,14 +28,13 @@ namespace llvm {
 }
 
 enum class NameType : char {
-    LValue, Funct, DeclaredFunct,
-    Type, DeclaredType
+    Variable, Funct, DeclaredFunct, Type, DeclaredType
 };
 
 // Used in place of RTTI for differentiating between actual types of Expression*'s
 enum class ExprKind : char {
     StringLiteral, CharLiteral, IntLiteral, BoolLiteral, FloatLiteral,
-    LValue, Binary, Unary, FunctionCall, IndexOp, InitList
+    Variable, Binary, Unary, FunctionCall, IndexOp, InitList
 };
 
 enum class StmtKind : char {
@@ -50,8 +49,8 @@ enum class FunctionKind : char {
     Normal, Builtin
 };
 
-enum class LValueKind : char {
-    Named, Index
+enum class AssignableKind : char {
+    Variable, Indexed
 };
 
 // A continuous sequence of integers.
@@ -155,7 +154,7 @@ struct RefType final : public Type {
 struct Expression {
     virtual ~Expression() noexcept = default;
 
-    // What kind of expression this is (e.g. a literal, lvalue, binary expr, etc.)
+    // What kind of expression this is (e.g. a literal, variable expr, binary expr, etc.)
     virtual ExprKind     kind() const = 0;
     // What the type (in the language) this expression is. May be calculated when
     // called by visiting child nodes
@@ -253,17 +252,17 @@ struct FloatLiteral final : public Expression {
     llvm::Value* codegen(CodeGenerator&) override;
 };
 
-// An expression consisting solely of an lvalue
-struct LValueExpression final : public Expression {
-    const struct NamedLValue *lvalue;
+// An expression consisting solely of a variable's name
+struct VariableExpression final : public Expression {
+    const struct Variable *variable;
     unsigned int line;
 
-    LValueExpression(unsigned int line_n, const NamedLValue *v) : lvalue(v), line(line_n) {}
+    VariableExpression(unsigned int line_n, const Variable *v) : variable(v), line(line_n) {}
 
-    ExprKind     kind() const override { return ExprKind::LValue; }
+    ExprKind     kind() const override { return ExprKind::Variable; }
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
-    // Other data should be looked up in the corresponding LValue object
+    // Other data should be looked up in the corresponding Variable object
     void         print(std::ostream&) const override;
 
     void         check_types() override {}
@@ -359,17 +358,17 @@ struct InitList final : public Expression {
 private:
     union {
         // When InitList is part of an assignment/initialization;
-        // expects lvalue to be set before end of parsing
-        const struct LValue *lvalue;
+        // expects assignable to be set before end of parsing
+        const struct Assignable *assignable;
         // When InitList is an anonymous object; takes on type of the
-        // lvalue it is used with
+        // Assignable it is used with
         const Type* anon_type;
     };
     Kind use_kind = Kind::None;
 public:
     InitList(unsigned int line_n) : line(line_n) {}
 
-    void         set(const LValue*);
+    void         set(const Assignable*);
     void         set(const Type*);
     ExprKind     kind() const override { return ExprKind::InitList; }
     const Type*  type() const override;
@@ -380,39 +379,39 @@ public:
     llvm::Value* codegen(CodeGenerator&) override;
 };
 
-// An object that can be assigned to
-struct LValue {
+// A location that can be assigned to
+struct Assignable {
     Type* type;
     bool is_mutable = true;
 
-    LValue() = default;
-    explicit LValue(Type* t) : type(t) {}
-    virtual ~LValue() noexcept = default;
+    Assignable() = default;
+    explicit Assignable(Type* t) : type(t) {}
+    virtual ~Assignable() noexcept = default;
 
-    virtual void       print(std::ostream&) const = 0;
-    virtual LValueKind kind() const = 0;
+    virtual void           print(std::ostream&) const = 0;
+    virtual AssignableKind kind() const = 0;
 };
 
 // A named object that can be assigned to (i.e. a variable or constant)
-struct NamedLValue final : public LValue {
+struct Variable final : public Assignable {
     std::string name;
 
-    explicit NamedLValue(const std::string& n) : name(n) {}
-    NamedLValue(const std::string& n, Type* t) : LValue(t), name(n) {}
+    explicit Variable(const std::string& n) : name(n) {}
+    Variable(const std::string& n, Type* t) : Assignable(t), name(n) {}
 
-    void       print(std::ostream&) const override;
-    LValueKind kind() const override { return LValueKind::Named; }
+    void           print(std::ostream&) const override;
+    AssignableKind kind() const override { return AssignableKind::Variable; }
 };
 
 // An element in an array that is going to be assigned to
-struct IndexLValue final : public LValue {
+struct IndexedVariable final : public Assignable {
     Magnum::Pointer<IndexOp> array_access;
 
-    explicit IndexLValue(Magnum::Pointer<IndexOp>&& op)
-        : LValue((Type*)op->type()), array_access(std::forward<decltype(array_access)>(op)) {}
+    explicit IndexedVariable(Magnum::Pointer<IndexOp>&& op)
+        : Assignable((Type*)op->type()), array_access(std::forward<decltype(array_access)>(op)) {}
 
-    void       print(std::ostream&) const override;
-    LValueKind kind() const override { return LValueKind::Index; }
+    void           print(std::ostream&) const override;
+    AssignableKind kind() const override { return AssignableKind::Indexed; }
 };
 
 
@@ -445,11 +444,11 @@ struct BasicStatement final : public Statement {
 // value of some expression
 struct Initialization final : public Statement {
     Magnum::Pointer<Expression> expression{nullptr};
-    Magnum::Pointer<NamedLValue> lvalue;
+    Magnum::Pointer<Variable> variable;
     unsigned int line;
 
-    explicit Initialization(unsigned int l, Magnum::Pointer<NamedLValue>&& lval)
-        : lvalue(std::forward<decltype(lvalue)>(lval)), line(l) {}
+    explicit Initialization(unsigned int l, Magnum::Pointer<Variable>&& var)
+        : variable(std::forward<decltype(variable)>(var)), line(l) {}
 
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
@@ -460,10 +459,10 @@ struct Initialization final : public Statement {
 // Statement where an existing variable is given a value
 struct Assignment final : public Statement {
     Magnum::Pointer<Expression> expression;
-    LValue* lvalue;
+    Assignable* assignable;
 
-    Assignment(Magnum::Pointer<Expression>&& expr, LValue* lv)
-        : expression(std::forward<decltype(expression)>(expr)), lvalue(lv) {}
+    Assignment(Magnum::Pointer<Expression>&& expr, Assignable* lv)
+        : expression(std::forward<decltype(expression)>(expr)), assignable(lv) {}
 
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
@@ -530,7 +529,7 @@ struct ReturnStatement final : public Statement {
 struct Function {
     std::string name;
     Type* return_type = &Type::Void;
-    std::vector<Magnum::Pointer<NamedLValue>> parameters;
+    std::vector<Magnum::Pointer<Variable>> parameters;
 
     explicit Function(const std::string& n) : name(n) {}
     Function(const Function&) = default;

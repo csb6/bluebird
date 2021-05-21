@@ -82,11 +82,11 @@ llvm::Value* load_if_needed(llvm::IRBuilder<>& ir_builder, Expression* expr,
 }
 
 static
-llvm::Value* ref_if_needed(LValue* lvalue, Expression* expr, llvm::Value* instr)
+llvm::Value* ref_if_needed(Assignable* assignable, Expression* expr, llvm::Value* instr)
 {
-    if(lvalue->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
-        // When assigning a LValueExpression to a reference lvalue, need the pointer,
-        // not the loaded value, of the initialization/assignment expression
+    if(assignable->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
+        // When assigning a VariableExpression to a ref-type variable, need the pointer,
+        // not the loaded value, of the expression
         auto* load_instr = llvm::cast<llvm::LoadInst>(instr);
         instr = load_instr->getPointerOperand();
         load_instr->eraseFromParent();
@@ -130,11 +130,11 @@ llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
     return llvm::ConstantFP::get(gen.m_context, llvm::APFloat(value));
 }
 
-llvm::Value* LValueExpression::codegen(CodeGenerator& gen)
+llvm::Value* VariableExpression::codegen(CodeGenerator& gen)
 {
-    llvm::Value* src_lvalue = gen.m_lvalues[lvalue];
-    assert(src_lvalue != nullptr);
-    return gen.m_ir_builder.CreateLoad(src_lvalue, lvalue->name);
+    llvm::Value* src_var = gen.m_vars[variable];
+    assert(src_var != nullptr);
+    return gen.m_ir_builder.CreateLoad(src_var, variable->name);
 }
 
 llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
@@ -255,10 +255,10 @@ llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
 
 llvm::Value* IndexOp::codegen(CodeGenerator& gen)
 {
-    assert(base_expr->kind() == ExprKind::LValue);
-    const NamedLValue* lval = static_cast<LValueExpression*>(base_expr.get())->lvalue;
-    auto match = gen.m_lvalues.find(lval);
-    assert(match == gen.m_lvalues.find(lval));
+    assert(base_expr->kind() == ExprKind::Variable);
+    const Variable* var = static_cast<VariableExpression*>(base_expr.get())->variable;
+    auto match = gen.m_vars.find(var);
+    assert(match == gen.m_vars.find(var));
     llvm::Value* alloc = match->second;
 
     llvm::Value* offset_index = index_expr->codegen(gen);
@@ -275,7 +275,7 @@ llvm::Value* IndexOp::codegen(CodeGenerator& gen)
     llvm::Value* indexes[] = { gen.m_ir_builder.getIntN(32, 0), gep_index };
     assert(indexes[1] != nullptr);
     assert(indexes[1]->getType()->isIntegerTy());
-    auto* array_type = llvm::cast<llvm::ArrayType>(gen.to_llvm_type(lval->type));
+    auto* array_type = llvm::cast<llvm::ArrayType>(gen.to_llvm_type(var->type));
 
     gen.m_dbg_gen.setLocation(line_num(), gen.m_ir_builder);
     auto* ptr = gen.m_ir_builder.CreateInBoundsGEP(array_type, alloc, indexes,
@@ -291,11 +291,11 @@ llvm::Value* InitList::codegen(CodeGenerator& gen)
     llvm::Type* array_type;
     if(use_kind == Kind::InInit) {
         // InitList is part of an initialization or assignment
-        assert(lvalue->kind() == LValueKind::Named);
-        const auto match = gen.m_lvalues.find(static_cast<const NamedLValue*>(lvalue));
-        assert(match != gen.m_lvalues.end());
+        assert(assignable->kind() == AssignableKind::Variable);
+        const auto match = gen.m_vars.find(static_cast<const Variable*>(assignable));
+        assert(match != gen.m_vars.end());
         alloc = match->second;
-        array_type = gen.to_llvm_type(lvalue->type);
+        array_type = gen.to_llvm_type(assignable->type);
     } else {
         // InitList is acting as an anonymous object
         array_type = gen.to_llvm_type(anon_type);
@@ -339,7 +339,7 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
     return alloc;
 }
 
-void CodeGenerator::store_expr_result(LValue* lvalue, Expression* expr, llvm::Value* alloc)
+void CodeGenerator::store_expr_result(Assignable* assignable, Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = expr->codegen(*this);
     if(input_instr == nullptr) {
@@ -348,7 +348,7 @@ void CodeGenerator::store_expr_result(LValue* lvalue, Expression* expr, llvm::Va
         return;
     }
 
-    m_ir_builder.CreateStore(ref_if_needed(lvalue, expr, input_instr), alloc);
+    m_ir_builder.CreateStore(ref_if_needed(assignable, expr, input_instr), alloc);
 }
 
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
@@ -383,43 +383,42 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
 
 void CodeGenerator::in_initialization(llvm::Function* function, Initialization* init)
 {
-    NamedLValue* lvalue = init->lvalue.get();
-    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(lvalue->type),
-                                             lvalue->name);
-    m_lvalues[lvalue] = alloc;
+    Variable* var = init->variable.get();
+    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(var->type), var->name);
+    m_vars[var] = alloc;
 
     if(init->expression != nullptr) {
         m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
-        m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, lvalue, init->line_num());
-        store_expr_result(lvalue, init->expression.get(), alloc);
+        m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, var, init->line_num());
+        store_expr_result(var, init->expression.get(), alloc);
     }
 }
 
-void CodeGenerator::in_assignment(Assignment* assgn)
+void CodeGenerator::in_assignment(Assignment* assgn_stmt)
 {
-    LValue* lvalue = assgn->lvalue;
+    Assignable* assignable = assgn_stmt->assignable;
     llvm::Value* dest_ptr;
-    switch(lvalue->kind()) {
-    case LValueKind::Named: {
-        auto match = m_lvalues.find(static_cast<const NamedLValue*>(lvalue));
-        assert(match != m_lvalues.end());
+    switch(assignable->kind()) {
+    case AssignableKind::Variable: {
+        auto match = m_vars.find(static_cast<const Variable*>(assignable));
+        assert(match != m_vars.end());
 
-        m_dbg_gen.setLocation(assgn->line_num(), m_ir_builder);
+        m_dbg_gen.setLocation(assgn_stmt->line_num(), m_ir_builder);
         dest_ptr = match->second;
         break;
     }
-    case LValueKind::Index: {
+    case AssignableKind::Indexed: {
         // Normally, accessing an array element means loading it, but in this
         // case, we don't want the loaded value; we want the pointer to the value
         auto* load_instr = llvm::cast<llvm::LoadInst>(
-            static_cast<IndexLValue*>(lvalue)->array_access->codegen(*this));
+            static_cast<IndexedVariable*>(assignable)->array_access->codegen(*this));
         dest_ptr = load_instr->getPointerOperand();
         load_instr->eraseFromParent();
         break;
     }
     }
 
-    store_expr_result(lvalue, assgn->expression.get(), dest_ptr);
+    store_expr_result(assignable, assgn_stmt->expression.get(), dest_ptr);
 }
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)
@@ -520,8 +519,8 @@ void CodeGenerator::in_while_loop(llvm::Function* curr_funct, WhileLoop* whilelo
 void CodeGenerator::declare_globals()
 {
     for(auto& global : m_global_vars) {
-        NamedLValue* lvalue = global->lvalue.get();
-        llvm::Type* type = to_llvm_type(lvalue->type);
+        Variable* var = global->variable.get();
+        llvm::Type* type = to_llvm_type(var->type);
         llvm::Constant* init_val;
         if(global->expression == nullptr) {
             init_val = llvm::Constant::getNullValue(type);
@@ -529,13 +528,13 @@ void CodeGenerator::declare_globals()
             init_val = llvm::cast<llvm::Constant>(global->expression->codegen(*this));
         }
         auto* global_ptr =
-            new llvm::GlobalVariable(m_module, type, !lvalue->is_mutable,
+            new llvm::GlobalVariable(m_module, type, !var->is_mutable,
                                      llvm::GlobalValue::LinkageTypes::InternalLinkage,
-                                     init_val, lvalue->name);
+                                     init_val, var->name);
         // Globals with same initializer will be merged
         // TODO: when pointers/exported symbols added, maybe change this?
         global_ptr->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-        m_lvalues[lvalue] = global_ptr;
+        m_vars[var] = global_ptr;
     }
 }
 
@@ -618,12 +617,12 @@ void CodeGenerator::define_functions()
         // When arguments are mutable, need to alloca them in the funct body in order
         // to read/write to them (since codegen assumes all variables are on stack)
         // TODO: For constant arguments, avoid the unnecessary alloca and have way
-        //  where reads (e.g. LValueExpressions) do not try to load from arg ptr,
+        //  where reads (e.g. VariableExpressions) do not try to load from arg ptr,
         //  instead using it directly, since it will already be in a register
         for(llvm::Argument& arg : curr_funct->args()) {
             llvm::AllocaInst* alloc = prepend_alloca(curr_funct, arg.getType(),
                                                      arg.getName().str());
-            m_lvalues[ast_arg_it->get()] = alloc;
+            m_vars[ast_arg_it->get()] = alloc;
             ++ast_arg_it;
             m_ir_builder.CreateStore(&arg, alloc);
         }
@@ -756,7 +755,7 @@ void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_bu
 }
 
 void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
-                                const NamedLValue* var, unsigned int line_num)
+                                const Variable* var, unsigned int line_num)
 {
     if(m_is_active) {
         llvm::DILocalVariable* dbg_var = m_dbg_builder.createAutoVariable(
