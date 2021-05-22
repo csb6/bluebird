@@ -52,9 +52,6 @@ constexpr auto operator_precedence_table = []()
     op_table[size_t(TokenType::Op_Ge)] = 12;
     op_table[size_t(TokenType::Op_Left_Shift)] = 13;
     op_table[size_t(TokenType::Op_Right_Shift)] = 13;
-    op_table[size_t(TokenType::Op_Bit_And)] = 10;
-    op_table[size_t(TokenType::Op_Bit_Or)] = 8;
-    op_table[size_t(TokenType::Op_Bit_Xor)] = 9;
     // Range
     op_table[size_t(TokenType::Op_Thru)] = 13;
     op_table[size_t(TokenType::Op_Upto)] = 13;
@@ -106,10 +103,8 @@ fold_constants(Token op, Magnum::Pointer<Expression>&& right)
         auto* r_int = static_cast<IntLiteral*>(right.get());
         switch(op.type) {
         case TokenType::Op_Minus:
+            // TODO: use r_int->value.ones_complement(); for certain unsigned integer types
             r_int->value.negate();
-            break;
-        case TokenType::Op_Bit_Not:
-            r_int->value.ones_complement();
             break;
         default:
             raise_error_expected("unary operator that works on integer literals", op);
@@ -160,15 +155,6 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
             l_int->value.rem(r_int->value);
             break;
         // TODO: Add support for shift operators
-        case TokenType::Op_Bit_And:
-            l_int->value &= r_int->value;
-            break;
-        case TokenType::Op_Bit_Or:
-            l_int->value |= r_int->value;
-            break;
-        case TokenType::Op_Bit_Xor:
-            l_int->value ^= r_int->value;
-            break;
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:
             // Can't do folds here, need to preserve left/right sides for a range
@@ -305,9 +291,8 @@ Magnum::Pointer<Expression> Parser::in_expression()
         return in_parentheses();
     case TokenType::Open_Curly:
         return in_init_list();
-    // Handle unary operators (not, ~, -, ref)
+    // Handle unary operators (not, -)
     case TokenType::Op_Not:
-    case TokenType::Op_Bit_Not:
     case TokenType::Op_Minus: {
         auto op = token++;
         return fold_constants(*op, in_expression());

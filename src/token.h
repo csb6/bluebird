@@ -35,7 +35,7 @@ enum class TokenType : unsigned char {
     //  Comparison
     Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge, /*bool_op_end is Op_Ge*/
     //  Bitwise
-    Op_Left_Shift, Op_Right_Shift, Op_Bit_And, Op_Bit_Or, Op_Bit_Xor, Op_Bit_Not,
+    Op_Left_Shift, Op_Right_Shift,
     //  Range
     Op_Thru, Op_Upto,
     // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt

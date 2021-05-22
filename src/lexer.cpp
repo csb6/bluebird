@@ -144,19 +144,6 @@ void Lexer::run()
                 case '*':
                     m_tokens.emplace_back(line_num, TokenType::Op_Mult);
                     break;
-                // Bitwise operators
-                case '&':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_And);
-                    break;
-                case '|':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Or);
-                    break;
-                case '^':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Xor);
-                    break;
-                case '~':
-                    m_tokens.emplace_back(line_num, TokenType::Op_Bit_Not);
-                    break;
                 // More operators
                 case '<':
                     switch(*std::next(input_iter)) {

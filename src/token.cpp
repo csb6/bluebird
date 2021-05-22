@@ -137,18 +137,6 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Op_Right_Shift:
         output << ">>";
         break;
-    case TokenType::Op_Bit_And:
-        output << '&';
-        break;
-    case TokenType::Op_Bit_Or:
-        output << '|';
-        break;
-    case TokenType::Op_Bit_Xor:
-        output << '^';
-        break;
-    case TokenType::Op_Bit_Not:
-        output << '~';
-        break;
     case TokenType::Op_Thru:
         output << "thru";
         break;

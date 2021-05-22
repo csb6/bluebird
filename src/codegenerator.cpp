@@ -143,10 +143,9 @@ llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
 
     switch(op) {
     case TokenType::Op_Not:
+        // TODO: implement support for bit not for certain unsigned types
         operand = gen.m_ir_builder.CreateNot(operand, "nottmp");
         return truncate_to_bool(gen.m_ir_builder, operand);
-    case TokenType::Op_Bit_Not:
-        return gen.m_ir_builder.CreateNot(operand, "bitnottmp");
     case TokenType::Op_Minus:
         return gen.m_ir_builder.CreateNeg(operand, "negtmp");
     default:
@@ -223,12 +222,6 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     case TokenType::Op_Right_Shift:
         // Fills in new bits with zeros
         return gen.m_ir_builder.CreateLShr(left_ir, right_ir, "srtmp");
-    case TokenType::Op_Bit_And:
-        return gen.m_ir_builder.CreateAnd(left_ir, right_ir, "bitandtmp");
-    case TokenType::Op_Bit_Or:
-        return gen.m_ir_builder.CreateOr(left_ir, right_ir, "bitortmp");
-    case TokenType::Op_Bit_Xor:
-        return gen.m_ir_builder.CreateXor(left_ir, right_ir, "bitxortmp");
     default:
         assert(false && "Unknown binary operator");
         return nullptr;
