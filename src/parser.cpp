@@ -162,6 +162,10 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
             return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
                                                      std::move(right));
         default:
+            if(is_bool_op(op.type)) {
+                return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
+                                                         std::move(right));
+            }
             raise_error_expected("binary operator that works on integer literals", op);
         }
         return std::move(left);
