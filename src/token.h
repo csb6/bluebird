@@ -31,7 +31,7 @@ enum class TokenType : unsigned char {
     //  Arithmetic
     Op_Plus, Op_Minus, Op_Div, Op_Mult, Op_Mod, Op_Rem,
     //  Logical
-    /*bool_op_start is Op_And*/ Op_And, Op_Or, Op_Not,
+    /*bool_op_start is Op_And*/ Op_And, Op_Or, Op_Not, Op_Xor,
     //  Comparison
     Op_Eq, Op_Ne, Op_Lt, Op_Gt, Op_Le, Op_Ge, /*bool_op_end is Op_Ge*/
     //  Bitwise

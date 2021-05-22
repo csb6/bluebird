@@ -192,6 +192,9 @@ llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
     case TokenType::Op_Or:
         left_ir = gen.m_ir_builder.CreateOr(left_ir, right_ir, "ortmp");
         return truncate_to_bool(gen.m_ir_builder, left_ir);
+    case TokenType::Op_Xor:
+        left_ir = gen.m_ir_builder.CreateXor(left_ir, right_ir, "xortmp");
+        return truncate_to_bool(gen.m_ir_builder, left_ir);
     // TODO: use different compare functions for floats, user-defined ops, etc.
     case TokenType::Op_Eq:
         return gen.m_ir_builder.CreateICmpEQ(left_ir, right_ir, "eqtmp");

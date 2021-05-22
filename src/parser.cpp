@@ -42,7 +42,8 @@ constexpr auto operator_precedence_table = []()
     op_table[size_t(TokenType::Op_Rem)] = 15;
     // Logical
     op_table[size_t(TokenType::Op_And)] = 7;
-    op_table[size_t(TokenType::Op_Or)] = 6;
+    op_table[size_t(TokenType::Op_Xor)] = 6;
+    op_table[size_t(TokenType::Op_Or)] = 5;
     // Comparison
     op_table[size_t(TokenType::Op_Eq)] = 11;
     op_table[size_t(TokenType::Op_Ne)] = 11;
@@ -174,6 +175,9 @@ fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
             break;
         case TokenType::Op_Or:
             l_bool->value |= r_bool->value;
+            break;
+        case TokenType::Op_Xor:
+            l_bool->value ^= r_bool->value;
             break;
         default:
             raise_error_expected("logical binary operator", op);

@@ -51,6 +51,7 @@ constexpr static auto identifier_table = frozen::make_unordered_map<frozen::stri
         {"return", TokenType::Keyword_Return},
         {"and", TokenType::Op_And},
         {"or", TokenType::Op_Or},
+        {"xor", TokenType::Op_Xor},
         {"not", TokenType::Op_Not},
         {"thru", TokenType::Op_Thru},
         {"upto", TokenType::Op_Upto},
