@@ -76,19 +76,6 @@ constexpr bool is_binary_operator(const Precedence p)
     return p >= 0 && p != Operand;
 }
 
-[[noreturn]] static void raise_error_expected(const char* expected, Token actual)
-{
-    Error(actual.line_num).put("Expected ").put(expected)
-        .put(", but instead found token:\n").quote(actual).raise();
-}
-
-[[noreturn]] static void raise_error_expected(const char* expected, const Expression* actual)
-{
-    Error(actual->line_num()).put("Expected").put(expected)
-        .put(", but instead found expression:\n")
-        .put(actual).raise();
-}
-
 static void check_token_is(TokenType type, const char* description, Token token)
 {
     if(token.type != type) {

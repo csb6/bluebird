@@ -38,4 +38,7 @@ public:
     // Exits or throws exception; newline printed after message
     [[noreturn]] void raise(const char* message = "", unsigned int indent = 0);
 };
+
+[[noreturn]] void raise_error_expected(const char* expected, Token actual);
+[[noreturn]] void raise_error_expected(const char* expected, const Expression* actual);
 #endif

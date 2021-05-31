@@ -120,3 +120,16 @@ void Error::raise(const char* message, unsigned int indent)
     exit(1);
 }
 #endif /** ifdef FUZZER_MODE */
+
+void raise_error_expected(const char* expected, Token actual)
+{
+    Error(actual.line_num).put("Expected ").put(expected)
+        .put(", but instead found token:\n").quote(actual).raise();
+}
+
+void raise_error_expected(const char* expected, const Expression* actual)
+{
+    Error(actual->line_num()).put("Expected").put(expected)
+        .put(", but instead found expression:\n")
+        .put(actual).raise();
+}

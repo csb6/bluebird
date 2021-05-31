@@ -27,9 +27,8 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
             r_int->value.negate();
             break;
         default:
-            assert(false);
-            //raise_error_expected("unary operator that works on integer literals",
-            //                     unary_expr->op);
+            raise_error_expected("unary expression with operator that works on "
+                                 "integer literals", unary_expr);
         }
         replace_with_literal(r_int);
         break;
@@ -39,9 +38,8 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
         if(unary_expr->op == TokenType::Op_Not) {
             r_bool->value = !r_bool->value;
         } else {
-            assert(false);
-            //raise_error_expected("logical unary operator (e.g. `not`)",
-            //                     unary_expr->op);
+            raise_error_expected("unary expression with logical operator "
+                                 "(e.g. `not`)", unary_expr);
         }
         replace_with_literal(r_bool);
         break;
@@ -95,8 +93,8 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
             return;
         default:
             if(is_bool_op(bin_expr->op)) {
-                assert(false);
-                //raise_error_expected("binary operator that works on integer literals", op);
+                raise_error_expected("binary expression with an operator that works "
+                                     "on integer literals", bin_expr);
             }
             return;
         }
@@ -116,8 +114,7 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
             l_bool->value ^= r_bool->value;
             break;
         default:
-            assert(false);
-            //raise_error_expected("logical binary operator", op);
+            raise_error_expected("binary expression with logical operator", bin_expr);
         }
         replace_with_literal(l_bool);
     }
