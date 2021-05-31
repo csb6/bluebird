@@ -96,102 +96,6 @@ static void check_token_is(TokenType type, const char* description, Token token)
     }
 }
 
-static Magnum::Pointer<Expression>
-fold_constants(Token op, Magnum::Pointer<Expression>&& right)
-{
-    switch(right->kind()) {
-    case ExprKind::IntLiteral: {
-        auto* r_int = static_cast<IntLiteral*>(right.get());
-        switch(op.type) {
-        case TokenType::Op_Minus:
-            // TODO: use r_int->value.ones_complement(); for certain unsigned integer types
-            r_int->value.negate();
-            break;
-        default:
-            raise_error_expected("unary operator that works on integer literals", op);
-        }
-        return std::move(right);
-    }
-    case ExprKind::BoolLiteral: {
-        auto* r_bool = static_cast<BoolLiteral*>(right.get());
-        if(op.type == TokenType::Op_Not) {
-            r_bool->value = !r_bool->value;
-        } else {
-            raise_error_expected("logical unary operator (e.g. `not`)", op);
-        }
-        return std::move(right);
-    }
-    default:
-        return Magnum::pointer<UnaryExpression>(op.type, std::move(right));
-    }
-}
-
-static Magnum::Pointer<Expression>
-fold_constants(Magnum::Pointer<Expression>&& left, const Token& op,
-               Magnum::Pointer<Expression>&& right)
-{
-    const auto left_kind = left->kind();
-    const auto right_kind = right->kind();
-    if(left_kind == ExprKind::IntLiteral && right_kind == ExprKind::IntLiteral) {
-        // Fold into a single literal (uses arbitrary-precision arithmetic)
-        auto* l_int = static_cast<IntLiteral*>(left.get());
-        auto* r_int = static_cast<IntLiteral*>(right.get());
-        switch(op.type) {
-        case TokenType::Op_Plus:
-            l_int->value += r_int->value;
-            break;
-        case TokenType::Op_Minus:
-            l_int->value -= r_int->value;
-            break;
-        case TokenType::Op_Mult:
-            l_int->value *= r_int->value;
-            break;
-        case TokenType::Op_Div:
-            l_int->value /= r_int->value;
-            break;
-        case TokenType::Op_Mod:
-            l_int->value.mod(r_int->value);
-            break;
-        case TokenType::Op_Rem:
-            l_int->value.rem(r_int->value);
-            break;
-        // TODO: Add support for shift operators
-        case TokenType::Op_Thru:
-        case TokenType::Op_Upto:
-            // Can't do folds here, need to preserve left/right sides for a range
-            return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
-                                                     std::move(right));
-        default:
-            if(is_bool_op(op.type)) {
-                return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
-                                                         std::move(right));
-            }
-            raise_error_expected("binary operator that works on integer literals", op);
-        }
-        return std::move(left);
-    } else if(left_kind == ExprKind::BoolLiteral && right_kind == ExprKind::BoolLiteral) {
-        // Fold into a single literal
-        auto* l_bool = static_cast<BoolLiteral*>(left.get());
-        auto* r_bool = static_cast<BoolLiteral*>(right.get());
-        switch(op.type) {
-        case TokenType::Op_And:
-            l_bool->value &= r_bool->value;
-            break;
-        case TokenType::Op_Or:
-            l_bool->value |= r_bool->value;
-            break;
-        case TokenType::Op_Xor:
-            l_bool->value ^= r_bool->value;
-            break;
-        default:
-            raise_error_expected("logical binary operator", op);
-        }
-        return std::move(left);
-    }
-    return Magnum::pointer<BinaryExpression>(std::move(left), op.type,
-                                             std::move(right));
-}
-
 // Constructs a new object inside the given list of smart pointers, returning
 // a non-owning pointer to the new object
 template<typename T, typename ListT, typename ...Params>
@@ -231,7 +135,8 @@ Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_token)
             raise_error_expected("binary operator", *token);
         }
         ++token;
-        left_side = fold_constants(std::move(left_side), *op, parse_expression(op->type));
+        left_side = Magnum::pointer<BinaryExpression>(std::move(left_side), op->type,
+                                                      parse_expression(op->type));
         curr_precedence = precedence_of(token->type);
     }
     return left_side;
@@ -303,7 +208,7 @@ Magnum::Pointer<Expression> Parser::in_expression()
     case TokenType::Op_Not:
     case TokenType::Op_Minus: {
         auto op = token++;
-        return fold_constants(*op, in_expression());
+        return Magnum::pointer<UnaryExpression>(op->type, in_expression());
     }
     default:
         return in_literal();
@@ -811,6 +716,7 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
 
+    // TODO: add support for non-integer literals as range operands
     if(range_expr->left->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());

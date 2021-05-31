@@ -16,6 +16,7 @@
 */
 #include "lexer.h"
 #include "parser.h"
+#include "cleanup.h"
 #include "checker.h"
 #include "codegenerator.h"
 #include "objectgenerator.h"
@@ -84,6 +85,11 @@ int main(int argc, char **argv)
     Parser parser{lexer.begin(), lexer.end()};
     parser.run();
 
+    std::cout << parser;
+
+    Cleanup cleanup{parser.functions(), parser.global_vars()};
+    cleanup.run();
+
     Checker checker{parser.functions(), parser.types(), parser.global_vars()};
     checker.run();
 
@@ -94,8 +100,6 @@ int main(int argc, char **argv)
     ObjectGenerator objgen{linker_exe_path, codegen.m_module};
     objgen.emit();
     objgen.link("a.out");
-
-    std::cout << parser;
 
     return 0;
 }

@@ -10,10 +10,15 @@ Todo:
 [ ] Allow variables with value types to be assigned refs
 [ ] Add a pointer type. Initially, don't put major restrictions on their usage, just get
     something working
-[ ] Consider switching to using visitor pattern for traversing AST for greater flexibility/
+[X] Consider switching to using visitor pattern for traversing AST for greater flexibility/
     modularity, as opposed to writing virtual member functions for this kind of work. This
     also would make the state/context used during the traveral more explicit.
-    Wish C++ had the ability to dispatch on non-member functions more easily.
+    Wish C++ had the ability to dispatch on non-member functions more easily (this is a
+    big change that I do not see a good benefit of doing. Using virtual member functions
+    is easier to understand and serves the same purpose. Maybe if I want to make traversing
+    the AST more open to extension I can add a Visitor class, but for now let's leave it).
+[ ] Re-add the ability to have arbitrary literal expressions in the declarations of range
+    types. This is broken by moving the constant folding of literals out of the parsing pass.
 
 # Middle Priority
 [ ] Fix bug where lldb does not properly stop on breakpoints and does not map source locations

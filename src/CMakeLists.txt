@@ -21,6 +21,7 @@ target_sources(bluebird PRIVATE
   ast.cpp
   token.cpp
   checker.cpp
+  cleanup.cpp
   codegenerator.cpp
   objectgenerator.cpp
   optimizer.cpp

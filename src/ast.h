@@ -162,6 +162,9 @@ struct Expression {
     virtual unsigned int line_num() const = 0;
     virtual void         print(std::ostream&) const = 0;
 
+    // Used in cleanup stage between parsing/typechecking. Definitions/overrides
+    // defined in cleanup.cpp
+    virtual void         cleanup() = 0;
     // Used in typechecking. Definitions/overrides defined in checker.cpp
     virtual void         check_types() = 0;
     // Used in code generation. Definitions/overrides defined in codegenerator.cpp
@@ -181,6 +184,7 @@ struct StringLiteral final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -197,6 +201,7 @@ struct CharLiteral final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -217,6 +222,7 @@ struct IntLiteral final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -233,6 +239,7 @@ struct BoolLiteral final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -248,6 +255,7 @@ struct FloatLiteral final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -265,6 +273,7 @@ struct VariableExpression final : public Expression {
     // Other data should be looked up in the corresponding Variable object
     void         print(std::ostream&) const override;
 
+    void         cleanup() override {}
     void         check_types() override {}
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -282,6 +291,7 @@ struct UnaryExpression final : public Expression {
     unsigned int line_num() const override { return right->line_num(); }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override;
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -302,6 +312,7 @@ struct BinaryExpression final : public Expression {
     unsigned int line_num() const override { return left->line_num(); }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override;
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -321,6 +332,7 @@ struct FunctionCall final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override;
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -343,6 +355,7 @@ struct IndexOp final : public Expression {
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override;
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -375,6 +388,7 @@ public:
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 
+    void         cleanup() override;
     void         check_types() override;
     llvm::Value* codegen(CodeGenerator&) override;
 };
@@ -423,6 +437,9 @@ struct Statement {
     virtual StmtKind     kind() const = 0;
     virtual unsigned int line_num() const = 0;
     virtual void         print(std::ostream&) const = 0;
+    // Used in cleanup stage between parsing/typechecking. Definitions/overrides
+    // defined in cleanup.cpp
+    virtual void         cleanup() = 0;
     // Returns true if always returns, no matter code path
     virtual bool         check_types(class Checker&) = 0;
 };
@@ -437,6 +454,7 @@ struct BasicStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Basic; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream&) const override;
+    void         cleanup() override;
     bool         check_types(Checker&) override;
 };
 
@@ -453,6 +471,7 @@ struct Initialization final : public Statement {
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream& output) const override;
+    void         cleanup() override;
     bool         check_types(Checker&) override;
 };
 
@@ -467,6 +486,7 @@ struct Assignment final : public Statement {
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream& output) const override;
+    void         cleanup() override;
     bool         check_types(Checker&) override;
 };
 
@@ -480,6 +500,7 @@ struct Block : public Statement {
     StmtKind     kind() const override { return StmtKind::Block; }
     unsigned int line_num() const override { return line; };
     void         print(std::ostream&) const override;
+    void         cleanup() override;
     bool         check_types(Checker&) override;
 };
 
@@ -494,6 +515,7 @@ struct IfBlock final : public Block {
 
     StmtKind kind() const override { return StmtKind::IfBlock; }
     void     print(std::ostream&) const override;
+    void     cleanup() override;
     bool     check_types(Checker&) override;
 };
 
@@ -507,6 +529,7 @@ struct WhileLoop final : public Block {
 
     StmtKind kind() const override { return StmtKind::While; }
     void     print(std::ostream&) const override;
+    void     cleanup() override;
     bool     check_types(Checker&) override;
 };
 
@@ -522,6 +545,7 @@ struct ReturnStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Return; }
     unsigned int line_num() const override;
     void         print(std::ostream&) const override;
+    void         cleanup() override;
     bool         check_types(Checker&) override;
 };
 
