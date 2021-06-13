@@ -313,6 +313,10 @@ void Assignment::cleanup(Cleanup&)
 {
     fold_constants(expression);
     set_literal_type(expression.get(), assignable, assignable->type);
+    if(assignable->kind() == AssignableKind::Indexed) {
+        auto* indexed_var = static_cast<IndexedVariable*>(assignable);
+        indexed_var->array_access->cleanup();
+    }
 }
 
 void Block::cleanup(Cleanup& context)
