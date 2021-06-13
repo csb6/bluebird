@@ -48,94 +48,6 @@ void nonbool_condition_error(const Expression* condition,
 // No need to typecheck for literal/variable expressions since they aren't composite,
 // so each of their check_types() member functions are empty, defined in header
 
-static
-void typecheck_init_list(InitList*, const Assignable*, const ArrayType*);
-
-template<typename Other>
-static
-bool matched_literal(Expression* literal, const Other* other,
-                     const Type* other_type)
-{
-    if(literal->type()->kind() != TypeKind::Literal)
-        return false;
-
-    switch(other_type->kind()) {
-    case TypeKind::Range: {
-        auto* range_type = static_cast<const RangeType*>(other_type);
-        const IntRange& range = range_type->range;
-        switch(literal->kind()) {
-        case ExprKind::IntLiteral: {
-            auto* int_literal = static_cast<IntLiteral*>(literal);
-            if(!range.contains(int_literal->value)) {
-                Error(int_literal->line_num())
-                    .put("Integer Literal ").put(int_literal)
-                    .put(" is not in the range of:\n  ")
-                    .put(range_type).newline()
-                    .put(" so it cannot be used with:\n  ").put(other).raise();
-            }
-            // Literals (if used with a compatible range type) take on the type of what
-            // they are used with
-            int_literal->actual_type = other_type;
-            break;
-        }
-        case ExprKind::CharLiteral: {
-            auto* char_literal = static_cast<CharLiteral*>(literal);
-            if(other_type != &RangeType::Character) {
-                // TODO: allow user-defined character types to be used with character
-                // literals
-                Error(char_literal->line_num())
-                    .put("Character Literal ").put(char_literal)
-                    .put(" cannot be used with the non-character type:\n  ")
-                    .put(other_type).raise();
-            }
-            char_literal->actual_type = other_type;
-            break;
-        }
-        default:
-            Error(literal->line_num())
-                .put("Expected a literal type, but instead found expression:\n  ")
-                .put(literal).put("\t").put(literal->type()).raise();
-        }
-        break;
-    }
-    case TypeKind::Boolean:
-        // TODO: add support for user-created boolean types, which should be usable
-        // with Boolean literals
-        if(literal->kind() == ExprKind::BoolLiteral) {
-            auto* bool_literal = static_cast<BoolLiteral*>(literal);
-            bool_literal->actual_type = other_type;
-        } else {
-            Error(literal->line_num())
-                .put("Expected a boolean literal, but instead found expression:\n  ")
-                .put(literal).put("\t").put(literal->type()).raise();
-        }
-        break;
-    case TypeKind::Array:
-        if constexpr (std::is_same_v<decltype(other), const Assignable*>) {
-            if(literal->kind() == ExprKind::InitList) {
-                auto* init_list = static_cast<InitList*>(literal);
-                auto* assignable_type = static_cast<const ArrayType*>(other_type);
-                typecheck_init_list(init_list, other, assignable_type);
-                init_list->set(other_type);
-            } else {
-                Error(literal->line_num())
-                    .put("Expected an initializer list, but instead found expression:\n  ")
-                    .put(literal).put("\t").put(literal->type()).raise();
-            }
-        } else {
-            print_type_mismatch(literal, other, other_type, "Used with", "Literal");
-        }
-        break;
-    case TypeKind::Ref:
-        // References can be implicitly dereferenced when used in expressions
-        return matched_literal(literal, other,
-                               static_cast<const RefType*>(other_type)->inner_type);
-    default:
-        print_type_mismatch(literal, other, other_type, "Used with", "Literal");
-    }
-    return true;
-}
-
 template<typename Other>
 static
 bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
@@ -236,16 +148,7 @@ void BinaryExpression::check_types()
 }
 
 static
-void typecheck_assign(Magnum::Pointer<Expression>& assign_expr, const Assignable* assignable)
-{
-    assign_expr->check_types();
-    const auto* assign_expr_type = assign_expr->type();
-    if(assign_expr_type == assignable->type
-       || matched_ref(assign_expr.get(), assignable, assignable->type))
-        return;
-
-    print_type_mismatch(assign_expr.get(), assignable, assignable->type);
-}
+void typecheck_assign(Expression*, const Assignable*);
 
 void FunctionCall::check_types()
 {
@@ -256,7 +159,7 @@ void FunctionCall::check_types()
     }
     const size_t arg_count = arguments.size();
     for(size_t i = 0; i < arg_count; ++i) {
-        typecheck_assign(arguments[i], definition->parameters[i].get());
+        typecheck_assign(arguments[i].get(), definition->parameters[i].get());
     }
 }
 
@@ -283,10 +186,25 @@ void IndexOp::check_types()
     }
 }
 
-static
-void typecheck_init_list(InitList* init_list, const Assignable* assignable,
-                         const ArrayType* assignable_type)
+void InitList::check_types()
 {
+    // InitLists are not typechecked like most expressions since typechecking them
+    // requires knowing info. about the variable they are being assigned to.
+    // typecheck_init_list() handles all typechecking in these contexts. If
+    // InitList::check_types() gets called, then the init list is being used
+    // incorrectly.
+    Error(line).raise("Initialization lists cannot be used as part of a larger "
+                      "expression. They can only be used as initialization or "
+                      "assignment expressions.");
+}
+
+static
+void typecheck_init_list(InitList* init_list, const Assignable* assignable)
+{
+    // Assertion should be made true in cleanup pass
+    assert(assignable->type->kind() == TypeKind::Array);
+    const auto* assignable_type = static_cast<const ArrayType*>(assignable->type);
+
     // TODO: zero-initialize all other indices
     if(init_list->values.size() > assignable_type->index_type->range.size()) {
         Error(init_list->line_num()).put(" Array ").put(assignable_type)
@@ -297,32 +215,27 @@ void typecheck_init_list(InitList* init_list, const Assignable* assignable,
 
     for(auto& value : init_list->values) {
         value->check_types();
-        if(value->type() == assignable_type->element_type) {
-            continue;
-        } else {
+        if(value->type() != assignable_type->element_type) {
             print_type_mismatch(value.get(), assignable, assignable_type->element_type,
                                 "Expected initializer list item", "Actual item");
         }
     }
 }
 
-void InitList::check_types()
+static
+void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
 {
-    if(use_kind != Kind::InInit) {
-        // This is an InitList literal (i.e. it is not part of an Initialization
-        // statement). It will be typechecked by match_literals.
+    if(assign_expr->kind() == ExprKind::InitList) {
+        typecheck_init_list(static_cast<InitList*>(assign_expr), assignable);
         return;
     }
 
-    if(assignable->type->kind() == TypeKind::Array) {
-        typecheck_init_list(this, assignable, static_cast<const ArrayType*>(assignable->type));
-    } else {
-        // TODO: add support for record type initializer lists
-        // Non-aggregate types cannot have initializer lists
-        Error(line_num())
-            .raise("Initializer lists can only be used to initialize/assign"
-                   " a variable or constant of array/record types");
-    }
+    assign_expr->check_types();
+    if(assign_expr->type() == assignable->type
+       || matched_ref(assign_expr, assignable, assignable->type))
+        return;
+
+    print_type_mismatch(assign_expr, assignable, assignable->type);
 }
 
 bool BasicStatement::check_types(Checker&)
@@ -341,19 +254,17 @@ bool BasicStatement::check_types(Checker&)
 
 bool Initialization::check_types(Checker&)
 {
-    if(expression == nullptr) {
-        if(variable->type->kind() == TypeKind::Ref) {
-            Error(line_num()).raise("Reference variables must be given an initial value");
-        }
-    } else {
-        typecheck_assign(expression, variable.get());
+    if(expression != nullptr) {
+        typecheck_assign(expression.get(), variable.get());
+    } else if(variable->type->kind() == TypeKind::Ref) {
+        Error(line_num()).raise("Reference variables must be given an initial value");
     }
     return false;
 }
 
 bool Assignment::check_types(Checker&)
 {
-    typecheck_assign(expression, assignable);
+    typecheck_assign(expression.get(), assignable);
     if(assignable->kind() == AssignableKind::Indexed) {
         static_cast<IndexedVariable*>(assignable)->array_access->check_types();
     }
@@ -421,8 +332,7 @@ bool ReturnStatement::check_types(Checker& checker)
     expression->check_types();
 
     const Type* return_type = expression->type();
-    if(curr_funct->return_type == return_type
-       || matched_literal(expression.get(), curr_funct, curr_funct->return_type)) {
+    if(curr_funct->return_type == return_type) {
         return true;
     } else if(curr_funct->return_type == &Type::Void) {
         Error(expression->line_num())

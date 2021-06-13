@@ -386,12 +386,8 @@ Magnum::Pointer<Initialization> Parser::in_initialization()
     } else {
         ++token;
         new_statement->expression = parse_expression();
+        check_token_is(TokenType::End_Statement, "end statement (a.k.a ;)", *token);
         ++token;
-        if(new_statement->expression->kind() == ExprKind::InitList) {
-            // Initialization lists need a backpointer to the variable they are used with
-            auto* init_list = static_cast<InitList*>(new_statement->expression.get());
-            init_list->set(new_statement->variable.get());
-        }
     }
     m_names_table.add_var(new_statement->variable.get());
     return new_statement;

@@ -196,29 +196,12 @@ void IndexOp::print(std::ostream& output) const
     output << "]";
 }
 
-void InitList::set(const Assignable* new_var)
-{
-    assert(use_kind == Kind::None);
-    use_kind = Kind::InInit;
-    assignable = new_var;
-}
-
-void InitList::set(const Type* new_type)
-{
-    assert(use_kind == Kind::None);
-    use_kind = Kind::AnonObj;
-    anon_type = new_type;
-}
-
 const Type* InitList::type() const
 {
-    switch(use_kind) {
-    case Kind::InInit:
-        return assignable->type;
-    case Kind::AnonObj:
-        return anon_type;
-    default:
+    if(actual_type == nullptr) {
         return &LiteralType::InitList;
+    } else {
+        return actual_type;
     }
 }
 

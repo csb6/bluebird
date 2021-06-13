@@ -170,7 +170,7 @@ void set_literal_range_type(Expression* literal, const Other* other,
     }
     default:
         Error(literal->line_num())
-            .put("Expected a literal type, but instead found expression:\n  ")
+            .put("Expected a range/char literal, but instead found expression:\n  ")
             .put(literal).put("\t").put(literal->type()).raise();
     }
 }
@@ -218,10 +218,11 @@ void set_literal_type(Expression* literal, const Other* other, const Type* other
                          static_cast<const RefType*>(other_type)->inner_type);
         break;
     case TypeKind::Literal:
-        // Ignore case when two Literal operands; will get constant folded
+        // Ignore case of two Literal operands; will get constant folded
         break;
-    default:
+    case TypeKind::Normal:
         assert(false);
+        break;
     }
 }
 
@@ -230,7 +231,7 @@ void set_literal_array_type(Expression* literal, const ArrayType* other_type)
 {
     if(literal->kind() == ExprKind::InitList) {
         auto* init_list = static_cast<InitList*>(literal);
-        init_list->set(other_type);
+        init_list->actual_type = other_type;
         for(auto& expr : init_list->values) {
             set_literal_type(expr.get(), init_list, other_type->element_type);
         }

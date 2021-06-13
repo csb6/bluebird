@@ -282,22 +282,9 @@ llvm::Value* IndexOp::codegen(CodeGenerator& gen)
 
 llvm::Value* InitList::codegen(CodeGenerator& gen)
 {
-    assert(use_kind != Kind::None);
-    llvm::Value* alloc;
-    llvm::Type* array_type;
-    if(use_kind == Kind::InInit) {
-        // InitList is part of an initialization or assignment
-        assert(assignable->kind() == AssignableKind::Variable);
-        const auto match = gen.m_vars.find(static_cast<const Variable*>(assignable));
-        assert(match != gen.m_vars.end());
-        alloc = match->second;
-        array_type = gen.to_llvm_type(assignable->type);
-    } else {
-        // InitList is acting as an anonymous object
-        array_type = gen.to_llvm_type(anon_type);
-        alloc = gen.prepend_alloca(gen.m_ir_builder.GetInsertBlock()->getParent(),
-                                   array_type, "anon_array");
-    }
+    llvm::Type* array_type = gen.to_llvm_type(actual_type);
+    llvm::Value* alloc = gen.prepend_alloca(gen.m_ir_builder.GetInsertBlock()->getParent(),
+                                            array_type, "anon_array");
     gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
     llvm::Value* indexes[2] = { gen.m_ir_builder.getIntN(32, 0) };
     auto bit_size = type()->bit_size();
@@ -310,13 +297,7 @@ llvm::Value* InitList::codegen(CodeGenerator& gen)
         // Store the value at that array element
         gen.m_ir_builder.CreateStore(values[i]->codegen(gen), element_ptr);
     }
-    if(use_kind == Kind::InInit) {
-        // Returns nullptr since no new object emitted;
-        // this case should only be called from store_expr_result()
-        return nullptr;
-    } else {
-        return gen.m_ir_builder.CreateLoad(array_type, alloc, "anon_array");
-    }
+    return gen.m_ir_builder.CreateLoad(array_type, alloc, "anon_array");
 }
 
 llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
@@ -338,12 +319,7 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
 void CodeGenerator::store_expr_result(Assignable* assignable, Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = expr->codegen(*this);
-    if(input_instr == nullptr) {
-        // See InitList::codegen (which makes this store instruction redundant
-        // in some cases)
-        return;
-    }
-
+    assert(input_instr != nullptr);
     m_ir_builder.CreateStore(ref_if_needed(assignable, expr, input_instr), alloc);
 }
 
