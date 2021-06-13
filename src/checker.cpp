@@ -228,8 +228,6 @@ void BinaryExpression::check_types()
     check_legal_bin_op(left.get(), op, left_type);
     check_legal_bin_op(right.get(), op, right_type);
     if(left_type == right_type
-       || matched_literal(left.get(), right.get(), right_type)
-       || matched_literal(right.get(), left.get(), left_type)
        || matched_ref(left.get(), right.get(), right_type)
        || matched_ref(right.get(), left.get(), left_type))
         return;
@@ -243,7 +241,6 @@ void typecheck_assign(Magnum::Pointer<Expression>& assign_expr, const Assignable
     assign_expr->check_types();
     const auto* assign_expr_type = assign_expr->type();
     if(assign_expr_type == assignable->type
-       || matched_literal(assign_expr.get(), assignable, assignable->type)
        || matched_ref(assign_expr.get(), assignable, assignable->type))
         return;
 
@@ -278,8 +275,7 @@ void IndexOp::check_types()
     }
     auto* arr_type = static_cast<const ArrayType*>(base_type);
     index_expr->check_types();
-    if(index_expr->type() == arr_type->index_type
-       || matched_literal(index_expr.get(), base_expr.get(), arr_type->index_type)) {
+    if(index_expr->type() == arr_type->index_type) {
         return;
     } else {
         print_type_mismatch(index_expr.get(), base_expr.get(), arr_type->index_type,
@@ -301,8 +297,7 @@ void typecheck_init_list(InitList* init_list, const Assignable* assignable,
 
     for(auto& value : init_list->values) {
         value->check_types();
-        if(value->type() == assignable_type->element_type
-           || matched_literal(value.get(), assignable, assignable_type->element_type)) {
+        if(value->type() == assignable_type->element_type) {
             continue;
         } else {
             print_type_mismatch(value.get(), assignable, assignable_type->element_type,

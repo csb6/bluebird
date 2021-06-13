@@ -439,7 +439,7 @@ struct Statement {
     virtual void         print(std::ostream&) const = 0;
     // Used in cleanup stage between parsing/typechecking. Definitions/overrides
     // defined in cleanup.cpp
-    virtual void         cleanup() = 0;
+    virtual void         cleanup(class Cleanup&) = 0;
     // Returns true if always returns, no matter code path
     virtual bool         check_types(class Checker&) = 0;
 };
@@ -454,7 +454,7 @@ struct BasicStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Basic; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream&) const override;
-    void         cleanup() override;
+    void         cleanup(Cleanup&) override;
     bool         check_types(Checker&) override;
 };
 
@@ -471,7 +471,7 @@ struct Initialization final : public Statement {
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream& output) const override;
-    void         cleanup() override;
+    void         cleanup(Cleanup&) override;
     bool         check_types(Checker&) override;
 };
 
@@ -486,7 +486,7 @@ struct Assignment final : public Statement {
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream& output) const override;
-    void         cleanup() override;
+    void         cleanup(Cleanup&) override;
     bool         check_types(Checker&) override;
 };
 
@@ -500,7 +500,7 @@ struct Block : public Statement {
     StmtKind     kind() const override { return StmtKind::Block; }
     unsigned int line_num() const override { return line; };
     void         print(std::ostream&) const override;
-    void         cleanup() override;
+    void         cleanup(Cleanup&) override;
     bool         check_types(Checker&) override;
 };
 
@@ -515,7 +515,7 @@ struct IfBlock final : public Block {
 
     StmtKind kind() const override { return StmtKind::IfBlock; }
     void     print(std::ostream&) const override;
-    void     cleanup() override;
+    void     cleanup(Cleanup&) override;
     bool     check_types(Checker&) override;
 };
 
@@ -529,7 +529,7 @@ struct WhileLoop final : public Block {
 
     StmtKind kind() const override { return StmtKind::While; }
     void     print(std::ostream&) const override;
-    void     cleanup() override;
+    void     cleanup(Cleanup&) override;
     bool     check_types(Checker&) override;
 };
 
@@ -545,7 +545,7 @@ struct ReturnStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Return; }
     unsigned int line_num() const override;
     void         print(std::ostream&) const override;
-    void         cleanup() override;
+    void         cleanup(Cleanup&) override;
     bool         check_types(Checker&) override;
 };
 

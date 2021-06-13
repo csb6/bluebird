@@ -133,6 +133,114 @@ void fold_constants(Magnum::Pointer<Expression>& child_location)
     }
 }
 
+template<typename Other>
+static
+void set_literal_range_type(Expression* literal, const Other* other,
+                            const RangeType* other_type)
+{
+    const IntRange& range = other_type->range;
+    switch(literal->kind()) {
+    case ExprKind::IntLiteral: {
+        auto* int_literal = static_cast<IntLiteral*>(literal);
+        if(!range.contains(int_literal->value)) {
+            Error(int_literal->line_num())
+                .put("Integer Literal ").put(int_literal)
+                .put(" is not in the range of:\n  ")
+                .put(other_type).newline()
+                .put(" so it cannot be used with:\n  ").put(other).raise();
+        }
+        // Literals (if used with a compatible range type) take on the type of what
+        // they are used with
+        int_literal->actual_type = other_type;
+        break;
+    }
+    case ExprKind::CharLiteral: {
+        auto* char_literal = static_cast<CharLiteral*>(literal);
+        if(other_type != &RangeType::Character) {
+            // TODO: allow user-defined character types to be used with character
+            // literals
+            Error(char_literal->line_num())
+                .put("Character Literal ").put(char_literal)
+                .put(" cannot be used with the non-character type:\n  ")
+                .put(other_type).newline()
+                .put("so it cannot be used with:\n  ").put(other).raise();
+        }
+        char_literal->actual_type = other_type;
+        break;
+    }
+    default:
+        Error(literal->line_num())
+            .put("Expected a literal type, but instead found expression:\n  ")
+            .put(literal).put("\t").put(literal->type()).raise();
+    }
+}
+
+static
+void set_literal_bool_type(Expression* literal, const Type* other_type)
+{
+    // TODO: add support for user-created boolean types, which should be usable
+    // with Boolean literals
+    if(literal->kind() == ExprKind::BoolLiteral) {
+        auto* bool_literal = static_cast<BoolLiteral*>(literal);
+        bool_literal->actual_type = other_type;
+    } else {
+        Error(literal->line_num())
+            .put("Expected a boolean literal, but instead found expression:\n  ")
+            .put(literal).put("\t").put(literal->type()).raise();
+    }
+}
+
+static
+void set_literal_array_type(Expression*, const ArrayType*);
+
+template<typename Other>
+static
+void set_literal_type(Expression* literal, const Other* other, const Type* other_type)
+{
+    if(literal->type()->kind() != TypeKind::Literal)
+        return;
+
+    switch(other_type->kind()) {
+    case TypeKind::Range:
+        set_literal_range_type(literal, other, static_cast<const RangeType*>(other_type));
+        break;
+    case TypeKind::Boolean:
+        set_literal_bool_type(literal, other_type);
+        break;
+    case TypeKind::Array:
+        set_literal_array_type(literal, static_cast<const ArrayType*>(other_type));
+        break;
+    case TypeKind::Ref:
+        // References can be implicitly dereferenced when used in expressions.
+        // Since literals are always values, not references, try to resolve their
+        // type to the dereferenced type of the reference
+        set_literal_type(literal, other,
+                         static_cast<const RefType*>(other_type)->inner_type);
+        break;
+    case TypeKind::Literal:
+        // Ignore case when two Literal operands; will get constant folded
+        break;
+    default:
+        assert(false);
+    }
+}
+
+static
+void set_literal_array_type(Expression* literal, const ArrayType* other_type)
+{
+    if(literal->kind() == ExprKind::InitList) {
+        auto* init_list = static_cast<InitList*>(literal);
+        init_list->set(other_type);
+        for(auto& expr : init_list->values) {
+            set_literal_type(expr.get(), init_list, other_type->element_type);
+        }
+    } else {
+        Error(literal->line_num())
+            .put("Expected an initializer list, but instead found expression:\n  ")
+            .put(literal).put("\t").put(literal->type()).raise();
+    }
+}
+
 void UnaryExpression::cleanup()
 {
     fold_constants(right);
@@ -142,12 +250,22 @@ void BinaryExpression::cleanup()
 {
     fold_constants(left);
     fold_constants(right);
+    set_literal_type(left.get(), right.get(), right->type());
+    set_literal_type(right.get(), left.get(), left->type());
 }
 
 void FunctionCall::cleanup()
 {
+    if(definition->parameters.size() != arguments.size()) {
+        Error(line_num()).put("Function").quote(name()).put("expects ")
+            .put(definition->parameters.size()).put(" arguments, but ")
+            .put(arguments.size()).raise(" were provided");
+    }
+    auto param = definition->parameters.begin();
     for(auto& arg : arguments) {
         fold_constants(arg);
+        set_literal_type(arg.get(), param->get(), (*param)->type);
+        ++param;
     }
 }
 
@@ -158,8 +276,16 @@ void IndexOp::cleanup()
     // to try and fold it; instead, just call cleanup() so any of its subexpressions
     // are folded if possible.
     base_expr->cleanup();
-
     fold_constants(index_expr);
+
+    const auto* base_type = base_expr->type();
+    if(base_type->kind() != TypeKind::Array) {
+        Error(line_num()).put(" Object\n ")
+            .put(base_expr.get()).put("\t").put(base_type).newline()
+            .raise(" is not an array type and so cannot be indexed using `[ ]`");
+    }
+    auto* array_type = static_cast<const ArrayType*>(base_type);
+    set_literal_type(index_expr.get(), base_expr.get(), array_type->index_type);
 }
 
 void InitList::cleanup()
@@ -169,61 +295,65 @@ void InitList::cleanup()
     }
 }
 
-void BasicStatement::cleanup()
+void BasicStatement::cleanup(Cleanup&)
 {
     fold_constants(expression);
 }
 
-void Initialization::cleanup()
+void Initialization::cleanup(Cleanup&)
 {
     if(expression != nullptr) {
         fold_constants(expression);
+        set_literal_type(expression.get(), variable.get(), variable->type);
     }
 }
 
-void Assignment::cleanup()
+void Assignment::cleanup(Cleanup&)
 {
     fold_constants(expression);
+    set_literal_type(expression.get(), assignable, assignable->type);
 }
 
-void Block::cleanup()
+void Block::cleanup(Cleanup& context)
 {
     for(auto& stmt : statements) {
-        stmt->cleanup();
+        stmt->cleanup(context);
     }
 }
 
-void IfBlock::cleanup()
+void IfBlock::cleanup(Cleanup& context)
 {
     fold_constants(condition);
-    Block::cleanup();
+    Block::cleanup(context);
     if(else_or_else_if != nullptr) {
-        else_or_else_if->cleanup();
+        else_or_else_if->cleanup(context);
     }
 }
 
-void WhileLoop::cleanup()
+void WhileLoop::cleanup(Cleanup& context)
 {
     fold_constants(condition);
-    Block::cleanup();
+    Block::cleanup(context);
 }
 
-void ReturnStatement::cleanup()
+void ReturnStatement::cleanup(Cleanup& context)
 {
     if(expression != nullptr) {
         fold_constants(expression);
+        set_literal_type(expression.get(), context.m_curr_funct,
+                         context.m_curr_funct->return_type);
     }
 }
 
 void Cleanup::run()
 {
     for(Magnum::Pointer<Initialization>& var : m_global_vars) {
-        var->cleanup();
+        var->cleanup(*this);
     }
     for(auto& funct : m_functions) {
         if(funct->kind() == FunctionKind::Normal) {
-            auto* normal_funct = static_cast<BBFunction*>(funct.get());
-            normal_funct->body.cleanup();
+            m_curr_funct = static_cast<BBFunction*>(funct.get());
+            m_curr_funct->body.cleanup(*this);
         }
     }
 }

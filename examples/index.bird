@@ -1,4 +1,4 @@
-type IndexType is range -3 thru 9;
+type IndexType is range 0 thru 9;
 type SmallArray is [IndexType] of Integer;
 type SmallCharArray is [IndexType] of Character;
 
@@ -13,6 +13,6 @@ function main() is
    let b: Integer := 90;
    let c: IndexType := 4;
    b + b;
-   a[-1] + 3;
+   a[0] + 3;
    foo();
 end;
