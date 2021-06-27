@@ -1,6 +1,36 @@
 #include "cleanup.h"
 #include "ast.h"
+#include "visitor.h"
 #include "error.h"
+
+class CleanupExprVisitor : public ExprVisitor<CleanupExprVisitor> {
+public:
+    void visit_impl(StringLiteral&) {}
+    void visit_impl(CharLiteral&) {}
+    void visit_impl(IntLiteral&) {}
+    void visit_impl(BoolLiteral&) {}
+    void visit_impl(FloatLiteral&) {}
+    void visit_impl(VariableExpression&) {}
+    void visit_impl(BinaryExpression&);
+    void visit_impl(UnaryExpression&);
+    void visit_impl(FunctionCall&);
+    void visit_impl(IndexOp&);
+    void visit_impl(InitList&);
+};
+
+class CleanupStmtVisitor : public StmtVisitor<CleanupStmtVisitor> {
+    BBFunction* m_curr_funct;
+public:
+    explicit CleanupStmtVisitor(BBFunction* curr_funct) : m_curr_funct(curr_funct) {}
+
+    void visit_impl(BasicStatement&);
+    void visit_impl(Initialization&);
+    void visit_impl(Assignment&);
+    void visit_impl(IfBlock&);
+    void visit_impl(Block&);
+    void visit_impl(WhileLoop&);
+    void visit_impl(ReturnStatement&);
+};
 
 Cleanup::Cleanup(std::vector<Magnum::Pointer<Function>>& functions,
                  std::vector<Magnum::Pointer<Initialization>>& global_vars)
@@ -120,19 +150,6 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
     }
 }
 
-static
-void fold_constants(Magnum::Pointer<Expression>& child_location)
-{
-    child_location->cleanup();
-    if(child_location->kind() == ExprKind::Binary) {
-        fold_binary_constants(child_location,
-                              static_cast<BinaryExpression*>(child_location.get()));
-    } else if(child_location->kind() == ExprKind::Unary) {
-        fold_unary_constants(child_location,
-                             static_cast<UnaryExpression*>(child_location.get()));
-    }
-}
-
 template<typename Other>
 static
 void set_literal_range_type(Expression* literal, const Other* other,
@@ -242,123 +259,140 @@ void set_literal_array_type(Expression* literal, const ArrayType* other_type)
     }
 }
 
-void UnaryExpression::cleanup()
+static
+void fold_constants(Magnum::Pointer<Expression>& child_location)
 {
-    fold_constants(right);
-}
-
-void BinaryExpression::cleanup()
-{
-    fold_constants(left);
-    fold_constants(right);
-    set_literal_type(left.get(), right.get(), right->type());
-    set_literal_type(right.get(), left.get(), left->type());
-}
-
-void FunctionCall::cleanup()
-{
-    if(definition->parameters.size() != arguments.size()) {
-        Error(line_num()).put("Function").quote(name()).put("expects ")
-            .put(definition->parameters.size()).put(" arguments, but ")
-            .put(arguments.size()).raise(" were provided");
+    CleanupExprVisitor().visit(*child_location);
+    if(child_location->kind() == ExprKind::Binary) {
+        fold_binary_constants(child_location,
+                              static_cast<BinaryExpression*>(child_location.get()));
+    } else if(child_location->kind() == ExprKind::Unary) {
+        fold_unary_constants(child_location,
+                             static_cast<UnaryExpression*>(child_location.get()));
     }
-    auto param = definition->parameters.begin();
-    for(auto& arg : arguments) {
+}
+
+
+void CleanupExprVisitor::visit_impl(UnaryExpression& expr)
+{
+    fold_constants(expr.right);
+}
+
+void CleanupExprVisitor::visit_impl(BinaryExpression& expr)
+{
+    fold_constants(expr.left);
+    fold_constants(expr.right);
+    set_literal_type(expr.left.get(), expr.right.get(), expr.right->type());
+    set_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
+}
+
+void CleanupExprVisitor::visit_impl(FunctionCall& call)
+{
+    if(call.definition->parameters.size() != call.arguments.size()) {
+        Error(call.line_num()).put("Function").quote(call.name()).put("expects ")
+            .put(call.definition->parameters.size()).put(" arguments, but ")
+            .put(call.arguments.size()).raise(" were provided");
+    }
+    auto param = call.definition->parameters.begin();
+    for(auto& arg : call.arguments) {
         fold_constants(arg);
         set_literal_type(arg.get(), param->get(), (*param)->type);
         ++param;
     }
 }
 
-void IndexOp::cleanup()
+void CleanupExprVisitor::visit_impl(IndexOp& expr)
 {
     // Base expression will not consist of anything that can be simplified down
     // to a single literal (because it is some sort of variable usage), so no need
-    // to try and fold it; instead, just call cleanup() so any of its subexpressions
-    // are folded if possible.
-    base_expr->cleanup();
-    fold_constants(index_expr);
+    // to try and fold it; instead, just visit() it so any of its subexpressions
+    // get folded if possible.
+    visit(*expr.base_expr);
+    fold_constants(expr.index_expr);
 
-    const auto* base_type = base_expr->type();
+    const auto* base_type = expr.base_expr->type();
     if(base_type->kind() != TypeKind::Array) {
-        Error(line_num()).put(" Object\n ")
-            .put(base_expr.get()).put("\t").put(base_type).newline()
+        Error(expr.line_num()).put(" Object\n ")
+            .put(expr.base_expr.get()).put("\t").put(base_type).newline()
             .raise(" is not an array type and so cannot be indexed using `[ ]`");
     }
     auto* array_type = static_cast<const ArrayType*>(base_type);
-    set_literal_type(index_expr.get(), base_expr.get(), array_type->index_type);
+    set_literal_type(expr.index_expr.get(), expr.base_expr.get(), array_type->index_type);
 }
 
-void InitList::cleanup()
+void CleanupExprVisitor::visit_impl(InitList& expr)
 {
-    for(auto& val : values) {
+    for(auto& val : expr.values) {
         fold_constants(val);
     }
 }
 
-void BasicStatement::cleanup(Cleanup&)
+
+void CleanupStmtVisitor::visit_impl(BasicStatement& stmt)
 {
-    fold_constants(expression);
+    fold_constants(stmt.expression);
 }
 
-void Initialization::cleanup(Cleanup&)
+void CleanupStmtVisitor::visit_impl(Initialization& stmt)
 {
-    if(expression != nullptr) {
-        fold_constants(expression);
-        set_literal_type(expression.get(), variable.get(), variable->type);
+    if(stmt.expression != nullptr) {
+        fold_constants(stmt.expression);
+        set_literal_type(stmt.expression.get(), stmt.variable.get(),
+                         stmt.variable->type);
     }
 }
 
-void Assignment::cleanup(Cleanup&)
+void CleanupStmtVisitor::visit_impl(Assignment& stmt)
 {
-    fold_constants(expression);
-    set_literal_type(expression.get(), assignable, assignable->type);
-    if(assignable->kind() == AssignableKind::Indexed) {
-        auto* indexed_var = static_cast<IndexedVariable*>(assignable);
-        indexed_var->array_access->cleanup();
+    fold_constants(stmt.expression);
+    set_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
+    if(stmt.assignable->kind() == AssignableKind::Indexed) {
+        auto* indexed_var = static_cast<IndexedVariable*>(stmt.assignable);
+        CleanupExprVisitor().visit(*indexed_var->array_access);
     }
 }
 
-void Block::cleanup(Cleanup& context)
+void CleanupStmtVisitor::visit_impl(IfBlock& stmt)
 {
-    for(auto& stmt : statements) {
-        stmt->cleanup(context);
+    fold_constants(stmt.condition);
+    visit_impl(static_cast<Block&>(stmt));
+    if(stmt.else_or_else_if != nullptr) {
+        visit(*stmt.else_or_else_if);
     }
 }
 
-void IfBlock::cleanup(Cleanup& context)
+void CleanupStmtVisitor::visit_impl(Block& block)
 {
-    fold_constants(condition);
-    Block::cleanup(context);
-    if(else_or_else_if != nullptr) {
-        else_or_else_if->cleanup(context);
+    for(auto& stmt : block.statements) {
+        visit(*stmt);
     }
 }
 
-void WhileLoop::cleanup(Cleanup& context)
+void CleanupStmtVisitor::visit_impl(WhileLoop& loop)
 {
-    fold_constants(condition);
-    Block::cleanup(context);
+    fold_constants(loop.condition);
+    visit_impl(static_cast<Block&>(loop));
 }
 
-void ReturnStatement::cleanup(Cleanup& context)
+void CleanupStmtVisitor::visit_impl(ReturnStatement& stmt)
 {
-    if(expression != nullptr) {
-        fold_constants(expression);
-        set_literal_type(expression.get(), context.m_curr_funct,
-                         context.m_curr_funct->return_type);
+    assert(m_curr_funct != nullptr);
+    if(stmt.expression != nullptr) {
+        fold_constants(stmt.expression);
+        set_literal_type(stmt.expression.get(), m_curr_funct,
+                         m_curr_funct->return_type);
     }
 }
 
 void Cleanup::run()
 {
     for(Magnum::Pointer<Initialization>& var : m_global_vars) {
-        var->cleanup(*this);
+        CleanupStmtVisitor(nullptr).visit(*var.get());
     }
     for(auto& funct : m_functions) {
         if(funct->kind() == FunctionKind::Normal) {
-            m_curr_funct = static_cast<BBFunction*>(funct.get());
-            m_curr_funct->body.cleanup(*this);
+            auto* curr_funct = static_cast<BBFunction*>(funct.get());
+            CleanupStmtVisitor(curr_funct).visit(curr_funct->body);
         }
     }
 }

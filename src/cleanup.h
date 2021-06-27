@@ -33,9 +33,6 @@ namespace Magnum = Corrade::Containers;
 class Cleanup {
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
-    struct BBFunction* m_curr_funct = nullptr;
-
-    friend struct ReturnStatement;
 public:
     Cleanup(std::vector<Magnum::Pointer<Function>>&,
             std::vector<Magnum::Pointer<Initialization>>& global_vars);
