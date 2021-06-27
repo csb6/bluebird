@@ -17,9 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <vector>
-#include <CorradePointer.h>
-
-namespace Magnum = Corrade::Containers;
+#include "magnum.h"
 
 /* This file contains a class that does some cleanup operations between the
    parsing and checking stages. This includes constant folding/type resolution

@@ -17,11 +17,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "token.h"
-#include <CorradePointer.h>
+#include "magnum.h"
 #include <vector>
 #include "multiprecision.h"
-
-namespace Magnum = Corrade::Containers;
 
 namespace llvm {
     class Value;

@@ -29,9 +29,7 @@
 
 #include <vector>
 #include <unordered_map>
-#include <CorradePointer.h>
-
-namespace Magnum = Corrade::Containers;
+#include "magnum.h"
 
 namespace llvm {
     class Value;
