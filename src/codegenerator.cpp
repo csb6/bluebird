@@ -29,6 +29,7 @@
 #include "ast.h"
 #include "error.h"
 #include <string>
+#include <cassert>
 
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)

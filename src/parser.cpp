@@ -19,6 +19,7 @@
 #include <ostream>
 #include <algorithm>
 #include <array>
+#include <cassert>
 
 using Precedence = signed char;
 constexpr Precedence Invalid_Binary_Operator = -2;

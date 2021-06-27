@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "visitor.h"
 #include "error.h"
+#include <cassert>
 
 class CleanupExprVisitor : public ExprVisitor<CleanupExprVisitor> {
 public:
@@ -43,8 +44,12 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
 {
     auto replace_with_literal =
         [&](Expression* literal) {
-            auto* released = unary_expr->right.release();
-            assert(released == literal);
+            #ifndef NDEBUG
+                auto* released = unary_expr->right.release();
+                assert(released == literal);
+            #else
+                unary_expr->right.release();
+            #endif
             expr_location_out.reset(literal);
         };
 
@@ -86,8 +91,12 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
 {
     auto replace_with_literal =
         [&](Expression* literal) {
-            auto* released = bin_expr->left.release();
-            assert(released == literal);
+            #ifndef NDEBUG
+                auto* released = bin_expr->left.release();
+                assert(released == literal);
+            #else
+                bin_expr->left.release();
+            #endif
             expr_location_out.reset(literal);
         };
 
