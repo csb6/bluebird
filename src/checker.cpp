@@ -35,18 +35,18 @@ public:
     void visit_impl(InitList&);
 };
 
-class CheckerStmtVisitor : public ExprVisitor<CheckerStmtVisitor> {
+class CheckerStmtVisitor : public StmtVisitor<CheckerStmtVisitor> {
     BBFunction* m_curr_funct;
 public:
     explicit CheckerStmtVisitor(BBFunction* curr_funct) : m_curr_funct(curr_funct) {}
 
-    void visit_impl(BasicStatement&);
-    void visit_impl(Initialization&);
-    void visit_impl(Assignment&);
-    void visit_impl(IfBlock&);
-    void visit_impl(Block&);
-    void visit_impl(WhileLoop&);
-    void visit_impl(ReturnStatement&);
+    bool visit_impl(BasicStatement&);
+    bool visit_impl(Initialization&);
+    bool visit_impl(Assignment&);
+    bool visit_impl(IfBlock&);
+    bool visit_impl(Block&);
+    bool visit_impl(WhileLoop&);
+    bool visit_impl(ReturnStatement&);
 };
 
 Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
@@ -266,11 +266,11 @@ void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
     print_type_mismatch(assign_expr, assignable, assignable->type);
 }
 
-bool BasicStatement::check_types(Checker&)
+bool CheckerStmtVisitor::visit_impl(BasicStatement& stmt)
 {
-    CheckerExprVisitor().visit(*expression);
-    if(expression->kind() == ExprKind::Binary) {
-        auto* bin_expr = static_cast<const BinaryExpression*>(expression.get());
+    CheckerExprVisitor().visit(*stmt.expression);
+    if(stmt.expression->kind() == ExprKind::Binary) {
+        auto* bin_expr = static_cast<const BinaryExpression*>(stmt.expression.get());
         if(bin_expr->op == TokenType::Op_Eq) {
             Error(bin_expr->line_num())
                 .raise("Equality operator is `=`, assignment operator"
@@ -280,21 +280,23 @@ bool BasicStatement::check_types(Checker&)
     return false;
 }
 
-bool Initialization::check_types(Checker&)
+bool CheckerStmtVisitor::visit_impl(Initialization& init_stmt)
 {
-    if(expression != nullptr) {
-        typecheck_assign(expression.get(), variable.get());
-    } else if(variable->type->kind() == TypeKind::Ref) {
-        Error(line_num()).raise("Reference variables must be given an initial value");
+    if(init_stmt.expression != nullptr) {
+        typecheck_assign(init_stmt.expression.get(), init_stmt.variable.get());
+    } else if(init_stmt.variable->type->kind() == TypeKind::Ref) {
+        Error(init_stmt.line_num())
+            .raise("Reference variables must be given an initial value");
     }
     return false;
 }
 
-bool Assignment::check_types(Checker&)
+bool CheckerStmtVisitor::visit_impl(Assignment& assgn_stmt)
 {
-    typecheck_assign(expression.get(), assignable);
-    if(assignable->kind() == AssignableKind::Indexed) {
-        CheckerExprVisitor().visit(*static_cast<IndexedVariable*>(assignable)->array_access);
+    typecheck_assign(assgn_stmt.expression.get(), assgn_stmt.assignable);
+    if(assgn_stmt.assignable->kind() == AssignableKind::Indexed) {
+        CheckerExprVisitor()
+            .visit(*static_cast<IndexedVariable*>(assgn_stmt.assignable)->array_access);
     }
     return false;
 }
@@ -307,15 +309,15 @@ bool is_bool_condition(const Expression* condition)
         || cond_type == &LiteralType::Bool;
 }
 
-bool IfBlock::check_types(Checker& checker)
+bool CheckerStmtVisitor::visit_impl(IfBlock& if_block)
 {
-    if(!is_bool_condition(condition.get())) {
-        nonbool_condition_error(condition.get(), "if-statement");
+    if(!is_bool_condition(if_block.condition.get())) {
+        nonbool_condition_error(if_block.condition.get(), "if-statement");
     }
-    CheckerExprVisitor().visit(*condition);
-    bool always_returns = Block::check_types(checker);
-    if(else_or_else_if != nullptr) {
-        always_returns &= else_or_else_if->check_types(checker);
+    CheckerExprVisitor().visit(*if_block.condition);
+    bool always_returns = visit(static_cast<Block&>(if_block));
+    if(if_block.else_or_else_if != nullptr) {
+        always_returns &= visit(*if_block.else_or_else_if);
     } else {
         // Since an if-statement does not cover all possibilities
         always_returns = false;
@@ -323,53 +325,53 @@ bool IfBlock::check_types(Checker& checker)
     return always_returns;
 }
 
-bool Block::check_types(Checker& checker)
+bool CheckerStmtVisitor::visit_impl(Block& block)
 {
     bool always_returns = false;
-    for(auto& stmt : statements) {
-        always_returns |= stmt->check_types(checker);
+    for(auto& stmt : block.statements) {
+        always_returns |= visit(*stmt);
 
-        if(always_returns && stmt.get() != statements.back().get()) {
-            Error(line_num()).put(" Statements after:\n  ").put(stmt.get())
+        if(always_returns && stmt.get() != block.statements.back().get()) {
+            Error(block.line_num()).put(" Statements after:\n  ").put(stmt.get())
                 .raise("\n are unreachable because the statement always returns");
         }
     }
     return always_returns;
 }
 
-bool WhileLoop::check_types(Checker& checker)
+bool CheckerStmtVisitor::visit_impl(WhileLoop& loop)
 {
-    CheckerExprVisitor().visit(*condition);
-    if(!is_bool_condition(condition.get())) {
-        nonbool_condition_error(condition.get(), "while-loop");
+    CheckerExprVisitor().visit(*loop.condition);
+    if(!is_bool_condition(loop.condition.get())) {
+        nonbool_condition_error(loop.condition.get(), "while-loop");
     }
-    Block::check_types(checker);
+    visit(static_cast<Block&>(loop));
     return false;
 }
 
-bool ReturnStatement::check_types(Checker& checker)
+bool CheckerStmtVisitor::visit_impl(ReturnStatement& ret_stmt)
 {
-    const BBFunction* curr_funct = checker.m_curr_funct;
-    if(expression.get() == nullptr) {
-        if(curr_funct->return_type != &Type::Void) {
-            Error(line_num()).put("Function").quote(curr_funct->name)
+    assert(m_curr_funct != nullptr);
+    if(ret_stmt.expression.get() == nullptr) {
+        if(m_curr_funct->return_type != &Type::Void) {
+            Error(ret_stmt.line_num()).put("Function").quote(m_curr_funct->name)
                 .raise("returns a value, so an empty return statement isn't allowed");
         }
         return true;
     }
-    CheckerExprVisitor().visit(*expression);
+    CheckerExprVisitor().visit(*ret_stmt.expression);
 
-    const Type* return_type = expression->type();
-    if(curr_funct->return_type == return_type) {
+    const Type* return_type = ret_stmt.expression->type();
+    if(m_curr_funct->return_type == return_type) {
         return true;
-    } else if(curr_funct->return_type == &Type::Void) {
-        Error(expression->line_num())
-            .put("Did not expect void function").quote(curr_funct->name)
+    } else if(m_curr_funct->return_type == &Type::Void) {
+        Error(ret_stmt.expression->line_num())
+            .put("Did not expect void function").quote(m_curr_funct->name)
             .raise("to return something");
     } else {
-        Error(expression->line_num())
-            .put("Expected function").quote(curr_funct->name)
-            .put("to return:\n  ").put(curr_funct->return_type).newline()
+        Error(ret_stmt.expression->line_num())
+            .put("Expected function").quote(m_curr_funct->name)
+            .put("to return:\n  ").put(m_curr_funct->return_type).newline()
             .put("not:\n  ").put(return_type).raise();
     }
 }
@@ -377,7 +379,7 @@ bool ReturnStatement::check_types(Checker& checker)
 void Checker::run()
 {
     for(auto& var : m_global_vars) {
-        var->check_types(*this);
+        CheckerStmtVisitor(nullptr).visit(*var);
         if(var->expression != nullptr) {
             switch(var->expression->kind()) {
             case ExprKind::CharLiteral:
@@ -393,14 +395,15 @@ void Checker::run()
 
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            m_curr_funct = static_cast<BBFunction*>(function.get());
-            bool always_returns = m_curr_funct->body.check_types(*this);
-            if(m_curr_funct->return_type->kind() == TypeKind::Ref) {
-                Error().put("Function").quote(m_curr_funct->name)
+            auto* curr_funct = static_cast<BBFunction*>(function.get());
+            if(curr_funct->return_type->kind() == TypeKind::Ref) {
+                Error().put("Function").quote(curr_funct->name)
                     .raise("returns a ref type, which is not allowed");
             }
-            if(!always_returns && m_curr_funct->return_type != &Type::Void) {
-                Error().put("Function").quote(m_curr_funct->name)
+
+            bool always_returns = CheckerStmtVisitor(curr_funct).visit(curr_funct->body);
+            if(!always_returns && curr_funct->return_type != &Type::Void) {
+                Error().put("Function").quote(curr_funct->name)
                     .raise("does not return in all cases");
             }
         }

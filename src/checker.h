@@ -31,11 +31,6 @@ private:
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Type>>& m_types;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
-
-    // Data about the current things being typechecked/analyzed
-    struct BBFunction* m_curr_funct = nullptr;
-
-    friend struct ReturnStatement;
 public:
     Checker(std::vector<Magnum::Pointer<Function>>&,
             std::vector<Magnum::Pointer<Type>>&,

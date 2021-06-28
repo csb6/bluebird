@@ -393,8 +393,6 @@ struct Statement {
     virtual StmtKind     kind() const = 0;
     virtual unsigned int line_num() const = 0;
     virtual void         print(std::ostream&) const = 0;
-    // Returns true if always returns, no matter code path
-    virtual bool         check_types(class Checker&) = 0;
 };
 
 // A brief, usually one-line statement that holds a single expression
@@ -407,7 +405,6 @@ struct BasicStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Basic; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream&) const override;
-    bool         check_types(Checker&) override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -423,7 +420,6 @@ struct Initialization final : public Statement {
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream& output) const override;
-    bool         check_types(Checker&) override;
 };
 
 // Statement where an existing variable is given a value
@@ -437,7 +433,6 @@ struct Assignment final : public Statement {
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
     void         print(std::ostream& output) const override;
-    bool         check_types(Checker&) override;
 };
 
 // A group of statements contained in a scope
@@ -450,7 +445,6 @@ struct Block : public Statement {
     StmtKind     kind() const override { return StmtKind::Block; }
     unsigned int line_num() const override { return line; };
     void         print(std::ostream&) const override;
-    bool         check_types(Checker&) override;
 };
 
 // A block that is executed only when its boolean condition is true
@@ -464,7 +458,6 @@ struct IfBlock final : public Block {
 
     StmtKind kind() const override { return StmtKind::IfBlock; }
     void     print(std::ostream&) const override;
-    bool     check_types(Checker&) override;
 };
 
 // A block that runs repeatedly until its condition is false
@@ -477,7 +470,6 @@ struct WhileLoop final : public Block {
 
     StmtKind kind() const override { return StmtKind::While; }
     void     print(std::ostream&) const override;
-    bool     check_types(Checker&) override;
 };
 
 struct ReturnStatement final : public Statement {
@@ -492,7 +484,6 @@ struct ReturnStatement final : public Statement {
     StmtKind     kind() const override { return StmtKind::Return; }
     unsigned int line_num() const override;
     void         print(std::ostream&) const override;
-    bool         check_types(Checker&) override;
 };
 
 // A callable procedure that optionally takes inputs
