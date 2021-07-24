@@ -101,29 +101,16 @@ private:
     DebugGenerator m_dbg_gen;
     Mode           m_build_mode;
 
-    // For codegen, virtual functions attached to each Expression subclass.
-    // These functions are defined in codegenerator.cpp
-    friend struct StringLiteral;
-    friend struct CharLiteral;
-    friend struct IntLiteral;
-    friend struct BoolLiteral;
-    friend struct FloatLiteral;
-    friend struct VariableExpression;
-    friend struct RefExpression;
-    friend struct UnaryExpression;
-    friend struct BinaryExpression;
-    friend struct FunctionCall;
-    friend struct IndexOp;
-    friend struct InitList;
+    friend class CodegenExprVisitor;
 
     void               declare_globals();
     void               declare_builtin_functions();
     void               declare_function_headers();
     void               define_functions();
-    llvm::Type*        to_llvm_type(const Type* ast_type);
-    llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
     llvm::AllocaInst*  prepend_alloca(llvm::Function*, llvm::Type*,
                                       const std::string& name);
+    llvm::Type* to_llvm_type(const Type*);
+    llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
     void store_expr_result(struct Assignable*, struct Expression*, llvm::Value* alloc);
     void in_statement(llvm::Function*, struct Statement*);
     void in_initialization(llvm::Function*, struct Initialization*);

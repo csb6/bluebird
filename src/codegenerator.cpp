@@ -27,45 +27,33 @@
 #pragma GCC diagnostic pop
 
 #include "ast.h"
+#include "visitor.h"
 #include "error.h"
 #include <string>
 #include <cassert>
+
+class CodegenExprVisitor : public ExprVisitor<CodegenExprVisitor> {
+    CodeGenerator& m_gen;
+public:
+    explicit CodegenExprVisitor(CodeGenerator& gen) : m_gen(gen) {}
+
+    llvm::Value* visit_impl(StringLiteral&);
+    llvm::Value* visit_impl(CharLiteral&);
+    llvm::Value* visit_impl(IntLiteral&);
+    llvm::Value* visit_impl(BoolLiteral&);
+    llvm::Value* visit_impl(FloatLiteral&);
+    llvm::Value* visit_impl(VariableExpression&);
+    llvm::Value* visit_impl(BinaryExpression&);
+    llvm::Value* visit_impl(UnaryExpression&);
+    llvm::Value* visit_impl(FunctionCall&);
+    llvm::Value* visit_impl(IndexOp&);
+    llvm::Value* visit_impl(InitList&);
+};
 
 // Util functions
 llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* integer)
 {
     return ir_builder.CreateTrunc(integer, llvm::Type::getInt1Ty(ir_builder.getContext()));
-}
-
-llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
-{
-    switch(ast_type->kind()) {
-    case TypeKind::Range:
-    case TypeKind::Boolean:
-        return llvm::IntegerType::get(m_context, ast_type->bit_size());
-    case TypeKind::Array: {
-        auto* arr_type = static_cast<const ArrayType*>(ast_type);
-        return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
-                                    arr_type->index_type->range.size());
-    }
-    case TypeKind::Ref: {
-        auto* ref_type = static_cast<const RefType*>(ast_type);
-        return llvm::PointerType::get(to_llvm_type(ref_type->inner_type), 0);
-    }
-    default:
-        // TODO: add support for determining LLVM type for other AST types.
-        // Note that literal types should never reach here (see the literal
-        // codegen() functions)
-        assert(false);
-        return nullptr;
-    }
-}
-
-llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value,
-                                              size_t bit_size)
-{
-    return llvm::ConstantInt::get(
-        m_context, llvm::APInt(bit_size, value.str(), 10));
 }
 
 static
@@ -105,200 +93,234 @@ CodeGenerator::CodeGenerator(const char* source_filename,
       m_build_mode(build_mode)
 {}
 
-llvm::Value* StringLiteral::codegen(CodeGenerator& gen)
+llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
-    return gen.m_ir_builder.CreateGlobalStringPtr(value);
+    switch(ast_type->kind()) {
+    case TypeKind::Range:
+    case TypeKind::Boolean:
+        return llvm::IntegerType::get(m_context, ast_type->bit_size());
+    case TypeKind::Array: {
+        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
+                                    arr_type->index_type->range.size());
+    }
+    case TypeKind::Ref: {
+        auto* ref_type = static_cast<const RefType*>(ast_type);
+        return llvm::PointerType::get(to_llvm_type(ref_type->inner_type), 0);
+    }
+    default:
+        // TODO: add support for determining LLVM type for other AST types.
+        // Note that literal types should never reach here
+        assert(false);
+        return nullptr;
+    }
 }
 
-llvm::Value* CharLiteral::codegen(CodeGenerator& gen)
+llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value, size_t bit_size)
+{
+    return llvm::ConstantInt::get(m_context, llvm::APInt(bit_size, value.str(), 10));
+}
+
+llvm::Value* CodegenExprVisitor::visit_impl(StringLiteral& lit)
+{
+    return m_gen.m_ir_builder.CreateGlobalStringPtr(lit.value);
+}
+
+llvm::Value* CodegenExprVisitor::visit_impl(CharLiteral& lit)
 {
     // Create a signed `char` type
-    return gen.m_ir_builder.getInt8(value);
+    return m_gen.m_ir_builder.getInt8(lit.value);
 }
 
-llvm::Value* IntLiteral::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(IntLiteral& lit)
 {
-    return gen.to_llvm_int(value, type()->bit_size());
+    return m_gen.to_llvm_int(lit.value, lit.type()->bit_size());
 }
 
-llvm::Value* BoolLiteral::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(BoolLiteral& lit)
 {
-    return gen.m_ir_builder.getIntN(type()->bit_size(), value);
+    return m_gen.m_ir_builder.getIntN(lit.type()->bit_size(), lit.value);
 }
 
-llvm::Value* FloatLiteral::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(FloatLiteral& lit)
 {
-    return llvm::ConstantFP::get(gen.m_context, llvm::APFloat(value));
+    return llvm::ConstantFP::get(m_gen.m_context, llvm::APFloat(lit.value));
 }
 
-llvm::Value* VariableExpression::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(VariableExpression& var_expr)
 {
-    llvm::Value* src_var = gen.m_vars[variable];
+    llvm::Value* src_var = m_gen.m_vars[var_expr.variable];
     assert(src_var != nullptr);
-    return gen.m_ir_builder.CreateLoad(src_var, variable->name);
+    return m_gen.m_ir_builder.CreateLoad(src_var, var_expr.variable->name);
 }
 
-llvm::Value* UnaryExpression::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(UnaryExpression& expr)
 {
-    llvm::Value* operand = load_if_needed(gen.m_ir_builder, right.get(), right->codegen(gen));
+    llvm::Value* right_code = visit(*expr.right);
+    llvm::Value* operand = load_if_needed(m_gen.m_ir_builder, expr.right.get(), right_code);
 
-    switch(op) {
+    switch(expr.op) {
     case TokenType::Op_Not:
         // TODO: implement support for bit not for certain unsigned types
-        operand = gen.m_ir_builder.CreateNot(operand, "nottmp");
-        return truncate_to_bool(gen.m_ir_builder, operand);
+        operand = m_gen.m_ir_builder.CreateNot(operand, "nottmp");
+        return truncate_to_bool(m_gen.m_ir_builder, operand);
     case TokenType::Op_Minus:
-        return gen.m_ir_builder.CreateNeg(operand, "negtmp");
+        return m_gen.m_ir_builder.CreateNeg(operand, "negtmp");
     default:
         assert(false && "Unknown unary operator");
         return nullptr;
     }
 }
 
-llvm::Value* BinaryExpression::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(BinaryExpression& expr)
 {
     bool type_is_signed = false;
-    if(left->type()->kind() == TypeKind::Range) {
-        type_is_signed = static_cast<const RangeType*>(left->type())->is_signed();
-    } else if(right->type()->kind() == TypeKind::Range) {
-        type_is_signed = static_cast<const RangeType*>(right->type())->is_signed();
+    if(expr.left->type()->kind() == TypeKind::Range) {
+        type_is_signed = static_cast<const RangeType*>(expr.left->type())->is_signed();
+    } else if(expr.right->type()->kind() == TypeKind::Range) {
+        type_is_signed = static_cast<const RangeType*>(expr.right->type())->is_signed();
     }
-    llvm::Value* left_ir = load_if_needed(gen.m_ir_builder, left.get(), left->codegen(gen));
-    llvm::Value* right_ir = load_if_needed(gen.m_ir_builder, right.get(), right->codegen(gen));
+    llvm::Value* left_code = visit(*expr.left);
+    llvm::Value* right_code = visit(*expr.right);
+    llvm::Value* left_ir = load_if_needed(m_gen.m_ir_builder, expr.left.get(), left_code);
+    llvm::Value* right_ir = load_if_needed(m_gen.m_ir_builder, expr.right.get(), right_code);
 
     // TODO: use float/user-defined versions of all these operators depending
     //   on their type
-    switch(op) {
+    switch(expr.op) {
     case TokenType::Op_Plus:
-        return gen.m_ir_builder.CreateAdd(left_ir, right_ir, "addtmp");
+        return m_gen.m_ir_builder.CreateAdd(left_ir, right_ir, "addtmp");
     case TokenType::Op_Minus:
-        return gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
+        return m_gen.m_ir_builder.CreateSub(left_ir, right_ir, "subtmp");
     case TokenType::Op_Div:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
+            return m_gen.m_ir_builder.CreateSDiv(left_ir, right_ir, "sdivtmp");
         else
-            return gen.m_ir_builder.CreateUDiv(left_ir, right_ir, "udivtmp");
+            return m_gen.m_ir_builder.CreateUDiv(left_ir, right_ir, "udivtmp");
     case TokenType::Op_Mult:
-        return gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
+        return m_gen.m_ir_builder.CreateMul(left_ir, right_ir, "multmp");
     // TODO: Figure out IR instructions/usage of Op_Rem vs. Op_Mod
     case TokenType::Op_Mod:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateSRem(left_ir, right_ir, "smodtmp");
+            return m_gen.m_ir_builder.CreateSRem(left_ir, right_ir, "smodtmp");
         else
-            return gen.m_ir_builder.CreateURem(left_ir, right_ir, "umodtmp");
+            return m_gen.m_ir_builder.CreateURem(left_ir, right_ir, "umodtmp");
     // TODO: implement short-circuiting for AND and OR
     case TokenType::Op_And:
-        left_ir = gen.m_ir_builder.CreateAnd(left_ir, right_ir, "andtmp");
-        return truncate_to_bool(gen.m_ir_builder, left_ir);
+        left_ir = m_gen.m_ir_builder.CreateAnd(left_ir, right_ir, "andtmp");
+        return truncate_to_bool(m_gen.m_ir_builder, left_ir);
     case TokenType::Op_Or:
-        left_ir = gen.m_ir_builder.CreateOr(left_ir, right_ir, "ortmp");
-        return truncate_to_bool(gen.m_ir_builder, left_ir);
+        left_ir = m_gen.m_ir_builder.CreateOr(left_ir, right_ir, "ortmp");
+        return truncate_to_bool(m_gen.m_ir_builder, left_ir);
     case TokenType::Op_Xor:
-        left_ir = gen.m_ir_builder.CreateXor(left_ir, right_ir, "xortmp");
-        return truncate_to_bool(gen.m_ir_builder, left_ir);
+        left_ir = m_gen.m_ir_builder.CreateXor(left_ir, right_ir, "xortmp");
+        return truncate_to_bool(m_gen.m_ir_builder, left_ir);
     // TODO: use different compare functions for floats, user-defined ops, etc.
     case TokenType::Op_Eq:
-        return gen.m_ir_builder.CreateICmpEQ(left_ir, right_ir, "eqtmp");
+        return m_gen.m_ir_builder.CreateICmpEQ(left_ir, right_ir, "eqtmp");
     case TokenType::Op_Ne:
-        return gen.m_ir_builder.CreateICmpNE(left_ir, right_ir, "netmp");
+        return m_gen.m_ir_builder.CreateICmpNE(left_ir, right_ir, "netmp");
     case TokenType::Op_Lt:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateICmpSLT(left_ir, right_ir, "lttmp");
+            return m_gen.m_ir_builder.CreateICmpSLT(left_ir, right_ir, "lttmp");
         else
-            return gen.m_ir_builder.CreateICmpULT(left_ir, right_ir, "ulttmp");
+            return m_gen.m_ir_builder.CreateICmpULT(left_ir, right_ir, "ulttmp");
     case TokenType::Op_Gt:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateICmpSGT(left_ir, right_ir, "gttmp");
+            return m_gen.m_ir_builder.CreateICmpSGT(left_ir, right_ir, "gttmp");
         else
-            return gen.m_ir_builder.CreateICmpUGT(left_ir, right_ir, "ugttmp");
+            return m_gen.m_ir_builder.CreateICmpUGT(left_ir, right_ir, "ugttmp");
     case TokenType::Op_Le:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateICmpSLE(left_ir, right_ir, "letmp");
+            return m_gen.m_ir_builder.CreateICmpSLE(left_ir, right_ir, "letmp");
         else
-            return gen.m_ir_builder.CreateICmpULE(left_ir, right_ir, "uletmp");
+            return m_gen.m_ir_builder.CreateICmpULE(left_ir, right_ir, "uletmp");
     case TokenType::Op_Ge:
         if(type_is_signed)
-            return gen.m_ir_builder.CreateICmpSGE(left_ir, right_ir, "getmp");
+            return m_gen.m_ir_builder.CreateICmpSGE(left_ir, right_ir, "getmp");
         else
-            return gen.m_ir_builder.CreateICmpUGE(left_ir, right_ir, "ugetmp");
+            return m_gen.m_ir_builder.CreateICmpUGE(left_ir, right_ir, "ugetmp");
     case TokenType::Op_Left_Shift:
-        return gen.m_ir_builder.CreateShl(left_ir, right_ir, "sltmp");
+        return m_gen.m_ir_builder.CreateShl(left_ir, right_ir, "sltmp");
     case TokenType::Op_Right_Shift:
         // Fills in new bits with zeros
-        return gen.m_ir_builder.CreateLShr(left_ir, right_ir, "srtmp");
+        return m_gen.m_ir_builder.CreateLShr(left_ir, right_ir, "srtmp");
     default:
         assert(false && "Unknown binary operator");
         return nullptr;
     }
 }
 
-llvm::Value* FunctionCall::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(FunctionCall& call)
 {
-    llvm::Function* funct_to_call = gen.m_module.getFunction(name());
+    llvm::Function* funct_to_call = m_gen.m_module.getFunction(call.name());
     assert(funct_to_call != nullptr);
 
     llvm::SmallVector<llvm::Value*, 6> args;
-    auto param_it = definition->parameters.begin();
-    for(auto& arg : arguments) {
-        args.push_back(ref_if_needed(param_it->get(), arg.get(), arg->codegen(gen)));
+    auto param_it = call.definition->parameters.begin();
+    for(auto& arg : call.arguments) {
+        llvm::Value* arg_code = visit(*arg);
+        args.push_back(ref_if_needed(param_it->get(), arg.get(), arg_code));
         ++param_it;
     }
-    llvm::CallInst* call_instr = gen.m_ir_builder.CreateCall(funct_to_call, args);
+    llvm::CallInst* call_instr = m_gen.m_ir_builder.CreateCall(funct_to_call, args);
     // Can't name result of void function calls (they don't return anything)
-    if(type() != &Type::Void)
-        call_instr->setName("call" + name());
+    if(call.type() != &Type::Void)
+        call_instr->setName("call" + call.name());
     return call_instr;
 }
 
-llvm::Value* IndexOp::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(IndexOp& expr)
 {
-    assert(base_expr->kind() == ExprKind::Variable);
-    const Variable* var = static_cast<VariableExpression*>(base_expr.get())->variable;
-    auto match = gen.m_vars.find(var);
-    assert(match == gen.m_vars.find(var));
+    assert(expr.base_expr->kind() == ExprKind::Variable);
+    const Variable* var = static_cast<VariableExpression*>(expr.base_expr.get())->variable;
+    auto match = m_gen.m_vars.find(var);
+    assert(match == m_gen.m_vars.find(var));
     llvm::Value* alloc = match->second;
 
-    llvm::Value* offset_index = index_expr->codegen(gen);
+    llvm::Value* offset_index = visit(*expr.index_expr);
     assert(offset_index->getType()->isIntegerTy());
-    assert(index_expr->type()->kind() == TypeKind::Range);
-    auto* index_type = static_cast<const RangeType*>(index_expr->type());
+    assert(expr.index_expr->type()->kind() == TypeKind::Range);
+    auto* index_type = static_cast<const RangeType*>(expr.index_expr->type());
     // Since arrays can be indexed starting at any number, need to subtract
     // the starting value of this array's index type from the given index, since
     // in LLVM all arrays start at 0
     llvm::Value* gep_index =
-        gen.m_ir_builder.CreateSub(offset_index,
-                                   gen.to_llvm_int(index_type->range.lower_bound,
-                                                   index_type->bit_size()));
-    llvm::Value* indexes[] = { gen.m_ir_builder.getIntN(32, 0), gep_index };
+        m_gen.m_ir_builder.CreateSub(offset_index,
+                                     m_gen.to_llvm_int(index_type->range.lower_bound,
+                                                       index_type->bit_size()));
+    llvm::Value* indexes[] = { m_gen.m_ir_builder.getIntN(32, 0), gep_index };
     assert(indexes[1] != nullptr);
     assert(indexes[1]->getType()->isIntegerTy());
-    auto* array_type = llvm::cast<llvm::ArrayType>(gen.to_llvm_type(var->type));
+    auto* array_type = llvm::cast<llvm::ArrayType>(m_gen.to_llvm_type(var->type));
 
-    gen.m_dbg_gen.setLocation(line_num(), gen.m_ir_builder);
-    auto* ptr = gen.m_ir_builder.CreateInBoundsGEP(array_type, alloc, indexes,
-                                                   "arr_elem_ptr");
+    //gen.m_dbg_gen.setLocation(expr.line_num(), m_ir_builder);
+    auto* ptr = m_gen.m_ir_builder.CreateInBoundsGEP(array_type, alloc, indexes,
+                                                     "arr_elem_ptr");
 
-    return gen.m_ir_builder.CreateLoad(array_type->getElementType(), ptr, "arr_elem");
+    return m_gen.m_ir_builder.CreateLoad(array_type->getElementType(), ptr, "arr_elem");
 }
 
-llvm::Value* InitList::codegen(CodeGenerator& gen)
+llvm::Value* CodegenExprVisitor::visit_impl(InitList& init_list)
 {
-    llvm::Type* array_type = gen.to_llvm_type(actual_type);
-    llvm::Value* alloc = gen.prepend_alloca(gen.m_ir_builder.GetInsertBlock()->getParent(),
-                                            array_type, "anon_array");
-    gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
-    llvm::Value* indexes[2] = { gen.m_ir_builder.getIntN(32, 0) };
-    auto bit_size = type()->bit_size();
-    for(uint64_t i = 0; i < values.size(); ++i) {
+    llvm::Type* array_type = m_gen.to_llvm_type(init_list.type());
+    llvm::Value* alloc = m_gen.prepend_alloca(
+        m_gen.m_ir_builder.GetInsertBlock()->getParent(),
+        array_type, "anon_array");
+    //gen.m_dbg_gen.setLocation(line, gen.m_ir_builder);
+    llvm::Value* indexes[2] = { m_gen.m_ir_builder.getIntN(32, 0) };
+    auto bit_size = init_list.type()->bit_size();
+    for(uint64_t i = 0; i < init_list.values.size(); ++i) {
         // index 0: 0 bytes past the array ptr; index i: index into array
-        indexes[1] = gen.m_ir_builder.getIntN(bit_size, i);
+        indexes[1] = m_gen.m_ir_builder.getIntN(bit_size, i);
         // Get a pointer to to the current array element
-        auto* element_ptr = gen.m_ir_builder.CreateInBoundsGEP(
+        auto* element_ptr = m_gen.m_ir_builder.CreateInBoundsGEP(
             array_type, alloc, indexes, "elem_ptr");
         // Store the value at that array element
-        gen.m_ir_builder.CreateStore(values[i]->codegen(gen), element_ptr);
+        llvm::Value* init_el_code = visit(*init_list.values[i]);
+        m_gen.m_ir_builder.CreateStore(init_el_code, element_ptr);
     }
-    return gen.m_ir_builder.CreateLoad(array_type, alloc, "anon_array");
+    return m_gen.m_ir_builder.CreateLoad(array_type, alloc, "anon_array");
 }
 
 llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
@@ -319,7 +341,7 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
 
 void CodeGenerator::store_expr_result(Assignable* assignable, Expression* expr, llvm::Value* alloc)
 {
-    llvm::Value* input_instr = expr->codegen(*this);
+    llvm::Value* input_instr = CodegenExprVisitor(*this).visit(*expr);
     assert(input_instr != nullptr);
     m_ir_builder.CreateStore(ref_if_needed(assignable, expr, input_instr), alloc);
 }
@@ -330,7 +352,7 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
     case StmtKind::Basic: {
         auto* curr_statement = static_cast<BasicStatement*>(statement);
         m_dbg_gen.setLocation(curr_statement->line_num(), m_ir_builder);
-        curr_statement->expression->codegen(*this);
+        CodegenExprVisitor(*this).visit(*curr_statement->expression);
         break;
     }
     case StmtKind::Initialization:
@@ -357,7 +379,8 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
 void CodeGenerator::in_initialization(llvm::Function* function, Initialization* init)
 {
     Variable* var = init->variable.get();
-    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(var->type), var->name);
+    llvm::AllocaInst* alloc = prepend_alloca(function, to_llvm_type(var->type),
+                                             var->name);
     m_vars[var] = alloc;
 
     if(init->expression != nullptr) {
@@ -383,8 +406,9 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
     case AssignableKind::Indexed: {
         // Normally, accessing an array element means loading it, but in this
         // case, we don't want the loaded value; we want the pointer to the value
+        auto* indexed_var = static_cast<IndexedVariable*>(assignable);
         auto* load_instr = llvm::cast<llvm::LoadInst>(
-            static_cast<IndexedVariable*>(assignable)->array_access->codegen(*this));
+            CodegenExprVisitor(*this).visit(*indexed_var->array_access));
         dest_ptr = load_instr->getPointerOperand();
         load_instr->eraseFromParent();
         break;
@@ -398,7 +422,7 @@ void CodeGenerator::in_return_statement(ReturnStatement* stmt)
 {
     m_dbg_gen.setLocation(stmt->line_num(), m_ir_builder);
     if(stmt->expression.get() != nullptr) {
-        m_ir_builder.CreateRet(stmt->expression->codegen(*this));
+        m_ir_builder.CreateRet(CodegenExprVisitor(*this).visit(*stmt->expression));
     } else {
         m_ir_builder.CreateRetVoid();
     }
@@ -407,7 +431,7 @@ void CodeGenerator::in_return_statement(ReturnStatement* stmt)
 void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
                                 llvm::BasicBlock* successor)
 {
-    llvm::Value* condition = ifblock->condition->codegen(*this);
+    llvm::Value* condition = CodegenExprVisitor(*this).visit(*ifblock->condition);
     const auto cond_br_point = m_ir_builder.saveIP();
 
     // The if-block (jumped-to when condition is true)
@@ -473,7 +497,7 @@ void CodeGenerator::in_while_loop(llvm::Function* curr_funct, WhileLoop* whilelo
     m_ir_builder.CreateBr(cond_block);
     m_ir_builder.SetInsertPoint(cond_block);
 
-    llvm::Value* condition = whileloop->condition->codegen(*this);
+    llvm::Value* condition = CodegenExprVisitor(*this).visit(*whileloop->condition);
     const auto cond_br_point = m_ir_builder.saveIP();
 
     auto* loop_body = llvm::BasicBlock::Create(m_context, "whileloopbody", curr_funct);
@@ -498,7 +522,8 @@ void CodeGenerator::declare_globals()
         if(global->expression == nullptr) {
             init_val = llvm::Constant::getNullValue(type);
         } else {
-            init_val = llvm::cast<llvm::Constant>(global->expression->codegen(*this));
+            init_val = llvm::cast<llvm::Constant>(
+                CodegenExprVisitor(*this).visit(*global->expression));
         }
         auto* global_ptr =
             new llvm::GlobalVariable(m_module, type, !var->is_mutable,

@@ -159,9 +159,6 @@ struct Expression {
     virtual const Type*  type() const = 0;
     virtual unsigned int line_num() const = 0;
     virtual void         print(std::ostream&) const = 0;
-
-    // Used in code generation. Definitions/overrides defined in codegenerator.cpp
-    virtual llvm::Value* codegen(class CodeGenerator&) = 0;
 };
 
 // Each type of literal is a nameless instance of data
@@ -176,8 +173,6 @@ struct StringLiteral final : public Expression {
     const Type*  type() const override { return &Type::String; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct CharLiteral final : public Expression {
@@ -191,8 +186,6 @@ struct CharLiteral final : public Expression {
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct IntLiteral final : public Expression {
@@ -210,8 +203,6 @@ struct IntLiteral final : public Expression {
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct BoolLiteral final : public Expression {
@@ -225,8 +216,6 @@ struct BoolLiteral final : public Expression {
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 struct FloatLiteral final : public Expression {
@@ -239,8 +228,6 @@ struct FloatLiteral final : public Expression {
     const Type*  type() const override { return &Type::Float; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression consisting solely of a variable's name
@@ -255,8 +242,6 @@ struct VariableExpression final : public Expression {
     unsigned int line_num() const override { return line; }
     // Other data should be looked up in the corresponding Variable object
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and an expression
@@ -271,8 +256,6 @@ struct UnaryExpression final : public Expression {
     const Type*  type() const override { return right->type(); }
     unsigned int line_num() const override { return right->line_num(); }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An expression that consists of an operator and two expressions
@@ -290,8 +273,6 @@ struct BinaryExpression final : public Expression {
     const Type*  type() const override;
     unsigned int line_num() const override { return left->line_num(); }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A usage of a function
@@ -308,8 +289,6 @@ struct FunctionCall final : public Expression {
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // An access into an array
@@ -329,8 +308,6 @@ struct IndexOp final : public Expression {
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A bracketed list of values assigned all at once to an array/record
@@ -345,8 +322,6 @@ struct InitList final : public Expression {
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
-
-    llvm::Value* codegen(CodeGenerator&) override;
 };
 
 // A location that can be assigned to
