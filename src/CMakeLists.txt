@@ -27,4 +27,17 @@ target_sources(bluebird PRIVATE
   optimizer.cpp
   multiprecision.cpp
   error.cpp
+  ast.h
+  checker.h
+  cleanup.h
+  codegenerator.h
+  error.h
+  lexer.h
+  magnum.h
+  multiprecision.h
+  objectgenerator.h
+  optimizer.h
+  parser.h
+  token.h
+  visitor.h
 )
