@@ -7,3 +7,4 @@ end;
 function foo(a: Positive) is end;
 
 type Positive is range 1 upto 100;
+type Negative is range -10 upto 100;

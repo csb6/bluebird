@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "visitor.h"
 #include "error.h"
+#include "constanteval.h"
 #include <cassert>
 
 class CleanupExprVisitor : public ExprVisitor<CleanupExprVisitor> {
@@ -37,127 +38,6 @@ Cleanup::Cleanup(std::vector<Magnum::Pointer<Function>>& functions,
                  std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_functions(functions), m_global_vars(global_vars)
 {}
-
-static
-void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
-                          UnaryExpression* unary_expr)
-{
-    auto replace_with_literal =
-        [&](Expression* literal) {
-            #ifndef NDEBUG
-                auto* released = unary_expr->right.release();
-                assert(released == literal);
-            #else
-                unary_expr->right.release();
-            #endif
-            expr_location_out.reset(literal);
-        };
-
-    switch(unary_expr->right->kind()) {
-    case ExprKind::IntLiteral: {
-        auto* r_int = static_cast<IntLiteral*>(unary_expr->right.get());
-        switch(unary_expr->op) {
-        case TokenType::Op_Minus:
-            // TODO: use r_int->value.ones_complement(); for certain unsigned integer types
-            r_int->value.negate();
-            break;
-        default:
-            raise_error_expected("unary expression with operator that works on "
-                                 "integer literals", unary_expr);
-        }
-        replace_with_literal(r_int);
-        break;
-    }
-    case ExprKind::BoolLiteral: {
-        auto* r_bool = static_cast<BoolLiteral*>(unary_expr->right.get());
-        if(unary_expr->op == TokenType::Op_Not) {
-            r_bool->value = !r_bool->value;
-        } else {
-            raise_error_expected("unary expression with logical operator "
-                                 "(e.g. `not`)", unary_expr);
-        }
-        replace_with_literal(r_bool);
-        break;
-    }
-    default:
-        // No constant folding needed
-        break;
-    }
-}
-
-static
-void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
-                           BinaryExpression* bin_expr)
-{
-    auto replace_with_literal =
-        [&](Expression* literal) {
-            #ifndef NDEBUG
-                auto* released = bin_expr->left.release();
-                assert(released == literal);
-            #else
-                bin_expr->left.release();
-            #endif
-            expr_location_out.reset(literal);
-        };
-
-    const auto left_kind = bin_expr->left->kind();
-    const auto right_kind = bin_expr->right->kind();
-    if(left_kind == ExprKind::IntLiteral && right_kind == ExprKind::IntLiteral) {
-        // Fold into a single literal (uses arbitrary-precision arithmetic)
-        auto* l_int = static_cast<IntLiteral*>(bin_expr->left.get());
-        auto* r_int = static_cast<IntLiteral*>(bin_expr->right.get());
-        switch(bin_expr->op) {
-        case TokenType::Op_Plus:
-            l_int->value += r_int->value;
-            break;
-        case TokenType::Op_Minus:
-            l_int->value -= r_int->value;
-            break;
-        case TokenType::Op_Mult:
-            l_int->value *= r_int->value;
-            break;
-        case TokenType::Op_Div:
-            l_int->value /= r_int->value;
-            break;
-        case TokenType::Op_Mod:
-            l_int->value.mod(r_int->value);
-            break;
-        case TokenType::Op_Rem:
-            l_int->value.rem(r_int->value);
-            break;
-        // TODO: Add support for shift operators
-        case TokenType::Op_Thru:
-        case TokenType::Op_Upto:
-            // Can't do folds here, need to preserve left/right sides for a range
-            return;
-        default:
-            if(is_bool_op(bin_expr->op)) {
-                raise_error_expected("binary expression with an operator that works "
-                                     "on integer literals", bin_expr);
-            }
-            return;
-        }
-        replace_with_literal(l_int);
-    } else if(left_kind == ExprKind::BoolLiteral && right_kind == ExprKind::BoolLiteral) {
-        // Fold into a single literal
-        auto* l_bool = static_cast<BoolLiteral*>(bin_expr->left.get());
-        auto* r_bool = static_cast<BoolLiteral*>(bin_expr->right.get());
-        switch(bin_expr->op) {
-        case TokenType::Op_And:
-            l_bool->value &= r_bool->value;
-            break;
-        case TokenType::Op_Or:
-            l_bool->value |= r_bool->value;
-            break;
-        case TokenType::Op_Xor:
-            l_bool->value ^= r_bool->value;
-            break;
-        default:
-            raise_error_expected("binary expression with logical operator", bin_expr);
-        }
-        replace_with_literal(l_bool);
-    }
-}
 
 template<typename Other>
 static
@@ -269,28 +149,21 @@ void set_literal_array_type(Expression* literal, const ArrayType* other_type)
 }
 
 static
-void fold_constants(Magnum::Pointer<Expression>& child_location)
+void visit_child(Magnum::Pointer<Expression>& child)
 {
-    CleanupExprVisitor().visit(*child_location);
-    if(child_location->kind() == ExprKind::Binary) {
-        fold_binary_constants(child_location,
-                              static_cast<BinaryExpression*>(child_location.get()));
-    } else if(child_location->kind() == ExprKind::Unary) {
-        fold_unary_constants(child_location,
-                             static_cast<UnaryExpression*>(child_location.get()));
-    }
+    CleanupExprVisitor().visit(*child);
+    fold_constants(child);
 }
-
 
 void CleanupExprVisitor::visit_impl(UnaryExpression& expr)
 {
-    fold_constants(expr.right);
+    visit_child(expr.right);
 }
 
 void CleanupExprVisitor::visit_impl(BinaryExpression& expr)
 {
-    fold_constants(expr.left);
-    fold_constants(expr.right);
+    visit_child(expr.left);
+    visit_child(expr.right);
     set_literal_type(expr.left.get(), expr.right.get(), expr.right->type());
     set_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
 }
@@ -304,7 +177,7 @@ void CleanupExprVisitor::visit_impl(FunctionCall& call)
     }
     auto param = call.definition->parameters.begin();
     for(auto& arg : call.arguments) {
-        fold_constants(arg);
+        visit_child(arg);
         set_literal_type(arg.get(), param->get(), (*param)->type);
         ++param;
     }
@@ -317,7 +190,7 @@ void CleanupExprVisitor::visit_impl(IndexOp& expr)
     // to try and fold it; instead, just visit() it so any of its subexpressions
     // get folded if possible.
     visit(*expr.base_expr);
-    fold_constants(expr.index_expr);
+    visit_child(expr.index_expr);
 
     const auto* base_type = expr.base_expr->type();
     if(base_type->kind() != TypeKind::Array) {
@@ -332,20 +205,20 @@ void CleanupExprVisitor::visit_impl(IndexOp& expr)
 void CleanupExprVisitor::visit_impl(InitList& expr)
 {
     for(auto& val : expr.values) {
-        fold_constants(val);
+        visit_child(val);
     }
 }
 
 
 void CleanupStmtVisitor::visit_impl(BasicStatement& stmt)
 {
-    fold_constants(stmt.expression);
+    visit_child(stmt.expression);
 }
 
 void CleanupStmtVisitor::visit_impl(Initialization& stmt)
 {
     if(stmt.expression != nullptr) {
-        fold_constants(stmt.expression);
+        visit_child(stmt.expression);
         set_literal_type(stmt.expression.get(), stmt.variable.get(),
                          stmt.variable->type);
     }
@@ -353,7 +226,7 @@ void CleanupStmtVisitor::visit_impl(Initialization& stmt)
 
 void CleanupStmtVisitor::visit_impl(Assignment& stmt)
 {
-    fold_constants(stmt.expression);
+    visit_child(stmt.expression);
     set_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
     if(stmt.assignable->kind() == AssignableKind::Indexed) {
         auto* indexed_var = static_cast<IndexedVariable*>(stmt.assignable);
@@ -363,7 +236,7 @@ void CleanupStmtVisitor::visit_impl(Assignment& stmt)
 
 void CleanupStmtVisitor::visit_impl(IfBlock& stmt)
 {
-    fold_constants(stmt.condition);
+    visit_child(stmt.condition);
     visit_impl(static_cast<Block&>(stmt));
     if(stmt.else_or_else_if != nullptr) {
         visit(*stmt.else_or_else_if);
@@ -379,7 +252,7 @@ void CleanupStmtVisitor::visit_impl(Block& block)
 
 void CleanupStmtVisitor::visit_impl(WhileLoop& loop)
 {
-    fold_constants(loop.condition);
+    visit_child(loop.condition);
     visit_impl(static_cast<Block&>(loop));
 }
 
@@ -387,7 +260,7 @@ void CleanupStmtVisitor::visit_impl(ReturnStatement& stmt)
 {
     assert(m_curr_funct != nullptr);
     if(stmt.expression != nullptr) {
-        fold_constants(stmt.expression);
+        visit_child(stmt.expression);
         set_literal_type(stmt.expression.get(), m_curr_funct,
                          m_curr_funct->return_type);
     }

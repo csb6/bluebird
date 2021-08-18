@@ -27,6 +27,7 @@ target_sources(bluebird PRIVATE
   optimizer.cpp
   multiprecision.cpp
   error.cpp
+  constanteval.cpp
   ast.h
   checker.h
   cleanup.h
@@ -40,4 +41,5 @@ target_sources(bluebird PRIVATE
   parser.h
   token.h
   visitor.h
+  constanteval.h
 )

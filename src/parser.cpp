@@ -16,6 +16,7 @@
 */
 #include "error.h"
 #include "parser.h"
+#include "constanteval.h"
 #include <ostream>
 #include <algorithm>
 #include <array>
@@ -695,12 +696,13 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
     if(expr->kind() != ExprKind::Binary) {
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
-    auto* range_expr = static_cast<const BinaryExpression*>(expr.get());
+    auto* range_expr = static_cast<BinaryExpression*>(expr.get());
     if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
 
-    // TODO: add support for non-integer literals as range operands
+    fold_constants(range_expr->left);
+    fold_constants(range_expr->right);
     if(range_expr->left->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());
