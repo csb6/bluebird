@@ -129,7 +129,7 @@ void raise_error_expected(const char* expected, Token actual)
 
 void raise_error_expected(const char* expected, const Expression* actual)
 {
-    Error(actual->line_num()).put("Expected").put(expected)
+    Error(actual->line_num()).put("Expected ").put(expected)
         .put(", but instead found expression:\n")
         .put(actual).raise();
 }

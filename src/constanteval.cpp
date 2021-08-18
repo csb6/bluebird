@@ -108,7 +108,13 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
         // TODO: Add support for shift operators
         case TokenType::Op_Thru:
         case TokenType::Op_Upto:
-            // Can't do folds here, need to preserve left/right sides for a range
+        case TokenType::Op_Eq:
+        case TokenType::Op_Ne:
+        case TokenType::Op_Lt:
+        case TokenType::Op_Gt:
+        case TokenType::Op_Le:
+        case TokenType::Op_Ge:
+            // Can't do folds here, need to preserve left/right sides for a range or comparison
             return;
         default:
             if(is_bool_op(bin_expr->op)) {
