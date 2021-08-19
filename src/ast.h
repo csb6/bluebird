@@ -313,13 +313,13 @@ struct IndexOp final : public Expression {
 // A bracketed list of values assigned all at once to an array/record
 struct InitList final : public Expression {
     std::vector<Magnum::Pointer<Expression>> values;
-    const Type* actual_type;
+    const Type* actual_type = &LiteralType::InitList;
     unsigned int line;
 
     explicit InitList(unsigned int line_n) : line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::InitList; }
-    const Type*  type() const override;
+    const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 };

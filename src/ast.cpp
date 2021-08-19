@@ -196,15 +196,6 @@ void IndexOp::print(std::ostream& output) const
     output << "]";
 }
 
-const Type* InitList::type() const
-{
-    if(actual_type == nullptr) {
-        return &LiteralType::InitList;
-    } else {
-        return actual_type;
-    }
-}
-
 void InitList::print(std::ostream& output) const
 {
     output << "{ ";
