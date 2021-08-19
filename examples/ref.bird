@@ -6,6 +6,7 @@ type IntRef is ref Integer;
 
 function foo(arr_ref: PosArrayRef) is
   let a: PosArrayRef := arr_ref;
+  let a_copy: PosArray := arr_ref;
 end;
 
 function main() is
@@ -14,7 +15,9 @@ function main() is
   let arr_ref2: PosArrayRef := arr;
   arr_ref2 := arr_ref;
   let i: Integer := 67;
+  //let iref0: IntRef := i + 90;
   let iref: IntRef := i;
+  let i2: Integer := iref;
   iref + 3;
   iref + i;
   -iref;

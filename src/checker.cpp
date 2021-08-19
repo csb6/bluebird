@@ -76,19 +76,25 @@ void nonbool_condition_error(const Expression* condition,
         .put("Expression: ", 2).put(condition).put("\t").put(condition->type()).raise();
 }
 
-// No need to typecheck for literal/variable expressions since they aren't composite,
-// so each of their check_types() member functions are empty, defined in header
+// No need to typecheck within literal/variable expressions since they aren't composite
 
 template<typename Other>
 static
 bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
 {
-    if(other_type->kind() != TypeKind::Ref) {
+    const RefType* ref_type;
+    const Type* second_type;
+    if(expr->type()->kind() == TypeKind::Ref) {
+        ref_type = static_cast<const RefType*>(expr->type());
+        second_type = other_type;
+    } else if(other_type->kind() == TypeKind::Ref) {
+        ref_type = static_cast<const RefType*>(other_type);
+        second_type = expr->type();
+    } else {
         return false;
     }
 
-    auto* ref_type = static_cast<const RefType*>(other_type);
-    if(expr->kind() == ExprKind::Variable && ref_type->inner_type == expr->type()) {
+    if(ref_type->inner_type == second_type) {
         return true;
     } else {
         print_type_mismatch(expr, other, other_type, "Used with", "Expression");
@@ -259,9 +265,18 @@ void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
     }
 
     CheckerExprVisitor().visit(*assign_expr);
-    if(assign_expr->type() == assignable->type
-       || matched_ref(assign_expr, assignable, assignable->type))
+    if(assign_expr->type() == assignable->type) {
         return;
+    } else if(matched_ref(assign_expr, assignable, assignable->type)) {
+        if(assignable->type->kind() == TypeKind::Ref
+           && assign_expr->kind() != ExprKind::Variable) {
+            Error(assign_expr->line_num()).put("Cannot assign a non-lvalue:\n  ")
+                    .put(assign_expr)
+                    .raise("\nto a ref variable.");
+        } else {
+            return;
+        }
+    }
 
     print_type_mismatch(assign_expr, assignable, assignable->type);
 }

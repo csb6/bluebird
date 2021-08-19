@@ -58,9 +58,10 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
 
 static
 llvm::Value* load_if_needed(llvm::IRBuilder<>& ir_builder, Expression* expr,
-                            llvm::Value* ptr_operand)
+                            llvm::Value* ptr_operand, const Type* other_type = nullptr)
 {
-    if(expr->type()->kind() == TypeKind::Ref) {
+    if(expr->type()->kind() == TypeKind::Ref
+       && (other_type == nullptr || other_type->kind() != TypeKind::Ref)) {
         // When using refs within larger expressions, need to load the value of the
         // pointer (since it will be used in operations with other values)
         auto* ptr_type = llvm::cast<llvm::PointerType>(ptr_operand->getType());
@@ -343,6 +344,7 @@ void CodeGenerator::store_expr_result(Assignable* assignable, Expression* expr, 
 {
     llvm::Value* input_instr = CodegenExprVisitor(*this).visit(*expr);
     assert(input_instr != nullptr);
+    input_instr = load_if_needed(m_ir_builder, expr, input_instr, assignable->type);
     m_ir_builder.CreateStore(ref_if_needed(assignable, expr, input_instr), alloc);
 }
 
