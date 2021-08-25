@@ -330,7 +330,7 @@ bool CheckerStmtVisitor::visit_impl(IfBlock& if_block)
         nonbool_condition_error(if_block.condition.get(), "if-statement");
     }
     CheckerExprVisitor().visit(*if_block.condition);
-    bool always_returns = visit(static_cast<Block&>(if_block));
+    bool always_returns = visit_impl(static_cast<Block&>(if_block));
     if(if_block.else_or_else_if != nullptr) {
         always_returns &= visit(*if_block.else_or_else_if);
     } else {
@@ -360,7 +360,7 @@ bool CheckerStmtVisitor::visit_impl(WhileLoop& loop)
     if(!is_bool_condition(loop.condition.get())) {
         nonbool_condition_error(loop.condition.get(), "while-loop");
     }
-    visit(static_cast<Block&>(loop));
+    visit_impl(static_cast<Block&>(loop));
     return false;
 }
 
