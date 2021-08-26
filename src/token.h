@@ -23,7 +23,7 @@ enum class TokenType : unsigned char {
     // Keywords
     Keyword_Funct, Keyword_Is, Keyword_Do, Keyword_Let, Keyword_Const, Keyword_Type,
     Keyword_End, Keyword_If, Keyword_Else, Keyword_While, Keyword_Range, Keyword_Return,
-    Keyword_True, Keyword_False, Keyword_Of, Keyword_Loop, Keyword_Ref,
+    Keyword_True, Keyword_False, Keyword_Of, Keyword_Loop, Keyword_Ref, Keyword_Ptr,
     // Non-operator symbols
     Open_Parentheses, Closed_Parentheses, End_Statement, Type_Indicator,
     Comma, Open_Bracket, Closed_Bracket, Open_Curly, Closed_Curly,
@@ -38,6 +38,8 @@ enum class TokenType : unsigned char {
     Op_Left_Shift, Op_Right_Shift,
     //  Range
     Op_Thru, Op_Upto,
+    //  Pointer
+    Op_To_Val, Op_To_Ptr,
     // Pseudo-Operators (like operators in appearance, but not evaluated in the Pratt
     //  parser code and not subject to precedence rules/table)
     Op_Assign,
@@ -65,4 +67,5 @@ char escape_sequence(char);
 void print_unescape(char source, std::ostream&);
 void print_unescape(const std::string& source, std::ostream&);
 bool is_bool_op(const TokenType);
+bool is_ptr_op(const TokenType);
 #endif

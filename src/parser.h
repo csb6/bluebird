@@ -138,7 +138,8 @@ private:
     void in_range(multi_int& low_out, multi_int& high_out);
     void in_range_type_definition(const std::string& type_name);
     void in_array_type_definition(const std::string& type_name);
-    void in_ref_type_definition(const std::string& type_name);
+    template<typename T>
+    void in_ptr_like_type_definition(const std::string& type_name);
     void in_type_definition();
 public:
     /* Setup the parser and the related data structures. AST will

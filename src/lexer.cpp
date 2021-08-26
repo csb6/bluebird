@@ -55,11 +55,14 @@ constexpr static auto identifier_table = frozen::make_unordered_map<frozen::stri
         {"not", TokenType::Op_Not},
         {"thru", TokenType::Op_Thru},
         {"upto", TokenType::Op_Upto},
+        {"to_val", TokenType::Op_To_Val},
+        {"to_ptr", TokenType::Op_To_Ptr},
         {"true", TokenType::Keyword_True},
         {"false", TokenType::Keyword_False},
         {"of", TokenType::Keyword_Of},
         {"loop", TokenType::Keyword_Loop},
-        {"ref", TokenType::Keyword_Ref}
+        {"ref", TokenType::Keyword_Ref},
+        {"ptr", TokenType::Keyword_Ptr}
     });
 
 Lexer::Lexer(std::string::const_iterator input_begin,

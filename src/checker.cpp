@@ -101,9 +101,40 @@ bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
     }
 }
 
+template<typename Other>
+static
+bool matched_ptr(Expression* expr, const Other* other, const Type* other_type)
+{
+    if(expr->type()->kind() != TypeKind::Ptr || other_type->kind() != TypeKind::Ptr) {
+        return false;
+    }
+    auto* expr_ptr_type = static_cast<const PtrType*>(expr->type());
+    auto* other_ptr_type = static_cast<const PtrType*>(other_type);
+
+    if(other_ptr_type->inner_type == expr_ptr_type->inner_type
+       && (other_ptr_type->is_anonymous || expr_ptr_type->is_anonymous)) {
+        // Anonymous pointer types can implicitly convert to any compatible named pointer type
+        return true;
+    } else {
+        print_type_mismatch(expr, other, other_type, "Used with", "Expression");
+    }
+}
+
 static
 void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type* type)
 {
+    if(expr.op == TokenType::Op_To_Ptr) {
+        if(expr.right->kind() != ExprKind::Variable) {
+            Error(expr.line_num()).raise("Can only use to_ptr operator on named variables");
+        }
+        return;
+    } else if(expr.op == TokenType::Op_To_Val) {
+        if(type->kind() != TypeKind::Ptr) {
+            Error(expr.line_num()).raise("Cannot use to_val operator on a non-pointer value");
+        }
+        return;
+    }
+
     switch(type->kind()) {
     case TypeKind::Range:
         if(is_bool_op(op)) {
@@ -268,14 +299,13 @@ void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
     if(assign_expr->type() == assignable->type) {
         return;
     } else if(matched_ref(assign_expr, assignable, assignable->type)) {
-        if(assignable->type->kind() == TypeKind::Ref
-           && assign_expr->kind() != ExprKind::Variable) {
+        if(assign_expr->kind() != ExprKind::Variable) {
             Error(assign_expr->line_num()).put("Cannot assign a non-lvalue:\n  ")
-                    .put(assign_expr)
-                    .raise("\nto a ref variable.");
-        } else {
-            return;
+                    .put(assign_expr).raise("\nto a reference variable.");
         }
+        return;
+    } else if(matched_ptr(assign_expr, assignable, assignable->type)) {
+        return;
     }
 
     print_type_mismatch(assign_expr, assignable, assignable->type);
@@ -299,9 +329,9 @@ bool CheckerStmtVisitor::visit_impl(Initialization& init_stmt)
 {
     if(init_stmt.expression != nullptr) {
         typecheck_assign(init_stmt.expression.get(), init_stmt.variable.get());
-    } else if(init_stmt.variable->type->kind() == TypeKind::Ref) {
+    } else if(is_ptr_like(init_stmt.variable->type)) {
         Error(init_stmt.line_num())
-            .raise("Reference variables must be given an initial value");
+            .raise("Pointer-like variables must be given an initial value");
     }
     return false;
 }

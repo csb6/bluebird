@@ -105,9 +105,10 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
+    case TypeKind::Ptr:
     case TypeKind::Ref: {
-        auto* ref_type = static_cast<const RefType*>(ast_type);
-        return llvm::PointerType::get(to_llvm_type(ref_type->inner_type), 0);
+        auto* ptr_like_type = static_cast<const PtrLikeType*>(ast_type);
+        return llvm::PointerType::get(to_llvm_type(ptr_like_type->inner_type), 0);
     }
     default:
         // TODO: add support for determining LLVM type for other AST types.
@@ -152,6 +153,9 @@ llvm::Value* CodegenExprVisitor::visit_impl(VariableExpression& var_expr)
 {
     llvm::Value* src_var = m_gen.m_vars[var_expr.variable];
     assert(src_var != nullptr);
+    // TODO: fix issue where when dealing with pointer values, there are sometimes
+    // unnecessary loads originating here. Doesn't affect correctness and probably
+    // always removed by LLVM optimization passes, but not ideal
     return m_gen.m_ir_builder.CreateLoad(src_var, var_expr.variable->name);
 }
 
@@ -167,6 +171,12 @@ llvm::Value* CodegenExprVisitor::visit_impl(UnaryExpression& expr)
         return truncate_to_bool(m_gen.m_ir_builder, operand);
     case TokenType::Op_Minus:
         return m_gen.m_ir_builder.CreateNeg(operand, "negtmp");
+    case TokenType::Op_To_Ptr: {
+        auto* load_instr = llvm::cast<llvm::LoadInst>(operand);
+        return load_instr->getPointerOperand();
+    }
+    case TokenType::Op_To_Val:
+        return m_gen.m_ir_builder.CreateLoad(operand, "to_valtemp");
     default:
         assert(false && "Unknown unary operator");
         return nullptr;

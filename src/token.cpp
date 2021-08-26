@@ -50,6 +50,9 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
     case TokenType::Keyword_Ref:
         output << "Keyword `ref` ";
         break;
+    case TokenType::Keyword_Ptr:
+        output << "Keyword `ptr` ";
+        break;
     case TokenType::Open_Parentheses:
         output << "Open Parentheses";
         break;
@@ -145,6 +148,12 @@ std::ostream& operator<<(std::ostream& output, const TokenType type)
         break;
     case TokenType::Op_Upto:
         output << "upto";
+        break;
+    case TokenType::Op_To_Val:
+        output << "to_val";
+        break;
+    case TokenType::Op_To_Ptr:
+        output << "to_ptr";
         break;
     case TokenType::Comma:
         output << "Comma marker";
@@ -251,4 +260,9 @@ void print_unescape(const std::string& source, std::ostream& output)
 bool is_bool_op(const TokenType token)
 {
     return token >= TokenType::Op_And && token <= TokenType::Op_Ge;
+}
+
+bool is_ptr_op(const TokenType token)
+{
+    return token == TokenType::Op_To_Ptr || token == TokenType::Op_To_Val;
 }

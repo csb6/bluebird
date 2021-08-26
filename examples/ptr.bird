@@ -1,0 +1,28 @@
+type IntPtr is ptr Integer;
+
+function foo(): Integer is
+   return 56;
+end foo;
+
+function print_if_80(num: IntPtr) is
+  if to_val num = 80 do
+    putchar('1');
+  else
+    putchar('0');
+  end if;
+  putchar('\n');
+end;
+
+function main() is
+   //to_ptr foo();
+   let i: Integer := 80;
+   //to_val i;
+   let iptr: IntPtr := to_ptr i;
+   //let i2: Integer := to_val i;
+   let i2: Integer := to_val iptr;
+   let iptr2: IntPtr := iptr;
+
+   print_if_80(to_ptr i);
+   print_if_80(iptr);
+   print_if_80(iptr2);
+end main;

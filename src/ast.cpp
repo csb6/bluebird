@@ -47,6 +47,17 @@ void RefType::print(std::ostream& output) const
     inner_type->print(output);
 }
 
+void PtrType::print(std::ostream& output) const
+{
+    output << "Type: " << name << " Ptr ";
+    inner_type->print(output);
+}
+
+bool is_ptr_like(const Type* type)
+{
+    return type->kind() == TypeKind::Ref || type->kind() == TypeKind::Ptr;
+}
+
 IntRange::IntRange(const multi_int& lower, const multi_int& upper)
     : lower_bound(lower), upper_bound(upper),
       is_signed(lower.is_negative())
@@ -126,6 +137,15 @@ void FloatLiteral::print(std::ostream& output) const
 {
     output << std::setprecision(10);
     output << value;
+}
+
+const Type* UnaryExpression::type() const
+{
+    if(actual_type == nullptr) {
+        return right->type();
+    } else {
+        return actual_type;
+    }
 }
 
 void UnaryExpression::print(std::ostream& output) const

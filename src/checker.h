@@ -27,7 +27,6 @@
 */
 
 class Checker {
-private:
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Type>>& m_types;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;

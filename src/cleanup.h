@@ -17,6 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <vector>
+#include <unordered_map>
 #include "magnum.h"
 
 /* This file contains a class that does some cleanup operations between the
@@ -31,6 +32,7 @@
 class Cleanup {
     std::vector<Magnum::Pointer<struct Function>>& m_functions;
     std::vector<Magnum::Pointer<struct Initialization>>& m_global_vars;
+    std::unordered_map<const struct Type*, Magnum::Pointer<struct PtrType>> m_anon_ptr_types;
 public:
     Cleanup(std::vector<Magnum::Pointer<Function>>&,
             std::vector<Magnum::Pointer<Initialization>>& global_vars);

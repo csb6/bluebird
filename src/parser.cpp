@@ -193,7 +193,9 @@ Magnum::Pointer<Expression> Parser::in_expression()
         return in_parentheses();
     case TokenType::Open_Curly:
         return in_init_list();
-    // Handle unary operators (not, -)
+    // Handle unary operators (not, -, to_val, to_ptr)
+    case TokenType::Op_To_Val:
+    case TokenType::Op_To_Ptr:
     case TokenType::Op_Not:
     case TokenType::Op_Minus: {
         auto op = token++;
@@ -763,8 +765,10 @@ void Parser::in_array_type_definition(const std::string& type_name)
     m_names_table.add_type(new_type);
 }
 
-void Parser::in_ref_type_definition(const std::string& type_name)
+template<typename T>
+void Parser::in_ptr_like_type_definition(const std::string& type_name)
 {
+    static_assert(std::is_base_of_v<PtrLikeType, T>);
     check_token_is(TokenType::Name, "typename", *token);
     auto match = m_names_table.find(token->text);
     if(!match || match.value().kind != NameType::Type) {
@@ -772,7 +776,7 @@ void Parser::in_ref_type_definition(const std::string& type_name)
     }
     ++token;
 
-    Type* new_type = create<RefType>(m_types, type_name, match.value().type);
+    Type* new_type = create<T>(m_types, type_name, match.value().type);
     m_names_table.add_type(new_type);
 }
 
@@ -806,7 +810,11 @@ void Parser::in_type_definition()
         break;
     case TokenType::Keyword_Ref:
         ++token;
-        in_ref_type_definition(type_name);
+        in_ptr_like_type_definition<RefType>(type_name);
+        break;
+    case TokenType::Keyword_Ptr:
+        ++token;
+        in_ptr_like_type_definition<PtrType>(type_name);
         break;
     default:
         // TODO: handle record types, etc. here

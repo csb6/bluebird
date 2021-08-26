@@ -40,7 +40,7 @@ enum class StmtKind : char {
 };
 
 enum class TypeKind : char {
-    Range, Normal, Literal, Boolean, Array, Ref
+    Range, Normal, Literal, Boolean, Array, Ref, Ptr
 };
 
 enum class FunctionKind : char {
@@ -135,18 +135,38 @@ struct ArrayType final : public Type {
     void     print(std::ostream&) const override;
 };
 
-// A special kind of pointer that can only point to valid objects on stack;
-// is never null and can't be returned/stored in records
-struct RefType final : public Type {
-    Type* inner_type;
+// Base class for pointer and reference types, since both have
+// extremely similar structure/usage. The values (in-lang) of ptr-likes are never null.
+struct PtrLikeType : public Type {
+    const Type* inner_type;
 
     using Type::Type;
-    RefType(const std::string& n, Type* t) : Type(n), inner_type(t) {}
+    PtrLikeType(const std::string& n, const Type* t) : Type(n), inner_type(t) {}
 
     size_t   bit_size() const override { return sizeof(int*); }
+};
+
+// A special kind of pointer that can only point to valid objects on stack;
+// is never null and can't be returned/stored in records
+struct RefType final : public PtrLikeType {
+    using PtrLikeType::PtrLikeType;
+
     TypeKind kind() const override { return TypeKind::Ref; }
     void     print(std::ostream&) const override;
 };
+
+// A pointer; is never null, but can be stored in records, arrays, etc.
+struct PtrType final : public PtrLikeType {
+    bool is_anonymous = false;
+
+    using PtrLikeType::PtrLikeType;
+    explicit PtrType(const Type* t) : PtrLikeType("ptr " + t->name, t), is_anonymous(true) {}
+
+    TypeKind kind() const override { return TypeKind::Ptr; }
+    void     print(std::ostream&) const override;
+};
+
+bool is_ptr_like(const Type*);
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
@@ -166,8 +186,7 @@ struct StringLiteral final : public Expression {
     std::string value;
     unsigned int line;
 
-    StringLiteral(unsigned int line_n, const std::string& v)
-        : value(v), line(line_n) {}
+    StringLiteral(unsigned int line_n, const std::string& v) : value(v), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::StringLiteral; }
     const Type*  type() const override { return &Type::String; }
@@ -194,10 +213,8 @@ struct IntLiteral final : public Expression {
     unsigned int line;
     const Type* actual_type = &LiteralType::Int;
 
-    IntLiteral(unsigned int line_n, const std::string& v)
-        : value(v), line(line_n) {}
-    IntLiteral(unsigned int line_n, const multi_int& v)
-        : value(v), line(line_n) {}
+    IntLiteral(unsigned int line_n, const std::string& v) : value(v), line(line_n) {}
+    IntLiteral(unsigned int line_n, const multi_int& v) : value(v), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::IntLiteral; }
     const Type*  type() const override { return actual_type; }
@@ -246,14 +263,16 @@ struct VariableExpression final : public Expression {
 
 // An expression that consists of an operator and an expression
 struct UnaryExpression final : public Expression {
-    TokenType op;
+    // When nullptr, type of right is type() of this expression
+    const Type* actual_type = nullptr;
     Magnum::Pointer<Expression> right;
+    TokenType op;
 
     UnaryExpression(TokenType tok, Magnum::Pointer<Expression>&& expr)
-        : op(tok), right(std::forward<decltype(right)>(expr)) {}
+        : right(std::forward<decltype(right)>(expr)), op(tok) {}
 
     ExprKind     kind() const override { return ExprKind::Unary; }
-    const Type*  type() const override { return right->type(); }
+    const Type*  type() const override;
     unsigned int line_num() const override { return right->line_num(); }
     void         print(std::ostream&) const override;
 };
@@ -468,10 +487,6 @@ struct Function {
     std::vector<Magnum::Pointer<Variable>> parameters;
 
     explicit Function(const std::string& n) : name(n) {}
-    Function(const Function&) = default;
-    Function(Function&&) = default;
-    Function& operator=(const Function&) = default;
-    Function& operator=(Function&&) = default;
     virtual ~Function() noexcept = default;
 
     virtual void         print(std::ostream&) const = 0;
