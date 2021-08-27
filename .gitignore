@@ -8,3 +8,4 @@ bluebird
 a.out
 build/
 examples/corpus
+CMakeLists.txt.user
