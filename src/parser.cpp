@@ -219,7 +219,6 @@ Magnum::Pointer<Expression> Parser::in_function_call()
     Magnum::Pointer<FunctionCall> new_function_call;
     //auto new_function_call = Magnum::pointer<FunctionCall>(token->line_num, token->text);
     const auto match = m_names_table.find(token->text);
-    bool is_resolved = false;
     if(!match) {
         // If the function hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
@@ -240,7 +239,6 @@ Magnum::Pointer<Expression> Parser::in_function_call()
             // Found a function with a full definition
             new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
                                                               match_value.function);
-            is_resolved = true;
             if(match_value.function->kind() == FunctionKind::Builtin) {
                 auto* builtin = static_cast<BuiltinFunction*>(match_value.function);
                 builtin->is_used = true;

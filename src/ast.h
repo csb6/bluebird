@@ -437,7 +437,7 @@ struct Block : public Statement {
     explicit Block(unsigned int l) : line(l) {}
 
     StmtKind     kind() const override { return StmtKind::Block; }
-    unsigned int line_num() const override { return line; };
+    unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 };
 
@@ -473,7 +473,7 @@ struct ReturnStatement final : public Statement {
     explicit ReturnStatement(unsigned int line_n)
         : expression(nullptr), line(line_n) {}
     explicit ReturnStatement(Magnum::Pointer<Expression>&& expr)
-        : expression(std::forward<decltype(expression)>(expr)) {}
+        : expression(std::forward<decltype(expression)>(expr)), line(0) {}
 
     StmtKind     kind() const override { return StmtKind::Return; }
     unsigned int line_num() const override;

@@ -14,7 +14,7 @@ Error& Error::put(const Function*) { return *this; }
 Error& Error::put(const Assignable*) { return *this; }
 Error& Error::quote(const std::string&) { return *this; }
 Error& Error::quote(char) { return *this; }
-Error& Error::quote(Token) { return *this; }
+Error& Error::quote(const Token&) { return *this; }
 Error& Error::quote(TokenType) { return *this; }
 Error& Error::newline() { return *this; }
 void Error::raise(const char*, unsigned int) { exit(1); }
@@ -95,7 +95,7 @@ Error& Error::quote(char letter)
     return *this;
 }
 
-Error& Error::quote(Token token)
+Error& Error::quote(const Token& token)
 {
     std::cerr << " `" << token << "` ";
     return *this;

@@ -29,6 +29,16 @@
   #define fatal_error(ret_val) (exit(1))
 #endif
 
+static inline
+bool check_valid_next_exists(unsigned int line_num, std::string::const_iterator curr, std::string::const_iterator end)
+{
+    if(std::next(curr) == end) {
+        Error(line_num).put("Unexpected end of file\n");
+        return false;
+    }
+    return true;
+}
+
 enum class State : char {
     Start, InIdentifier, InString, InChar, InNumber, InComment
 };
@@ -67,9 +77,7 @@ constexpr static auto identifier_table = frozen::make_unordered_map<frozen::stri
 
 Lexer::Lexer(std::string::const_iterator input_begin,
              std::string::const_iterator input_end)
-    : m_input_begin(input_begin),
-      m_input_end(input_end)
-{}
+    : m_input_begin(input_begin), m_input_end(input_end) {}
 
 void Lexer::run()
 {
@@ -129,6 +137,9 @@ void Lexer::run()
                     m_tokens.emplace_back(line_num, TokenType::Op_Minus);
                     break;
                 case '/':
+                    if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                        fatal_error();
+                    }
                     switch(*std::next(input_iter)) {
                     case '/':
                         ++input_iter;
@@ -150,6 +161,9 @@ void Lexer::run()
                     break;
                 // More operators
                 case '<':
+                    if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                        fatal_error();
+                    }
                     switch(*std::next(input_iter)) {
                     case '<':
                         // "<<"
@@ -168,6 +182,9 @@ void Lexer::run()
                     }
                     break;
                 case '>':
+                    if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                        fatal_error();
+                    }
                     switch(*std::next(input_iter)) {
                     case '>':
                         // ">>"
@@ -186,6 +203,9 @@ void Lexer::run()
                     }
                     break;
                 case '!':
+                    if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                        fatal_error();
+                    }
                     if(*std::next(input_iter) == '=') {
                         // "!="
                         m_tokens.emplace_back(line_num, TokenType::Op_Ne);
@@ -196,21 +216,21 @@ void Lexer::run()
                     }
                     break;
                 case ',':
-                    // Comma marker (for separating arguments in functions, etc.)
                     m_tokens.emplace_back(line_num, TokenType::Comma);
                     break;
                 case '=':
                     m_tokens.emplace_back(line_num, TokenType::Op_Eq);
                     break;
                 case ':':
+                    if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                        fatal_error();
+                    }
                     switch(*std::next(input_iter)) {
                     case '=':
-                        // Assignment operator
                         m_tokens.emplace_back(line_num, TokenType::Op_Assign);
                         ++input_iter;
                         break;
                     default:
-                        // Type indicator
                         m_tokens.emplace_back(line_num, TokenType::Type_Indicator);
                         break;
                     }
@@ -239,6 +259,9 @@ void Lexer::run()
         case State::InString:
             if(curr == '\\') {
                 // Escape sequence
+                if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                    fatal_error();
+                }
                 ++input_iter;
                 char escaped = escape_sequence(*input_iter);
                 if(escaped == -1) {
@@ -261,6 +284,9 @@ void Lexer::run()
         case State::InChar:
             if(curr == '\\') {
                 // Escape sequence
+                if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                    fatal_error();
+                }
                 ++input_iter;
                 char escaped = escape_sequence(*input_iter);
                 if(escaped == -1) {
@@ -274,7 +300,14 @@ void Lexer::run()
             token_text += curr;
             m_tokens.emplace_back(line_num, TokenType::Char_Literal, token_text);
             token_text.clear();
-            ++input_iter; // Skip the ending "'" mark
+            if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                fatal_error();
+            }
+            ++input_iter;
+            if(*input_iter != '\'') {
+                Error(line_num).put("Expected closing single-quote at end of character literal\n");
+                fatal_error();
+            }
             curr_state = State::Start;
             break;
         case State::InNumber:
@@ -284,16 +317,20 @@ void Lexer::run()
             } else if(curr != '_') {
                 // '_' is a divider; ignore, used only for readability
                 // End of the digit
-                if(token_text.find('.') == std::string::npos)
+                if(token_text.find('.') == std::string::npos) {
                     m_tokens.emplace_back(line_num, TokenType::Int_Literal, token_text);
-                else
+                } else {
                     m_tokens.emplace_back(line_num, TokenType::Float_Literal, token_text);
+                }
                 token_text.clear();
                 curr_state = State::Start;
                 --input_iter;
             }
             break;
         case State::InComment:
+            if(!check_valid_next_exists(line_num, input_iter, m_input_end)) {
+                fatal_error();
+            }
             // Ignore everything in multi-line comments
             if(curr == '*' && *std::next(input_iter) == '/') {
                 ++input_iter;
@@ -310,8 +347,7 @@ void Lexer::run()
 
     if(!token_text.empty()) {
         Error(line_num)
-            .put("Incomplete token:")
-            .quote(token_text).newline();
+            .put("Incomplete token:").quote(token_text).newline();
         fatal_error();
     }
 }

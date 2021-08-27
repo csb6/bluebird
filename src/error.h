@@ -24,7 +24,7 @@ public:
     explicit Error(unsigned int line_num = 0);
     Error& quote(const std::string& text);
     Error& quote(char);
-    Error& quote(Token);
+    Error& quote(const Token&);
     Error& quote(TokenType);
     Error& put(size_t);
     Error& put(const char* message, unsigned int indent = 0);

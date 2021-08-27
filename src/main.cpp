@@ -78,10 +78,11 @@ int main(int argc, char **argv)
         }
     }
     const char* source_filename = argv[arg_index];
-    const std::string source_file{load_source_file(source_filename)};
 
     Context context;
     {
+        const std::string source_file{load_source_file(source_filename)};
+
         Lexer lexer{source_file.begin(), source_file.end()};
         lexer.run();
 
