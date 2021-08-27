@@ -14,6 +14,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include "context.h"
 #include "lexer.h"
 #include "parser.h"
 #include "cleanup.h"
@@ -79,27 +80,36 @@ int main(int argc, char **argv)
     const char* source_filename = argv[arg_index];
     const std::string source_file{load_source_file(source_filename)};
 
-    Lexer lexer{source_file.begin(), source_file.end()};
-    lexer.run();
+    Context context;
+    {
+        Lexer lexer{source_file.begin(), source_file.end()};
+        lexer.run();
 
-    Parser parser{lexer.begin(), lexer.end()};
-    parser.run();
+        Parser parser{lexer.begin(), lexer.end(), context.functions, context.types,
+                      context.global_vars, context.index_vars};
+        parser.run();
 
-    std::cout << parser;
+        std::cout << parser;
+    }
 
-    Cleanup cleanup{parser.functions(), parser.global_vars()};
-    cleanup.run();
+    {
+        Cleanup cleanup{context.functions, context.global_vars};
+        cleanup.run();
+    }
 
-    Checker checker{parser.functions(), parser.types(), parser.global_vars()};
-    checker.run();
+    {
+        Checker checker{context.functions, context.types, context.global_vars};
+        checker.run();
+    }
 
-    CodeGenerator codegen{source_filename, parser.functions(),
-                          parser.global_vars(), build_mode};
-    codegen.run();
+    {
+        CodeGenerator codegen{source_filename, context.functions, context.global_vars, build_mode};
+        codegen.run();
 
-    ObjectGenerator objgen{linker_exe_path, codegen.m_module};
-    objgen.emit();
-    objgen.link("a.out");
+        ObjectGenerator objgen{linker_exe_path, codegen.m_module};
+        objgen.emit();
+        objgen.link("a.out");
+    }
 
     return 0;
 }

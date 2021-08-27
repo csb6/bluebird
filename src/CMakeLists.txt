@@ -42,4 +42,5 @@ target_sources(bluebird PRIVATE
   token.h
   visitor.h
   constanteval.h
+  context.h
 )

@@ -105,11 +105,11 @@ private:
     TokenIterator m_input_begin, m_input_end, token;
     SymbolTable m_names_table;
 
-    std::vector<Magnum::Pointer<Function>> m_functions;
-    std::vector<Magnum::Pointer<Type>> m_types;
-    std::vector<Magnum::Pointer<Initialization>> m_global_vars;
+    std::vector<Magnum::Pointer<Function>>& m_functions;
+    std::vector<Magnum::Pointer<Type>>& m_types;
+    std::vector<Magnum::Pointer<Initialization>>& m_global_vars;
+    std::vector<Magnum::Pointer<IndexedVariable>>& m_index_vars;
     std::vector<Magnum::Pointer<Function>> m_temp_functions;
-    std::vector<Magnum::Pointer<IndexedVariable>> m_index_vars;
 
     Magnum::Pointer<Expression> parse_expression(TokenType right_token = TokenType::Keyword_Is);
     // Helpers
@@ -144,14 +144,13 @@ private:
 public:
     /* Setup the parser and the related data structures. AST will
        be generated from the given token stream */
-    Parser(TokenIterator input_begin,
-           TokenIterator input_end);
+    Parser(TokenIterator input_begin, TokenIterator input_end,
+           std::vector<Magnum::Pointer<Function>>&,
+           std::vector<Magnum::Pointer<Type>>&,
+           std::vector<Magnum::Pointer<Initialization>>& global_vars,
+           std::vector<Magnum::Pointer<IndexedVariable>>&);
     /* Generate the AST */
     void run();
-    auto& functions() { return m_functions; }
-    auto& types() { return m_types; }
-    auto& global_vars() { return m_global_vars; }
-    auto& names_table() { return m_names_table; }
 
     friend std::ostream& operator<<(std::ostream&, const Parser&);
 };

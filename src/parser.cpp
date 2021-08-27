@@ -94,8 +94,13 @@ static ListT* create(std::vector<Magnum::Pointer<ListT>>& type_list, Params... p
         Magnum::pointer<T>(std::forward<Params>(params)...)).get();
 }
 
-Parser::Parser(TokenIterator input_begin, TokenIterator input_end)
-    : m_input_begin(input_begin), m_input_end(input_end)
+Parser::Parser(TokenIterator input_begin, TokenIterator input_end,
+               std::vector<Magnum::Pointer<Function>>& functions,
+               std::vector<Magnum::Pointer<Type>>& types,
+               std::vector<Magnum::Pointer<Initialization>>& global_vars,
+               std::vector<Magnum::Pointer<IndexedVariable>>& index_vars)
+    : m_input_begin(input_begin), m_input_end(input_end), m_functions(functions),
+      m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)
 {
     m_names_table.add_type(&RangeType::Integer);
     m_names_table.add_type(&RangeType::Character);
