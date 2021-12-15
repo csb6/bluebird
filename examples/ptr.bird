@@ -21,6 +21,7 @@ function main() is
    //let i2: Integer := to_val i;
    let i2: Integer := to_val iptr;
    let iptr2: IntPtr := iptr;
+   to_val iptr2 := 81;
 
    print_if_80(to_ptr i);
    print_if_80(iptr);
