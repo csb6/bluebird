@@ -326,6 +326,12 @@ void IndexedVariable::print(std::ostream& output) const
     array_access->print(output);
 }
 
+void DerefLValue::print(std::ostream& output) const
+{
+    output << "Ptr Deref: ";
+    ptr_var.print(output);
+}
+
 void BBFunction::print(std::ostream& output) const
 {
     output << "Function: " << name;

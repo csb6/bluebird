@@ -48,7 +48,7 @@ enum class FunctionKind : char {
 };
 
 enum class AssignableKind : char {
-    Variable, Indexed
+    Variable, Indexed, Deref
 };
 
 // A continuous sequence of integers.
@@ -376,6 +376,16 @@ struct IndexedVariable final : public Assignable {
 
     void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Indexed; }
+};
+
+// A pointer that is being dereferenced then assigned to
+struct DerefLValue final : public Assignable {
+    Variable& ptr_var;
+
+    explicit DerefLValue(Variable& ptr_var) : ptr_var(ptr_var) {}
+
+    void           print(std::ostream&) const override;
+    AssignableKind kind() const override { return AssignableKind::Deref; }
 };
 
 

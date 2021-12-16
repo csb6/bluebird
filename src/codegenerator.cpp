@@ -425,6 +425,9 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
         load_instr->eraseFromParent();
         break;
     }
+    case AssignableKind::Deref:
+        assert(false && "Assignment to pointer deref not implemented yet");
+        break;
     }
 
     store_expr_result(assignable, assgn_stmt->expression.get(), dest_ptr);
