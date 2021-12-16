@@ -58,7 +58,8 @@ The syntax is very Ada-like, favoring English keywords over symbols and full wor
 type Positive is range 1 thru 500;
 
 function fizzbuzz() is
-    for n in Positive do
+    let n: Positive := 1;
+    while n <= 500 do
         if n mod 15 = 0 do
             print("fizzbuzz");
         else if n mod 3 = 0 do
@@ -68,7 +69,8 @@ function fizzbuzz() is
         else
             print_num(n);
         end if;
-    end for;
+        n := n + 1;
+    end while;
 end fizzbuzz; // end labels are optional
 ```
 
@@ -105,6 +107,13 @@ let new_amt2: Dalmation_Count := original_amt + puppy_amt2;
 ```
 
 ## Building
+
+### Platforms
+
+The compiler has only been built/tested on macOS Monterey, and it likely will
+not work on older macOS versions without some tweaking of the CMakeLists.
+
+Otherwise it should work on any platform supported by CMake and LLVM.
 
 ### Dependencies
 

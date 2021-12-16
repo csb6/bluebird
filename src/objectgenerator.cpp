@@ -101,7 +101,7 @@ void ObjectGenerator::link(std::filesystem::path&& exe)
     command.reserve(command.size() + 20);
 
 #ifdef __APPLE__
-    command += " -sdk_version 10.14 -lSystem -o ";
+    command += " -L$(xcode-select --print-path)/SDKs/MacOSX.sdk/usr/lib -lSystem -o ";
 #elif defined _WIN32
     command += " /WX /nologo ";
 #elif defined __linux__
