@@ -20,7 +20,7 @@ project(Bluebird)
 
 # For some reason CMake can't find LLVM on macOS,
 # so we need to give it some help
-find_package(LLVM 12.0 REQUIRED CONFIG
+find_package(LLVM 13.0 REQUIRED CONFIG
     HINTS /usr/local/opt/llvm/lib/cmake/llvm)
 
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -43,11 +43,6 @@ add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
 target_link_libraries(bluebird ${LLVM_LIBS})
-
-if(CMAKE_SYSTEM MATCHES "Darwin")
-    # Without this, won't link proper std::filesystem code
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
-endif()
 
 #libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
