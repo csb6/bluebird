@@ -1,0 +1,7 @@
+function main() is
+    //1 + 1;
+    //true;
+    //'a';
+    let a: Integer;
+    a + 3;
+end main;

@@ -21,6 +21,7 @@
 #include "checker.h"
 #include "codegenerator.h"
 #include "objectgenerator.h"
+#include "bluebird-ir/builder.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -104,13 +105,18 @@ int main(int argc, char **argv)
     }
 
     {
+        bluebirdIR::Builder ir_builder{context.functions, context.types, context.global_vars, context.index_vars};
+        ir_builder.run();
+    }
+
+    /*{
         CodeGenerator codegen{source_filename, context.functions, context.global_vars, build_mode};
         codegen.run();
 
         ObjectGenerator objgen{linker_exe_path, codegen.m_module};
         objgen.emit();
         objgen.link("a.out");
-    }
+    }*/
 
     return 0;
 }

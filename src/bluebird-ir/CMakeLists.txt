@@ -15,34 +15,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 target_sources(bluebird PRIVATE
-  main.cpp
-  lexer.cpp
-  parser.cpp
-  ast.cpp
-  token.cpp
-  checker.cpp
-  cleanup.cpp
-  codegenerator.cpp
-  objectgenerator.cpp
-  optimizer.cpp
-  multiprecision.cpp
-  error.cpp
-  constanteval.cpp
-  ast.h
-  checker.h
-  cleanup.h
-  codegenerator.h
-  error.h
-  lexer.h
-  magnum.h
-  multiprecision.h
-  objectgenerator.h
-  optimizer.h
-  parser.h
-  token.h
-  visitor.h
-  constanteval.h
-  context.h
+  dialect.cpp
+  dialect.h
+  types.cpp
+  types.h
+  builder.cpp
+  builder.h
 )
-
-add_subdirectory(bluebird-ir)

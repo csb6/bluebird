@@ -75,6 +75,7 @@ struct Type {
 
     Type() = default;
     explicit Type(const std::string &n) : name(n) {}
+    Type(const Type&) = default;
     virtual ~Type() noexcept = default;
 
     // TODO: fix bug where this is called for some boolean literals

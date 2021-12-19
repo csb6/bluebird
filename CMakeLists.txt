@@ -33,7 +33,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options(/W4)
 else()
-    add_compile_options(-Wall -Wextra -Wdeprecated)
+    add_compile_options(-Wall -Wextra -Wdeprecated -fvisibility=hidden)
 endif()
 
 add_executable(bluebird)
@@ -42,6 +42,10 @@ add_subdirectory(src)
 add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
+list(APPEND LLVM_LIBS MLIRIR MLIRSupport MLIRDialectUtils
+     MLIRTensor MLIRStandard MLIRMemRefTransforms MLIRMemRef MLIRMemRefUtils
+     MLIRSideEffectInterfaces MLIRControlFlowInterfaces MLIRViewLikeInterface
+     MLIRInferTypeOpInterface)
 target_link_libraries(bluebird ${LLVM_LIBS})
 
 #libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
