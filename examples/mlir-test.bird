@@ -13,3 +13,12 @@ function main() is
     not b;
     b := true;
 end main;
+
+function foo(): Integer is
+    return 27;
+end;
+
+function void() is
+   27;
+   let b: Integer := 67;
+end;

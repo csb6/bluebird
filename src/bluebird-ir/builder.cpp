@@ -232,7 +232,17 @@ public:
     void on_visit(IfBlock&) {}
     void on_visit(Block&) {}
     void on_visit(WhileLoop&) {}
-    void on_visit(ReturnStatement&) {}
+    void on_visit(ReturnStatement& stmt)
+    {
+        if(stmt.expression == nullptr) {
+            // In void function
+            m_builder.create<mlir::ReturnOp>(getLoc(m_builder, stmt.line_num()), llvm::None);
+        } else {
+            // In non-void function
+            auto return_value = m_expr_visitor.visitAndGetResult(stmt.expression.get());
+            m_builder.create<mlir::ReturnOp>(return_value.getLoc(), return_value);
+        }
+    }
 };
 
 namespace bluebirdIR {
