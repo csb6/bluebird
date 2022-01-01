@@ -9,7 +9,9 @@
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/IR/Verifier.h>
 #pragma GCC diagnostic pop
+#include <iostream>
 
 static mlir::Location getLoc(mlir::OpBuilder& builder, unsigned int line_num)
 {
@@ -247,6 +249,10 @@ void Builder::run()
         }
     }
     m_module.dump();
+    auto result = mlir::verify(m_module.getOperation());
+    if(result.failed()) {
+        std::cerr << "Failed to verify module\n";
+    }
 }
 
 };
