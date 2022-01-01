@@ -58,35 +58,35 @@ public:
                   const std::unordered_map<const struct Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions) {}
 
-    mlir::OpState visit_impl(StringLiteral&) {}
-    mlir::OpState visit_impl(CharLiteral& literal)
+    mlir::OpState on_visit(StringLiteral&) {}
+    mlir::OpState on_visit(CharLiteral& literal)
     {
         auto mlir_type = to_mlir_type(*m_builder.getContext(), literal.type());
         return m_builder.create<mlir::ConstantOp>(
                     getLoc(m_builder, literal.line_num()),
                     mlir::IntegerAttr::get(mlir_type, literal.value));
     }
-    mlir::OpState visit_impl(IntLiteral& literal)
+    mlir::OpState on_visit(IntLiteral& literal)
     {
         return m_builder.create<bluebirdIR::IntConstantOp>(
                     getLoc(m_builder, literal.line_num()),
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
-    mlir::OpState visit_impl(BoolLiteral& literal)
+    mlir::OpState on_visit(BoolLiteral& literal)
     {
         return m_builder.create<mlir::ConstantOp>(
                     getLoc(m_builder, literal.line_num()),
                     mlir::BoolAttr::get(m_builder.getContext(), literal.value));
     }
-    mlir::OpState visit_impl(FloatLiteral&) {}
-    mlir::OpState visit_impl(VariableExpression& expr)
+    mlir::OpState on_visit(FloatLiteral&) {}
+    mlir::OpState on_visit(VariableExpression& expr)
     {
         auto it = m_sse_vars.find(expr.variable);
         assert(it != m_sse_vars.end());
         return m_builder.create<mlir::memref::LoadOp>(getLoc(m_builder, expr.line_num()), it->second);
     }
-    mlir::OpState visit_impl(BinaryExpression& expr)
+    mlir::OpState on_visit(BinaryExpression& expr)
     {
         auto left = visitAndGetResult(expr.left.get());
         auto right = visitAndGetResult(expr.right.get());
@@ -136,7 +136,7 @@ public:
             assert(false);
         }
     }
-    mlir::OpState visit_impl(UnaryExpression& expr)
+    mlir::OpState on_visit(UnaryExpression& expr)
     {
         auto right = visitAndGetResult(expr.right.get());
         auto loc = getLoc(m_builder, expr.line_num());
@@ -149,7 +149,7 @@ public:
             assert(false);
         }
     }
-    mlir::OpState visit_impl(FunctionCall& function_call)
+    mlir::OpState on_visit(FunctionCall& function_call)
     {
         llvm::SmallVector<mlir::Value, 4> arguments;
         for(auto& arg : function_call.arguments) {
@@ -162,8 +162,8 @@ public:
                                               function_def->second,
                                               mlir::ValueRange(arguments));
     }
-    mlir::OpState visit_impl(IndexOp&) {}
-    mlir::OpState visit_impl(InitList&) {}
+    mlir::OpState on_visit(IndexOp&) {}
+    mlir::OpState on_visit(InitList&) {}
 
     mlir::Value visitAndGetResult(Expression* expr)
     {
@@ -200,11 +200,11 @@ public:
         m_builder.setInsertionPointToStart(&entry_block);
     }
 
-    void visit_impl(BasicStatement& stmt)
+    void on_visit(BasicStatement& stmt)
     {
         m_expr_visitor.visit(*stmt.expression.get());
     }
-    void visit_impl(Initialization& var_decl)
+    void on_visit(Initialization& var_decl)
     {
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
@@ -221,11 +221,11 @@ public:
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
-    void visit_impl(Assignment&) {}
-    void visit_impl(IfBlock&) {}
-    void visit_impl(Block&) {}
-    void visit_impl(WhileLoop&) {}
-    void visit_impl(ReturnStatement&) {}
+    void on_visit(Assignment&) {}
+    void on_visit(IfBlock&) {}
+    void on_visit(Block&) {}
+    void on_visit(WhileLoop&) {}
+    void on_visit(ReturnStatement&) {}
 };
 
 namespace bluebirdIR {
