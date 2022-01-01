@@ -56,9 +56,9 @@ public:
     }
     mlir::OpState visit_impl(IntLiteral& literal)
     {
-        return m_builder.create<mlir::ConstantOp>(
+        return m_builder.create<bluebirdIR::IntConstantOp>(
                     getLoc(m_builder, literal.line_num()),
-                    bluebirdIR::IntLiteralAttr::get(m_builder.getContext(), literal.value),
+                    literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
     mlir::OpState visit_impl(BoolLiteral& literal)

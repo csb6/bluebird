@@ -14,7 +14,8 @@ namespace bluebirdIR {
 BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
     : mlir::Dialect(getDialectNamespace(), context, mlir::TypeID::get<BluebirdIRDialect>())
 {
-    addOperations<DivideOp,
+    addOperations<IntConstantOp,
+                  DivideOp,
                   NegateOp, NotOp>();
     addTypes<RangeType, IntLiteralType>();
     addAttributes<IntLiteralAttr, CharLiteralAttr>();
@@ -94,6 +95,13 @@ const multi_int& IntLiteralAttr::getValue() const
     return getImpl()->value;
 }
 
+
+void IntConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state,
+                          const multi_int& value, mlir::Type type)
+{
+    state.addAttribute("value", IntLiteralAttr::get(builder.getContext(), value));
+    state.types.push_back(type);
+}
 
 void build_binary_op(mlir::OperationState& state,
                      mlir::Value operand1, mlir::Value operand2)

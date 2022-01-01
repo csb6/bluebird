@@ -52,29 +52,43 @@ public:
 
 template<typename ConcreteOp, template <typename T> class... Traits>
 class BluebirdOp : public mlir::Op<ConcreteOp,
+                                   Traits...,
                                    mlir::OpTrait::OneResult,
-                                   mlir::MemoryEffectOpInterface::Trait,
-                                   Traits...>
+                                   mlir::MemoryEffectOpInterface::Trait>
 {
 public:
     using mlir::Op<ConcreteOp,
+        Traits...,
         mlir::OpTrait::OneResult,
-        mlir::MemoryEffectOpInterface::Trait,
-        Traits...>::Op;
+        mlir::MemoryEffectOpInterface::Trait>::Op;
 
     static llvm::ArrayRef<llvm::StringRef> getAttributeNames() { return {}; }
 
+    // No side effects
     void getEffects(llvm::SmallVectorImpl<mlir::SideEffects::EffectInstance<mlir::MemoryEffects::Effect>>&) const {}
+};
+
+class IntConstantOp : public BluebirdOp<IntConstantOp,
+                                        mlir::OpTrait::ZeroOperands,
+                                        mlir::OpTrait::ConstantLike> {
+public:
+    using BluebirdOp::BluebirdOp;
+
+    static llvm::StringRef getOperationName() { return "bluebirdIR.constant"; }
+
+    const multi_int& getValue() const;
+
+    static void build(mlir::OpBuilder&, mlir::OperationState&, const multi_int& value, mlir::Type);
 };
 
 void build_binary_op(mlir::OperationState&, mlir::Value, mlir::Value);
 
 template<typename ConcreteOp, template <typename T> class... Traits>
 class BinaryOp : public BluebirdOp<ConcreteOp,
-                                   mlir::OpTrait::NOperands<2>::Impl,
-                                   Traits...> {
+                                   Traits...,
+                                   mlir::OpTrait::NOperands<2>::Impl> {
 public:
-    using BluebirdOp<ConcreteOp, mlir::OpTrait::NOperands<2>::Impl, Traits...>::BluebirdOp;
+    using BluebirdOp<ConcreteOp, Traits..., mlir::OpTrait::NOperands<2>::Impl>::BluebirdOp;
 
     static void build(mlir::OpBuilder&, mlir::OperationState& state,
                       mlir::Value operand1, mlir::Value operand2)
@@ -96,10 +110,10 @@ void build_unary_op(mlir::OperationState&, mlir::Value);
 
 template<typename ConcreteOp, template <typename T> class... Traits>
 class UnaryOp : public BluebirdOp<ConcreteOp,
-                                  mlir::OpTrait::OneOperand,
-                                  Traits...> {
+                                  Traits...,
+                                  mlir::OpTrait::OneOperand> {
 public:
-    using BluebirdOp<ConcreteOp, mlir::OpTrait::OneOperand, Traits...>::BluebirdOp;
+    using BluebirdOp<ConcreteOp, Traits..., mlir::OpTrait::OneOperand>::BluebirdOp;
 
     static llvm::ArrayRef<llvm::StringRef> getAttributeNames() { return {}; }
 
