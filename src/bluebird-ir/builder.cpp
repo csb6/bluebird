@@ -244,6 +244,8 @@ Builder::Builder(std::vector<Magnum::Pointer<struct Function>>& functions,
 void Builder::run()
 {
     llvm::SmallVector<mlir::Type, 4> param_types;
+    // First, create all of the functions (with empty bodies). This ensures that
+    // all function calls will resolve to an existing mlir::FuncOp
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             auto* user_function = static_cast<BBFunction*>(function.get());
@@ -264,6 +266,7 @@ void Builder::run()
         }
     }
 
+    // Next, generate the function bodies and parameters
     IRStmtVisitor stmt_visitor(m_builder, m_sse_vars, m_mlir_functions);
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
