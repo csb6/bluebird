@@ -76,15 +76,48 @@ public:
     {
         auto left = visitAndGetResult(expr.left.get());
         auto right = visitAndGetResult(expr.right.get());
+        auto loc = getLoc(m_builder, expr.line_num());
         switch(expr.op) {
         case TokenType::Op_Plus:
-            return m_builder.create<bluebirdIR::AddOp>(getLoc(m_builder, expr.line_num()), left, right);
+            if(expr.type()->kind() == TypeKind::Range) {
+                return m_builder.create<mlir::AddIOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::AddFOp>(loc, left, right);
+            }
         case TokenType::Op_Minus:
-            return m_builder.create<bluebirdIR::SubtractOp>(getLoc(m_builder, expr.line_num()), left, right);
-        case TokenType::Op_Mult:
-            return m_builder.create<bluebirdIR::MultiplyOp>(getLoc(m_builder, expr.line_num()), left, right);
+            if(expr.type()->kind() == TypeKind::Range) {
+                return m_builder.create<mlir::SubIOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::SubFOp>(loc, left, right);
+            }
         case TokenType::Op_Div:
-            return m_builder.create<bluebirdIR::DivideOp>(getLoc(m_builder, expr.line_num()), left, right);
+            return m_builder.create<bluebirdIR::DivideOp>(loc, left, right);
+        case TokenType::Op_Mult:
+            if(expr.type()->kind() == TypeKind::Range) {
+                return m_builder.create<mlir::MulIOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::MulFOp>(loc, left, right);
+            }
+        case TokenType::Op_And:
+            return m_builder.create<mlir::AndOp>(loc, left, right);
+        case TokenType::Op_Or:
+            return m_builder.create<mlir::OrOp>(loc, left, right);
+        case TokenType::Op_Xor:
+            return m_builder.create<mlir::XOrOp>(loc, left, right);
+        case TokenType::Op_Eq:
+            // TODO: do float version
+            return m_builder.create<mlir::CmpIOp>(loc, mlir::CmpIPredicate::eq, left, right);
+        case TokenType::Op_Ne:
+            // TODO: do float version
+            return m_builder.create<mlir::CmpIOp>(loc, mlir::CmpIPredicate::ne, left, right);
+        case TokenType::Op_Lt:
+            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
+        case TokenType::Op_Gt:
+            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
+        case TokenType::Op_Le:
+            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
+        case TokenType::Op_Ge:
+            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
         default:
             assert(false);
         }
@@ -92,9 +125,12 @@ public:
     mlir::OpState visit_impl(UnaryExpression& expr)
     {
         auto right = visitAndGetResult(expr.right.get());
+        auto loc = getLoc(m_builder, expr.line_num());
         switch(expr.op) {
         case TokenType::Op_Minus:
-            return m_builder.create<bluebirdIR::NegateOp>(getLoc(m_builder, expr.line_num()), right);
+            return m_builder.create<bluebirdIR::NegateOp>(loc, right);
+        case TokenType::Op_Not:
+            return m_builder.create<bluebirdIR::NotOp>(loc, right);
         default:
             assert(false);
         }

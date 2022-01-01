@@ -83,32 +83,6 @@ public:
     }
 };
 
-class AddOp : public BinaryOp<AddOp,
-                              mlir::OpTrait::IsCommutative,
-                              mlir::OpTrait::SameOperandsAndResultType> {
-public:
-    using BinaryOp::BinaryOp;
-
-    static llvm::StringRef getOperationName() { return "bluebirdIR.add"; }
-};
-
-class SubtractOp : public BinaryOp<SubtractOp,
-                                   mlir::OpTrait::SameOperandsAndResultType> {
-public:
-    using BinaryOp::BinaryOp;
-
-    static llvm::StringRef getOperationName() { return "bluebirdIR.sub"; }
-};
-
-class MultiplyOp : public BinaryOp<MultiplyOp,
-                                   mlir::OpTrait::IsCommutative,
-                                   mlir::OpTrait::SameOperandsAndResultType> {
-public:
-    using BinaryOp::BinaryOp;
-
-    static llvm::StringRef getOperationName() { return "bluebirdIR.mult"; }
-};
-
 class DivideOp : public BinaryOp<DivideOp,
                                  mlir::OpTrait::SameOperandsAndResultType> {
 public:
@@ -142,6 +116,16 @@ public:
     using UnaryOp::UnaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.neg"; }
+};
+
+class NotOp : public UnaryOp<NotOp,
+                             mlir::OpTrait::IsIdempotent,
+                             mlir::OpTrait::SameOperandsAndResultType,
+                             mlir::OpTrait::ResultsAreBoolLike> {
+public:
+    using UnaryOp::UnaryOp;
+
+    static llvm::StringRef getOperationName() { return "bluebirdIR.not"; }
 };
 
 }

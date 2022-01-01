@@ -4,4 +4,11 @@ function main() is
     //'a';
     let a: Integer;
     a + 3;
+    a != 3;
+    -a;
+
+    let b: Boolean;
+    b or false;
+    b and true;
+    not b;
 end main;

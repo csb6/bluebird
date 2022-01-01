@@ -14,7 +14,8 @@ namespace bluebirdIR {
 BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
     : mlir::Dialect(getDialectNamespace(), context, mlir::TypeID::get<BluebirdIRDialect>())
 {
-    addOperations<AddOp, SubtractOp, MultiplyOp, DivideOp, NegateOp>();
+    addOperations<DivideOp,
+                  NegateOp, NotOp>();
     addTypes<RangeType, IntLiteralType>();
     addAttributes<IntLiteralAttr, CharLiteralAttr>();
 }
@@ -104,6 +105,7 @@ void build_binary_op(mlir::OperationState& state,
 
 void build_unary_op(mlir::OperationState& state, mlir::Value operand)
 {
+    state.types.push_back(operand.getType());
     state.operands.push_back(std::move(operand));
 }
 
