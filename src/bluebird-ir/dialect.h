@@ -7,6 +7,7 @@
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/IR/Attributes.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h>
 #pragma GCC diagnostic pop
 
 class multi_int;
@@ -49,73 +50,96 @@ public:
 };
 
 
-class BinaryOp {
+template<typename ConcreteOp, template <typename T> class... Traits>
+class BluebirdOp : public mlir::Op<ConcreteOp,
+                                   mlir::OpTrait::OneResult,
+                                   mlir::MemoryEffectOpInterface::Trait,
+                                   Traits...>
+{
 public:
+    using mlir::Op<ConcreteOp,
+        mlir::OpTrait::OneResult,
+        mlir::MemoryEffectOpInterface::Trait,
+        Traits...>::Op;
+
     static llvm::ArrayRef<llvm::StringRef> getAttributeNames() { return {}; }
 
-    static void build(mlir::OpBuilder&, mlir::OperationState&, mlir::Value, mlir::Value);
+    void getEffects(llvm::SmallVectorImpl<mlir::SideEffects::EffectInstance<mlir::MemoryEffects::Effect>>&) const {}
 };
 
-class AddOp : public BinaryOp,
-              public mlir::Op<AddOp,
-                              mlir::OpTrait::NOperands<2>::Impl,
+void build_binary_op(mlir::OperationState&, mlir::Value, mlir::Value);
+
+template<typename ConcreteOp, template <typename T> class... Traits>
+class BinaryOp : public BluebirdOp<ConcreteOp,
+                                   mlir::OpTrait::NOperands<2>::Impl,
+                                   Traits...> {
+public:
+    using BluebirdOp<ConcreteOp, mlir::OpTrait::NOperands<2>::Impl, Traits...>::BluebirdOp;
+
+    static void build(mlir::OpBuilder&, mlir::OperationState& state,
+                      mlir::Value operand1, mlir::Value operand2)
+    {
+        build_binary_op(state, operand1, operand2);
+    }
+};
+
+class AddOp : public BinaryOp<AddOp,
                               mlir::OpTrait::IsCommutative,
-                              mlir::OpTrait::OneResult,
                               mlir::OpTrait::SameOperandsAndResultType> {
 public:
-    using Op::Op;
+    using BinaryOp::BinaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.add"; }
 };
 
-class SubtractOp : public BinaryOp,
-                   public mlir::Op<SubtractOp,
-                                   mlir::OpTrait::NOperands<2>::Impl,
-                                   mlir::OpTrait::OneResult,
+class SubtractOp : public BinaryOp<SubtractOp,
                                    mlir::OpTrait::SameOperandsAndResultType> {
 public:
-    using Op::Op;
+    using BinaryOp::BinaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.sub"; }
 };
 
-class MultiplyOp : public BinaryOp,
-                   public mlir::Op<MultiplyOp,
-                                   mlir::OpTrait::NOperands<2>::Impl,
+class MultiplyOp : public BinaryOp<MultiplyOp,
                                    mlir::OpTrait::IsCommutative,
-                                   mlir::OpTrait::OneResult,
                                    mlir::OpTrait::SameOperandsAndResultType> {
 public:
-    using Op::Op;
+    using BinaryOp::BinaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.mult"; }
 };
 
-class DivideOp : public BinaryOp,
-                 public mlir::Op<DivideOp,
-                                 mlir::OpTrait::NOperands<2>::Impl,
-                                 mlir::OpTrait::OneResult,
+class DivideOp : public BinaryOp<DivideOp,
                                  mlir::OpTrait::SameOperandsAndResultType> {
 public:
-    using Op::Op;
+    using BinaryOp::BinaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.div"; }
 };
 
-class UnaryOp {
+
+void build_unary_op(mlir::OperationState&, mlir::Value);
+
+template<typename ConcreteOp, template <typename T> class... Traits>
+class UnaryOp : public BluebirdOp<ConcreteOp,
+                                  mlir::OpTrait::OneOperand,
+                                  Traits...> {
 public:
+    using BluebirdOp<ConcreteOp, mlir::OpTrait::OneOperand, Traits...>::BluebirdOp;
+
     static llvm::ArrayRef<llvm::StringRef> getAttributeNames() { return {}; }
 
-    static void build(mlir::OpBuilder&, mlir::OperationState&, mlir::Value);
+    static void build(mlir::OpBuilder&, mlir::OperationState& state, mlir::Value operand)
+    {
+        build_unary_op(state, operand);
+    }
 };
 
-class NegateOp : public UnaryOp,
-                 public mlir::Op<NegateOp,
-                                 mlir::OpTrait::OneOperand,
-                                 mlir::OpTrait::OneResult,
-                                 mlir::OpTrait::SameOperandsAndResultType> {
+class NegateOp : public UnaryOp<NegateOp,
+                                mlir::OpTrait::IsIdempotent,
+                                mlir::OpTrait::SameOperandsAndResultType> {
 public:
-    using Op::Op;
+    using UnaryOp::UnaryOp;
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.neg"; }
 };

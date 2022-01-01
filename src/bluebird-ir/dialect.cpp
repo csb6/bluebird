@@ -94,16 +94,15 @@ const multi_int& IntLiteralAttr::getValue() const
 }
 
 
-void BinaryOp::build(mlir::OpBuilder&, mlir::OperationState& state,
+void build_binary_op(mlir::OperationState& state,
                      mlir::Value operand1, mlir::Value operand2)
 {
-    state.operands.push_back(operand1);
-    state.operands.push_back(operand2);
     state.types.push_back(operand1.getType());
+    state.operands.push_back(std::move(operand1));
+    state.operands.push_back(std::move(operand2));
 }
 
-
-void UnaryOp::build(mlir::OpBuilder&, mlir::OperationState& state, mlir::Value operand)
+void build_unary_op(mlir::OperationState& state, mlir::Value operand)
 {
     state.operands.push_back(std::move(operand));
 }
