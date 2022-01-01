@@ -18,7 +18,7 @@ BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
                   DivideOp,
                   NegateOp, NotOp>();
     addTypes<RangeType, IntLiteralType>();
-    addAttributes<IntLiteralAttr, CharLiteralAttr>();
+    addAttributes<IntLiteralAttr>();
 }
 
 void BluebirdIRDialect::printType(mlir::Type, mlir::DialectAsmPrinter&) const
@@ -28,38 +28,10 @@ void BluebirdIRDialect::printAttribute(mlir::Attribute attr, mlir::DialectAsmPri
 {
     if(auto intLiteral = attr.dyn_cast<IntLiteralAttr>()) {
         printer << "bluebirdIR.intLiteral = " << intLiteral.getValue().str();
-    } else if(auto charLiteral = attr.dyn_cast<CharLiteralAttr>()) {
-        printer << "bluebirdIR.charLiteral = '" << charLiteral.getValue() << "'";
     } else {
         attr.print(printer.getStream());
     }
 }
-
-
-struct CharLiteralAttrStorage : public mlir::AttributeStorage {
-    using KeyTy = char;
-
-    explicit CharLiteralAttrStorage(char value) : value(value) {}
-
-    bool operator==(const KeyTy& key) const
-    {
-        return key == value;
-    }
-
-    static CharLiteralAttrStorage* construct(mlir::AttributeStorageAllocator& allocator, const KeyTy& key)
-    {
-        return new (allocator.allocate<IntLiteralAttrStorage>()) CharLiteralAttrStorage(key);
-    }
-
-    char value;
-};
-
-CharLiteralAttr CharLiteralAttr::get(mlir::MLIRContext* context, char value)
-{
-    return Base::get(context, value);
-}
-
-char CharLiteralAttr::getValue() const { return getImpl()->value; }
 
 
 struct IntLiteralAttrStorage : public mlir::AttributeStorage {
@@ -102,6 +74,7 @@ void IntConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state,
     state.addAttribute("value", IntLiteralAttr::get(builder.getContext(), value));
     state.types.push_back(type);
 }
+
 
 void build_binary_op(mlir::OperationState& state,
                      mlir::Value operand1, mlir::Value operand2)

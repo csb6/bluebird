@@ -32,6 +32,17 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
         auto* ptr_type = static_cast<const PtrLikeType*>(ast_type);
         return mlir::MemRefType::get({}, to_mlir_type(context, ptr_type->inner_type));
     }
+    case TypeKind::Literal: {
+        auto* literal_type = static_cast<const LiteralType*>(ast_type);
+        if(literal_type == &LiteralType::Char) {
+            return mlir::IntegerType::get(&context, 8);
+        } else if(literal_type == &LiteralType::Int) {
+            // TODO: properly handle literal-only expressions (i.e. omit them from codegen)
+            return mlir::IntegerType::get(&context, 64);
+        } else {
+            assert(false);
+        }
+    }
     default:
         assert(false);
     }
@@ -50,9 +61,10 @@ public:
     mlir::OpState visit_impl(StringLiteral&) {}
     mlir::OpState visit_impl(CharLiteral& literal)
     {
+        auto mlir_type = to_mlir_type(*m_builder.getContext(), literal.type());
         return m_builder.create<mlir::ConstantOp>(
                     getLoc(m_builder, literal.line_num()),
-                    bluebirdIR::CharLiteralAttr::get(m_builder.getContext(), literal.value));
+                    mlir::IntegerAttr::get(mlir_type, literal.value));
     }
     mlir::OpState visit_impl(IntLiteral& literal)
     {

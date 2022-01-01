@@ -37,19 +37,6 @@ public:
 };
 
 
-struct CharLiteralAttrStorage;
-
-class CharLiteralAttr : public mlir::Attribute::AttrBase<CharLiteralAttr,
-                                                         mlir::Attribute,
-                                                         CharLiteralAttrStorage> {
-public:
-    using Base::Base;
-    static CharLiteralAttr get(mlir::MLIRContext*, char value);
-
-    char getValue() const;
-};
-
-
 template<typename ConcreteOp, template <typename T> class... Traits>
 class BluebirdOp : public mlir::Op<ConcreteOp,
                                    Traits...,
@@ -68,17 +55,24 @@ public:
     void getEffects(llvm::SmallVectorImpl<mlir::SideEffects::EffectInstance<mlir::MemoryEffects::Effect>>&) const {}
 };
 
-class IntConstantOp : public BluebirdOp<IntConstantOp,
-                                        mlir::OpTrait::ZeroOperands,
-                                        mlir::OpTrait::ConstantLike> {
+template<typename ConcreteOp, template <typename T> class... Traits>
+class ConstantOp : public BluebirdOp<ConcreteOp,
+                                     Traits...,
+                                     mlir::OpTrait::ZeroOperands,
+                                     mlir::OpTrait::ConstantLike> {
 public:
-    using BluebirdOp::BluebirdOp;
+    using BluebirdOp<ConcreteOp, Traits..., mlir::OpTrait::ZeroOperands,
+                     mlir::OpTrait::ConstantLike>::BluebirdOp;
+};
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.constant"; }
+class IntConstantOp : public ConstantOp<IntConstantOp> {
+public:
+    using ConstantOp::ConstantOp;
 
-    const multi_int& getValue() const;
+    static llvm::StringRef getOperationName() { return "bluebirdIR.intConstant"; }
 
-    static void build(mlir::OpBuilder&, mlir::OperationState&, const multi_int& value, mlir::Type);
+    static void build(mlir::OpBuilder&, mlir::OperationState&,
+                      const multi_int& value, mlir::Type);
 };
 
 void build_binary_op(mlir::OperationState&, mlir::Value, mlir::Value);
