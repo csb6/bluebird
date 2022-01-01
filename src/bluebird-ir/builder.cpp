@@ -50,11 +50,11 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
 
 class IRExprVisitor : public ExprVisitor<IRExprVisitor> {
     mlir::OpBuilder& m_builder;
-    std::unordered_map<const Variable*, mlir::Value>& m_sse_vars;
+    std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
     const std::unordered_map<const Function*, mlir::FuncOp>& m_mlir_functions;
 public:
     IRExprVisitor(mlir::OpBuilder& builder,
-                  std::unordered_map<const struct Variable*, mlir::Value>& sse_vars,
+                  std::unordered_map<const Assignable*, mlir::Value>& sse_vars,
                   const std::unordered_map<const struct Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions) {}
 
@@ -182,13 +182,13 @@ static mlir::Block& getEntryBlock(mlir::FuncOp function)
 
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
     mlir::OpBuilder& m_builder;
-    std::unordered_map<const struct Variable*, mlir::Value>& m_sse_vars;
+    std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
     const std::unordered_map<const struct Function*, mlir::FuncOp>& m_mlir_functions;
     IRExprVisitor m_expr_visitor;
     mlir::FuncOp m_curr_function;
 public:
     IRStmtVisitor(mlir::OpBuilder& builder,
-                  std::unordered_map<const Variable*, mlir::Value>& sse_vars,
+                  std::unordered_map<const Assignable*, mlir::Value>& sse_vars,
                   const std::unordered_map<const Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions),
           m_expr_visitor(m_builder, m_sse_vars, m_mlir_functions) {}
@@ -217,11 +217,18 @@ public:
                                                                std::move(memref_type));
         m_builder.restoreInsertionPoint(oldInsertionPoint);
         if(var_decl.expression != nullptr) {
-            //auto value = m_expr_visitor.visitAndGetResult(var_decl.expression.get());
+            auto value = m_expr_visitor.visitAndGetResult(var_decl.expression.get());
+            m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca);
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
-    void on_visit(Assignment&) {}
+    void on_visit(Assignment& asgmt)
+    {
+        auto alloca = m_sse_vars.find(asgmt.assignable);
+        assert(alloca != m_sse_vars.end());
+        auto value = m_expr_visitor.visitAndGetResult(asgmt.expression.get());
+        m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca->second);
+    }
     void on_visit(IfBlock&) {}
     void on_visit(Block&) {}
     void on_visit(WhileLoop&) {}
@@ -230,10 +237,10 @@ public:
 
 namespace bluebirdIR {
 
-Builder::Builder(std::vector<Magnum::Pointer<struct Function>>& functions,
-        std::vector<Magnum::Pointer<struct Type>>& types,
-        std::vector<Magnum::Pointer<struct Initialization>>& global_vars,
-        std::vector<Magnum::Pointer<struct IndexedVariable>>& index_vars)
+Builder::Builder(std::vector<Magnum::Pointer<Function>>& functions,
+        std::vector<Magnum::Pointer<Type>>& types,
+        std::vector<Magnum::Pointer<Initialization>>& global_vars,
+        std::vector<Magnum::Pointer<IndexedVariable>>& index_vars)
     : m_module(mlir::ModuleOp::create(mlir::OpBuilder(&m_context).getUnknownLoc())),
       m_builder(m_module.getRegion()),
       m_functions(functions), m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)

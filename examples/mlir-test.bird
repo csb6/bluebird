@@ -7,8 +7,9 @@ function main() is
     a != 3;
     -a;
 
-    let b: Boolean;
+    let b: Boolean := false;
     b or false;
     b and true;
     not b;
+    b := true;
 end main;
