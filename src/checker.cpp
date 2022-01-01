@@ -22,17 +22,17 @@
 
 class CheckerExprVisitor : public ExprVisitor<CheckerExprVisitor> {
 public:
-    void visit_impl(StringLiteral&) {}
-    void visit_impl(CharLiteral&) {}
-    void visit_impl(IntLiteral&) {}
-    void visit_impl(BoolLiteral&) {}
-    void visit_impl(FloatLiteral&) {}
-    void visit_impl(VariableExpression&) {}
-    void visit_impl(BinaryExpression&);
-    void visit_impl(UnaryExpression&);
-    void visit_impl(FunctionCall&);
-    void visit_impl(IndexOp&);
-    void visit_impl(InitList&);
+    void on_visit(StringLiteral&) {}
+    void on_visit(CharLiteral&) {}
+    void on_visit(IntLiteral&) {}
+    void on_visit(BoolLiteral&) {}
+    void on_visit(FloatLiteral&) {}
+    void on_visit(VariableExpression&) {}
+    void on_visit(BinaryExpression&);
+    void on_visit(UnaryExpression&);
+    void on_visit(FunctionCall&);
+    void on_visit(IndexOp&);
+    void on_visit(InitList&);
 };
 
 class CheckerStmtVisitor : public StmtVisitor<CheckerStmtVisitor> {
@@ -40,13 +40,13 @@ class CheckerStmtVisitor : public StmtVisitor<CheckerStmtVisitor> {
 public:
     explicit CheckerStmtVisitor(BBFunction* curr_funct) : m_curr_funct(curr_funct) {}
 
-    bool visit_impl(BasicStatement&);
-    bool visit_impl(Initialization&);
-    bool visit_impl(Assignment&);
-    bool visit_impl(IfBlock&);
-    bool visit_impl(Block&);
-    bool visit_impl(WhileLoop&);
-    bool visit_impl(ReturnStatement&);
+    bool on_visit(BasicStatement&);
+    bool on_visit(Initialization&);
+    bool on_visit(Assignment&);
+    bool on_visit(IfBlock&);
+    bool on_visit(Block&);
+    bool on_visit(WhileLoop&);
+    bool on_visit(ReturnStatement&);
 };
 
 Checker::Checker(std::vector<Magnum::Pointer<Function>>& functions,
@@ -190,13 +190,13 @@ void check_legal_bin_op(const Expression& expr, TokenType op, const Type* type)
     }
 }
 
-void CheckerExprVisitor::visit_impl(UnaryExpression& expr)
+void CheckerExprVisitor::on_visit(UnaryExpression& expr)
 {
     visit(*expr.right);
     check_legal_unary_op(expr, expr.op, expr.right->type());
 }
 
-void CheckerExprVisitor::visit_impl(BinaryExpression& expr)
+void CheckerExprVisitor::on_visit(BinaryExpression& expr)
 {
     // Ensure the sub-expressions are correct first
     visit(*expr.left);
@@ -217,7 +217,7 @@ void CheckerExprVisitor::visit_impl(BinaryExpression& expr)
 static
 void typecheck_assign(Expression*, const Assignable*);
 
-void CheckerExprVisitor::visit_impl(FunctionCall& call)
+void CheckerExprVisitor::on_visit(FunctionCall& call)
 {
     if(call.arguments.size() != call.definition->parameters.size()) {
         Error(call.line_num()).put("Function").quote(call.name()).put("expects ")
@@ -230,7 +230,7 @@ void CheckerExprVisitor::visit_impl(FunctionCall& call)
     }
 }
 
-void CheckerExprVisitor::visit_impl(IndexOp& expr)
+void CheckerExprVisitor::on_visit(IndexOp& expr)
 {
     if(expr.base_expr->kind() != ExprKind::Variable) {
         Error(expr.line_num()).put(" Cannot index into the expression:\n  ")
@@ -251,7 +251,7 @@ void CheckerExprVisitor::visit_impl(IndexOp& expr)
     }
 }
 
-void CheckerExprVisitor::visit_impl(InitList& init_list)
+void CheckerExprVisitor::on_visit(InitList& init_list)
 {
     // InitLists are not typechecked like most expressions since typechecking them
     // requires knowing info. about the variable they are being assigned to.
@@ -311,7 +311,7 @@ void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
     print_type_mismatch(assign_expr, assignable, assignable->type);
 }
 
-bool CheckerStmtVisitor::visit_impl(BasicStatement& stmt)
+bool CheckerStmtVisitor::on_visit(BasicStatement& stmt)
 {
     CheckerExprVisitor().visit(*stmt.expression);
     if(stmt.expression->kind() == ExprKind::Binary) {
@@ -325,7 +325,7 @@ bool CheckerStmtVisitor::visit_impl(BasicStatement& stmt)
     return false;
 }
 
-bool CheckerStmtVisitor::visit_impl(Initialization& init_stmt)
+bool CheckerStmtVisitor::on_visit(Initialization& init_stmt)
 {
     if(init_stmt.expression != nullptr) {
         typecheck_assign(init_stmt.expression.get(), init_stmt.variable.get());
@@ -336,7 +336,7 @@ bool CheckerStmtVisitor::visit_impl(Initialization& init_stmt)
     return false;
 }
 
-bool CheckerStmtVisitor::visit_impl(Assignment& assgn_stmt)
+bool CheckerStmtVisitor::on_visit(Assignment& assgn_stmt)
 {
     typecheck_assign(assgn_stmt.expression.get(), assgn_stmt.assignable);
     if(assgn_stmt.assignable->kind() == AssignableKind::Indexed) {
@@ -354,13 +354,13 @@ bool is_bool_condition(const Expression* condition)
         || cond_type == &LiteralType::Bool;
 }
 
-bool CheckerStmtVisitor::visit_impl(IfBlock& if_block)
+bool CheckerStmtVisitor::on_visit(IfBlock& if_block)
 {
     if(!is_bool_condition(if_block.condition.get())) {
         nonbool_condition_error(if_block.condition.get(), "if-statement");
     }
     CheckerExprVisitor().visit(*if_block.condition);
-    bool always_returns = visit_impl(static_cast<Block&>(if_block));
+    bool always_returns = on_visit(static_cast<Block&>(if_block));
     if(if_block.else_or_else_if != nullptr) {
         always_returns &= visit(*if_block.else_or_else_if);
     } else {
@@ -370,7 +370,7 @@ bool CheckerStmtVisitor::visit_impl(IfBlock& if_block)
     return always_returns;
 }
 
-bool CheckerStmtVisitor::visit_impl(Block& block)
+bool CheckerStmtVisitor::on_visit(Block& block)
 {
     bool always_returns = false;
     for(auto& stmt : block.statements) {
@@ -384,17 +384,17 @@ bool CheckerStmtVisitor::visit_impl(Block& block)
     return always_returns;
 }
 
-bool CheckerStmtVisitor::visit_impl(WhileLoop& loop)
+bool CheckerStmtVisitor::on_visit(WhileLoop& loop)
 {
     CheckerExprVisitor().visit(*loop.condition);
     if(!is_bool_condition(loop.condition.get())) {
         nonbool_condition_error(loop.condition.get(), "while-loop");
     }
-    visit_impl(static_cast<Block&>(loop));
+    on_visit(static_cast<Block&>(loop));
     return false;
 }
 
-bool CheckerStmtVisitor::visit_impl(ReturnStatement& ret_stmt)
+bool CheckerStmtVisitor::on_visit(ReturnStatement& ret_stmt)
 {
     assert(m_curr_funct != nullptr);
     if(ret_stmt.expression.get() == nullptr) {

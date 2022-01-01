@@ -37,17 +37,17 @@ class CodegenExprVisitor : public ExprVisitor<CodegenExprVisitor> {
 public:
     explicit CodegenExprVisitor(CodeGenerator& gen) : m_gen(gen) {}
 
-    llvm::Value* visit_impl(StringLiteral&);
-    llvm::Value* visit_impl(CharLiteral&);
-    llvm::Value* visit_impl(IntLiteral&);
-    llvm::Value* visit_impl(BoolLiteral&);
-    llvm::Value* visit_impl(FloatLiteral&);
-    llvm::Value* visit_impl(VariableExpression&);
-    llvm::Value* visit_impl(BinaryExpression&);
-    llvm::Value* visit_impl(UnaryExpression&);
-    llvm::Value* visit_impl(FunctionCall&);
-    llvm::Value* visit_impl(IndexOp&);
-    llvm::Value* visit_impl(InitList&);
+    llvm::Value* on_visit(StringLiteral&);
+    llvm::Value* on_visit(CharLiteral&);
+    llvm::Value* on_visit(IntLiteral&);
+    llvm::Value* on_visit(BoolLiteral&);
+    llvm::Value* on_visit(FloatLiteral&);
+    llvm::Value* on_visit(VariableExpression&);
+    llvm::Value* on_visit(BinaryExpression&);
+    llvm::Value* on_visit(UnaryExpression&);
+    llvm::Value* on_visit(FunctionCall&);
+    llvm::Value* on_visit(IndexOp&);
+    llvm::Value* on_visit(InitList&);
 };
 
 // Util functions
@@ -123,33 +123,33 @@ llvm::ConstantInt* CodeGenerator::to_llvm_int(const multi_int& value, size_t bit
     return llvm::ConstantInt::get(m_context, llvm::APInt(bit_size, value.str(), 10));
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(StringLiteral& lit)
+llvm::Value* CodegenExprVisitor::on_visit(StringLiteral& lit)
 {
     return m_gen.m_ir_builder.CreateGlobalStringPtr(lit.value);
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(CharLiteral& lit)
+llvm::Value* CodegenExprVisitor::on_visit(CharLiteral& lit)
 {
     // Create a signed `char` type
     return m_gen.m_ir_builder.getInt8(lit.value);
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(IntLiteral& lit)
+llvm::Value* CodegenExprVisitor::on_visit(IntLiteral& lit)
 {
     return m_gen.to_llvm_int(lit.value, lit.type()->bit_size());
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(BoolLiteral& lit)
+llvm::Value* CodegenExprVisitor::on_visit(BoolLiteral& lit)
 {
     return m_gen.m_ir_builder.getIntN(lit.type()->bit_size(), lit.value);
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(FloatLiteral& lit)
+llvm::Value* CodegenExprVisitor::on_visit(FloatLiteral& lit)
 {
     return llvm::ConstantFP::get(m_gen.m_context, llvm::APFloat(lit.value));
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(VariableExpression& var_expr)
+llvm::Value* CodegenExprVisitor::on_visit(VariableExpression& var_expr)
 {
     llvm::Value* src_var = m_gen.m_vars[var_expr.variable];
     assert(src_var != nullptr);
@@ -159,7 +159,7 @@ llvm::Value* CodegenExprVisitor::visit_impl(VariableExpression& var_expr)
     return m_gen.m_ir_builder.CreateLoad(src_var, var_expr.variable->name);
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(UnaryExpression& expr)
+llvm::Value* CodegenExprVisitor::on_visit(UnaryExpression& expr)
 {
     llvm::Value* right_code = visit(*expr.right);
     llvm::Value* operand = load_if_needed(m_gen.m_ir_builder, expr.right.get(), right_code);
@@ -183,7 +183,7 @@ llvm::Value* CodegenExprVisitor::visit_impl(UnaryExpression& expr)
     }
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(BinaryExpression& expr)
+llvm::Value* CodegenExprVisitor::on_visit(BinaryExpression& expr)
 {
     bool type_is_signed = false;
     if(expr.left->type()->kind() == TypeKind::Range) {
@@ -262,7 +262,7 @@ llvm::Value* CodegenExprVisitor::visit_impl(BinaryExpression& expr)
     }
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(FunctionCall& call)
+llvm::Value* CodegenExprVisitor::on_visit(FunctionCall& call)
 {
     llvm::Function* funct_to_call = m_gen.m_module.getFunction(call.name());
     assert(funct_to_call != nullptr);
@@ -281,7 +281,7 @@ llvm::Value* CodegenExprVisitor::visit_impl(FunctionCall& call)
     return call_instr;
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(IndexOp& expr)
+llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
 {
     assert(expr.base_expr->kind() == ExprKind::Variable);
     const Variable* var = static_cast<VariableExpression*>(expr.base_expr.get())->variable;
@@ -312,7 +312,7 @@ llvm::Value* CodegenExprVisitor::visit_impl(IndexOp& expr)
     return m_gen.m_ir_builder.CreateLoad(array_type->getElementType(), ptr, "arr_elem");
 }
 
-llvm::Value* CodegenExprVisitor::visit_impl(InitList& init_list)
+llvm::Value* CodegenExprVisitor::on_visit(InitList& init_list)
 {
     llvm::Type* array_type = m_gen.to_llvm_type(init_list.type());
     llvm::Value* alloc = m_gen.prepend_alloca(

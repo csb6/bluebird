@@ -11,17 +11,17 @@ public:
     CleanupExprVisitor(std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& anon_ptr_types)
         : m_anon_ptr_types(anon_ptr_types) {}
 
-    void visit_impl(StringLiteral&) {}
-    void visit_impl(CharLiteral&) {}
-    void visit_impl(IntLiteral&) {}
-    void visit_impl(BoolLiteral&) {}
-    void visit_impl(FloatLiteral&) {}
-    void visit_impl(VariableExpression&) {}
-    void visit_impl(BinaryExpression&);
-    void visit_impl(UnaryExpression&);
-    void visit_impl(FunctionCall&);
-    void visit_impl(IndexOp&);
-    void visit_impl(InitList&);
+    void on_visit(StringLiteral&) {}
+    void on_visit(CharLiteral&) {}
+    void on_visit(IntLiteral&) {}
+    void on_visit(BoolLiteral&) {}
+    void on_visit(FloatLiteral&) {}
+    void on_visit(VariableExpression&) {}
+    void on_visit(BinaryExpression&);
+    void on_visit(UnaryExpression&);
+    void on_visit(FunctionCall&);
+    void on_visit(IndexOp&);
+    void on_visit(InitList&);
 };
 
 class CleanupStmtVisitor : public StmtVisitor<CleanupStmtVisitor> {
@@ -32,13 +32,13 @@ public:
                        std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& anon_ptr_types)
         : m_curr_funct(curr_funct), m_anon_ptr_types(anon_ptr_types) {}
 
-    void visit_impl(BasicStatement&);
-    void visit_impl(Initialization&);
-    void visit_impl(Assignment&);
-    void visit_impl(IfBlock&);
-    void visit_impl(Block&);
-    void visit_impl(WhileLoop&);
-    void visit_impl(ReturnStatement&);
+    void on_visit(BasicStatement&);
+    void on_visit(Initialization&);
+    void on_visit(Assignment&);
+    void on_visit(IfBlock&);
+    void on_visit(Block&);
+    void on_visit(WhileLoop&);
+    void on_visit(ReturnStatement&);
 };
 
 Cleanup::Cleanup(std::vector<Magnum::Pointer<Function>>& functions,
@@ -166,7 +166,7 @@ void visit_child(std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& anon
     fold_constants(child);
 }
 
-void CleanupExprVisitor::visit_impl(UnaryExpression& expr)
+void CleanupExprVisitor::on_visit(UnaryExpression& expr)
 {
     visit_child(m_anon_ptr_types, expr.right);
 
@@ -193,7 +193,7 @@ void CleanupExprVisitor::visit_impl(UnaryExpression& expr)
     }
 }
 
-void CleanupExprVisitor::visit_impl(BinaryExpression& expr)
+void CleanupExprVisitor::on_visit(BinaryExpression& expr)
 {
     visit_child(m_anon_ptr_types, expr.left);
     visit_child(m_anon_ptr_types, expr.right);
@@ -201,7 +201,7 @@ void CleanupExprVisitor::visit_impl(BinaryExpression& expr)
     set_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
 }
 
-void CleanupExprVisitor::visit_impl(FunctionCall& call)
+void CleanupExprVisitor::on_visit(FunctionCall& call)
 {
     if(call.definition->parameters.size() != call.arguments.size()) {
         Error(call.line_num()).put("Function").quote(call.name()).put("expects ")
@@ -216,7 +216,7 @@ void CleanupExprVisitor::visit_impl(FunctionCall& call)
     }
 }
 
-void CleanupExprVisitor::visit_impl(IndexOp& expr)
+void CleanupExprVisitor::on_visit(IndexOp& expr)
 {
     // Base expression will not consist of anything that can be simplified down
     // to a single literal (because it is some sort of variable usage), so no need
@@ -235,7 +235,7 @@ void CleanupExprVisitor::visit_impl(IndexOp& expr)
     set_literal_type(expr.index_expr.get(), expr.base_expr.get(), array_type->index_type);
 }
 
-void CleanupExprVisitor::visit_impl(InitList& expr)
+void CleanupExprVisitor::on_visit(InitList& expr)
 {
     for(auto& val : expr.values) {
         visit_child(m_anon_ptr_types, val);
@@ -243,12 +243,12 @@ void CleanupExprVisitor::visit_impl(InitList& expr)
 }
 
 
-void CleanupStmtVisitor::visit_impl(BasicStatement& stmt)
+void CleanupStmtVisitor::on_visit(BasicStatement& stmt)
 {
     visit_child(m_anon_ptr_types, stmt.expression);
 }
 
-void CleanupStmtVisitor::visit_impl(Initialization& stmt)
+void CleanupStmtVisitor::on_visit(Initialization& stmt)
 {
     if(stmt.expression != nullptr) {
         visit_child(m_anon_ptr_types, stmt.expression);
@@ -257,7 +257,7 @@ void CleanupStmtVisitor::visit_impl(Initialization& stmt)
     }
 }
 
-void CleanupStmtVisitor::visit_impl(Assignment& stmt)
+void CleanupStmtVisitor::on_visit(Assignment& stmt)
 {
     visit_child(m_anon_ptr_types, stmt.expression);
     set_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
@@ -267,29 +267,29 @@ void CleanupStmtVisitor::visit_impl(Assignment& stmt)
     }
 }
 
-void CleanupStmtVisitor::visit_impl(IfBlock& stmt)
+void CleanupStmtVisitor::on_visit(IfBlock& stmt)
 {
     visit_child(m_anon_ptr_types, stmt.condition);
-    visit_impl(static_cast<Block&>(stmt));
+    on_visit(static_cast<Block&>(stmt));
     if(stmt.else_or_else_if != nullptr) {
         visit(*stmt.else_or_else_if);
     }
 }
 
-void CleanupStmtVisitor::visit_impl(Block& block)
+void CleanupStmtVisitor::on_visit(Block& block)
 {
     for(auto& stmt : block.statements) {
         visit(*stmt);
     }
 }
 
-void CleanupStmtVisitor::visit_impl(WhileLoop& loop)
+void CleanupStmtVisitor::on_visit(WhileLoop& loop)
 {
     visit_child(m_anon_ptr_types, loop.condition);
-    visit_impl(static_cast<Block&>(loop));
+    on_visit(static_cast<Block&>(loop));
 }
 
-void CleanupStmtVisitor::visit_impl(ReturnStatement& stmt)
+void CleanupStmtVisitor::on_visit(ReturnStatement& stmt)
 {
     assert(m_curr_funct != nullptr);
     if(stmt.expression != nullptr) {
