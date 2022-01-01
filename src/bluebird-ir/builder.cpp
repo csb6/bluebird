@@ -160,11 +160,12 @@ public:
     }
 };
 
-static void set_builder_to_entry_block(mlir::OpBuilder& builder, mlir::FuncOp function)
+static mlir::Block& getEntryBlock(mlir::FuncOp function)
 {
+    assert(!function.getBlocks().empty());
     auto& entry_block = function.getBlocks().front();
     assert(entry_block.isEntryBlock());
-    builder.setInsertionPointToStart(&entry_block);
+    return entry_block;
 }
 
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
@@ -183,7 +184,8 @@ public:
     void set_function(mlir::FuncOp function)
     {
         m_curr_function = function;
-        set_builder_to_entry_block(m_builder, function);
+        auto& entry_block = getEntryBlock(function);
+        m_builder.setInsertionPointToStart(&entry_block);
     }
 
     void visit_impl(BasicStatement& stmt)
@@ -197,7 +199,8 @@ public:
 
         // Put allocas at start of function's entry block
         auto oldInsertionPoint = m_builder.saveInsertionPoint();
-        set_builder_to_entry_block(m_builder, m_curr_function);
+        auto& entry_block = getEntryBlock(m_curr_function);
+        m_builder.setInsertionPointToStart(&entry_block);
         auto alloca = m_builder.create<mlir::memref::AllocaOp>(getLoc(m_builder, var_decl.line_num()),
                                                                std::move(memref_type));
         m_builder.restoreInsertionPoint(oldInsertionPoint);
@@ -206,19 +209,7 @@ public:
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
-    void visit_impl(Assignment&)
-    {
-        // TODO: Idea: represent mutable variables using memref dialect, but structure
-        //  all bluebirdIR ops to accept pointers as operands so no need for loads/stores
-        //  until lowering to LLVM IR (this means in LLVM each bluebirdIR.add becomes 2
-        //  llvm.loads and an llvm.add instruction). To represent Bluebird pointer types, there can
-        //  be a parameterized type PointerType that has the semantics of pointers and is
-        //  not accepted in the value-specific operations (like arithmetic).
-        //  The prevents bluebirdIR from getting cluttered with loads everywhere while
-        //  still making mutable variables easy to represent. There will still be some stores
-        //  (e.g. to put a value in the result pointer's location), but fewer loads (will be some
-        //  when copying/passing by value). We would do mem2reg like normal after lowering to LLVM IR.
-    }
+    void visit_impl(Assignment&) {}
     void visit_impl(IfBlock&) {}
     void visit_impl(Block&) {}
     void visit_impl(WhileLoop&) {}
@@ -247,7 +238,10 @@ void Builder::run()
             for(auto& param : user_function->parameters) {
                 param_types.push_back(to_mlir_type(m_context, param->type));
             }
-            auto result_type = to_mlir_type(m_context, user_function->return_type);
+            mlir::TypeRange result_type = to_mlir_type(m_context, user_function->return_type);
+            if(result_type.front().isa<mlir::NoneType>()) {
+                result_type = {};
+            }
             auto func_type = m_builder.getFunctionType(param_types, result_type);
             auto mlir_funct = m_builder.create<mlir::FuncOp>(getLoc(m_builder, user_function->line_num()),
                                                              user_function->name,
@@ -262,9 +256,15 @@ void Builder::run()
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             auto* user_function = static_cast<BBFunction*>(function.get());
-            stmt_visitor.set_function(m_mlir_functions[user_function]);
+            auto& mlir_function = m_mlir_functions[user_function];
+            stmt_visitor.set_function(mlir_function);
             for(auto& statement : user_function->body.statements) {
                 stmt_visitor.visit(*statement.get());
+            }
+            auto& entry_block = getEntryBlock(mlir_function);
+            if(user_function->return_type == &Type::Void) {
+                m_builder.setInsertionPointToEnd(&entry_block);
+                m_builder.create<mlir::ReturnOp>(m_builder.getUnknownLoc(), mlir::None);
             }
         }
     }
