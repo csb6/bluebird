@@ -22,3 +22,8 @@ function void() is
    27;
    let b: Integer := 67;
 end;
+
+function with_args(a: Integer, b: Boolean) is
+   a := 1 + 2;
+   b := true or false;
+end;

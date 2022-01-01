@@ -193,11 +193,27 @@ public:
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions),
           m_expr_visitor(m_builder, m_sse_vars, m_mlir_functions) {}
 
-    void set_function(mlir::FuncOp function)
+    void set_function_and_alloca_args(const BBFunction& user_function, mlir::FuncOp mlir_function)
     {
-        m_curr_function = function;
-        auto& entry_block = getEntryBlock(function);
+        m_curr_function = mlir_function;
+        auto& entry_block = getEntryBlock(mlir_function);
         m_builder.setInsertionPointToStart(&entry_block);
+
+        // Arguments are passed as SSA values, so create allocas for them so they can be modified in
+        // the function body
+        auto argLoc = mlir_function.getLoc();
+        llvm::SmallVector<mlir::Value, 4> param_allocas;
+        for(auto& ast_param : user_function.parameters) {
+            auto memref_type = mlir::MemRefType::get(
+                        {}, to_mlir_type(*m_builder.getContext(), ast_param->type));
+            auto alloca = m_builder.create<mlir::memref::AllocaOp>(argLoc, std::move(memref_type));
+            m_sse_vars.insert_or_assign(ast_param.get(), alloca);
+            param_allocas.push_back(std::move(alloca));
+        }
+        assert(param_allocas.size() == mlir_function.getArguments().size());
+        for(auto[alloca, mlir_arg] : llvm::zip(param_allocas, mlir_function.getArguments())) {
+            m_builder.create<mlir::memref::StoreOp>(argLoc, mlir_arg, std::move(alloca));
+        }
     }
 
     void on_visit(BasicStatement& stmt)
@@ -208,17 +224,17 @@ public:
     {
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
+        auto loc = getLoc(m_builder, var_decl.line_num());
 
         // Put allocas at start of function's entry block
         auto oldInsertionPoint = m_builder.saveInsertionPoint();
         auto& entry_block = getEntryBlock(m_curr_function);
         m_builder.setInsertionPointToStart(&entry_block);
-        auto alloca = m_builder.create<mlir::memref::AllocaOp>(getLoc(m_builder, var_decl.line_num()),
-                                                               std::move(memref_type));
+        auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, std::move(memref_type));
         m_builder.restoreInsertionPoint(oldInsertionPoint);
         if(var_decl.expression != nullptr) {
             auto value = m_expr_visitor.visitAndGetResult(var_decl.expression.get());
-            m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca);
+            m_builder.create<mlir::memref::StoreOp>(loc, value, alloca);
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
@@ -289,7 +305,8 @@ void Builder::run()
         if(function->kind() == FunctionKind::Normal) {
             auto* user_function = static_cast<BBFunction*>(function.get());
             auto& mlir_function = m_mlir_functions[user_function];
-            stmt_visitor.set_function(mlir_function);
+            stmt_visitor.set_function_and_alloca_args(*user_function, mlir_function);
+
             for(auto& statement : user_function->body.statements) {
                 stmt_visitor.visit(*statement.get());
             }
