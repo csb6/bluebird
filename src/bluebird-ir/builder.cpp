@@ -160,17 +160,31 @@ public:
     }
 };
 
+static void set_builder_to_entry_block(mlir::OpBuilder& builder, mlir::FuncOp function)
+{
+    auto& entry_block = function.getBlocks().front();
+    assert(entry_block.isEntryBlock());
+    builder.setInsertionPointToStart(&entry_block);
+}
+
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
     mlir::OpBuilder& m_builder;
     std::unordered_map<const struct Variable*, mlir::Value>& m_sse_vars;
     const std::unordered_map<const struct Function*, mlir::FuncOp>& m_mlir_functions;
     IRExprVisitor m_expr_visitor;
+    mlir::FuncOp m_curr_function;
 public:
     IRStmtVisitor(mlir::OpBuilder& builder,
                   std::unordered_map<const Variable*, mlir::Value>& sse_vars,
                   const std::unordered_map<const Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions),
           m_expr_visitor(m_builder, m_sse_vars, m_mlir_functions) {}
+
+    void set_function(mlir::FuncOp function)
+    {
+        m_curr_function = function;
+        set_builder_to_entry_block(m_builder, function);
+    }
 
     void visit_impl(BasicStatement& stmt)
     {
@@ -180,8 +194,13 @@ public:
     {
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
+
+        // Put allocas at start of function's entry block
+        auto oldInsertionPoint = m_builder.saveInsertionPoint();
+        set_builder_to_entry_block(m_builder, m_curr_function);
         auto alloca = m_builder.create<mlir::memref::AllocaOp>(getLoc(m_builder, var_decl.line_num()),
                                                                std::move(memref_type));
+        m_builder.restoreInsertionPoint(oldInsertionPoint);
         if(var_decl.expression != nullptr) {
             //auto value = m_expr_visitor.visitAndGetResult(var_decl.expression.get());
         }
@@ -230,11 +249,11 @@ void Builder::run()
             }
             auto result_type = to_mlir_type(m_context, user_function->return_type);
             auto func_type = m_builder.getFunctionType(param_types, result_type);
-            m_mlir_functions.insert_or_assign(user_function,
-                                              mlir::FuncOp::create(
-                                                  getLoc(m_builder, user_function->line_num()),
-                                                  user_function->name,
-                                                  std::move(func_type)));
+            auto mlir_funct = m_builder.create<mlir::FuncOp>(getLoc(m_builder, user_function->line_num()),
+                                                             user_function->name,
+                                                             func_type);
+            mlir_funct.addEntryBlock();
+            m_mlir_functions.insert_or_assign(user_function, mlir_funct);
             param_types.clear();
         }
     }
@@ -243,6 +262,7 @@ void Builder::run()
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             auto* user_function = static_cast<BBFunction*>(function.get());
+            stmt_visitor.set_function(m_mlir_functions[user_function]);
             for(auto& statement : user_function->body.statements) {
                 stmt_visitor.visit(*statement.get());
             }
