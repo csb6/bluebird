@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -156,7 +156,7 @@ llvm::Value* CodegenExprVisitor::on_visit(VariableExpression& var_expr)
     // TODO: fix issue where when dealing with pointer values, there are sometimes
     // unnecessary loads originating here. Doesn't affect correctness and probably
     // always removed by LLVM optimization passes, but not ideal
-    return m_gen.m_ir_builder.CreateLoad(src_var, var_expr.variable->name);
+    return m_gen.m_ir_builder.CreateLoad(src_var->getType(), src_var, var_expr.variable->name);
 }
 
 llvm::Value* CodegenExprVisitor::on_visit(UnaryExpression& expr)
@@ -176,7 +176,7 @@ llvm::Value* CodegenExprVisitor::on_visit(UnaryExpression& expr)
         return load_instr->getPointerOperand();
     }
     case TokenType::Op_To_Val:
-        return m_gen.m_ir_builder.CreateLoad(operand, "to_valtemp");
+        return m_gen.m_ir_builder.CreateLoad(operand->getType(), operand, "to_valtemp");
     default:
         assert(false && "Unknown unary operator");
         return nullptr;

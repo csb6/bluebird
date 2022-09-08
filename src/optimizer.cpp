@@ -6,7 +6,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Passes/PassBuilder.h>
-#include <llvm/Transforms/Utils/Mem2Reg.h>
 #include <llvm/Transforms/Scalar/ADCE.h>
 #include <llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h>
 #include <llvm/Transforms/Scalar/Reassociate.h>
@@ -33,14 +32,15 @@ void optimize(llvm::Module& module)
     llvm::ModulePassManager module_manager;
     {
         llvm::FunctionPassManager funct_manager;
-        // mem2reg
-        funct_manager.addPass(llvm::PromotePass());
+        // Try to convert aggregates to multiple scalar allocas, then convert to SSA
+        // where possible. Also does mem2reg stuff
+        funct_manager.addPass(llvm::SROAPass());
         // Aggressive Instruction Combine
         funct_manager.addPass(llvm::AggressiveInstCombinePass());
         // Reassociate (reorder expressions to improve constant propagation)
         funct_manager.addPass(llvm::ReassociatePass());
         // Eliminate common subexpressions
-        funct_manager.addPass(llvm::GVN());
+        funct_manager.addPass(llvm::GVNPass());
         // Constant Propagation
         funct_manager.addPass(llvm::SCCPPass());
         // Aggressive Dead Code Elimination
@@ -67,7 +67,7 @@ void optimize(llvm::Module& module)
         funct_manager.addPass(llvm::SLPVectorizerPass());
         // Try to convert aggregates to multiple scalar allocas, then convert to SSA
         // where possible
-        funct_manager.addPass(llvm::SROA());
+        funct_manager.addPass(llvm::SROAPass());
         // Interprocedural Constant Propagation
         funct_manager.addPass(llvm::SCCPPass());
         // Enables function passes to be used on a module

@@ -9,6 +9,7 @@
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/Dialect/Arithmetic/IR/Arithmetic.h>
 #include <mlir/IR/Verifier.h>
 #pragma GCC diagnostic pop
 #include <iostream>
@@ -94,36 +95,36 @@ public:
         switch(expr.op) {
         case TokenType::Op_Plus:
             if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::AddIOp>(loc, left, right);
+                return m_builder.create<mlir::arith::AddIOp>(loc, left, right);
             } else {
-                return m_builder.create<mlir::AddFOp>(loc, left, right);
+                return m_builder.create<mlir::arith::AddFOp>(loc, left, right);
             }
         case TokenType::Op_Minus:
             if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::SubIOp>(loc, left, right);
+                return m_builder.create<mlir::arith::SubIOp>(loc, left, right);
             } else {
-                return m_builder.create<mlir::SubFOp>(loc, left, right);
+                return m_builder.create<mlir::arith::SubFOp>(loc, left, right);
             }
         case TokenType::Op_Div:
             return m_builder.create<bluebirdIR::DivideOp>(loc, left, right);
         case TokenType::Op_Mult:
             if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::MulIOp>(loc, left, right);
+                return m_builder.create<mlir::arith::MulIOp>(loc, left, right);
             } else {
-                return m_builder.create<mlir::MulFOp>(loc, left, right);
+                return m_builder.create<mlir::arith::MulFOp>(loc, left, right);
             }
         case TokenType::Op_And:
-            return m_builder.create<mlir::AndOp>(loc, left, right);
+            return m_builder.create<mlir::arith::AndIOp>(loc, left, right);
         case TokenType::Op_Or:
-            return m_builder.create<mlir::OrOp>(loc, left, right);
+            return m_builder.create<mlir::arith::OrIOp>(loc, left, right);
         case TokenType::Op_Xor:
-            return m_builder.create<mlir::XOrOp>(loc, left, right);
+            return m_builder.create<mlir::arith::XOrIOp>(loc, left, right);
         case TokenType::Op_Eq:
             // TODO: do float version
-            return m_builder.create<mlir::CmpIOp>(loc, mlir::CmpIPredicate::eq, left, right);
+            return m_builder.create<mlir::arith::CmpIOp>(loc, mlir::arith::CmpIPredicate::eq, left, right);
         case TokenType::Op_Ne:
             // TODO: do float version
-            return m_builder.create<mlir::CmpIOp>(loc, mlir::CmpIPredicate::ne, left, right);
+            return m_builder.create<mlir::arith::CmpIOp>(loc, mlir::arith::CmpIPredicate::ne, left, right);
         case TokenType::Op_Lt:
             //return m_builder.create<mlir::CmpIOp>(loc, left, right);
         case TokenType::Op_Gt:

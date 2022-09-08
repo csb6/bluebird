@@ -1,5 +1,5 @@
 # Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-#    Copyright (C) 2020-2021  Cole Blakley
+#    Copyright (C) 2020-2022  Cole Blakley
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as published
@@ -20,7 +20,7 @@ project(Bluebird)
 
 # For some reason CMake can't find LLVM on macOS,
 # so we need to give it some help
-find_package(LLVM 13.0 REQUIRED CONFIG
+find_package(LLVM 14.0 REQUIRED CONFIG
     HINTS /usr/local/opt/llvm/lib/cmake/llvm)
 
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -43,9 +43,9 @@ add_subdirectory(third_party/mini-gmp)
 
 llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
 list(APPEND LLVM_LIBS MLIRIR MLIRSupport MLIRDialectUtils
-     MLIRTensor MLIRStandard MLIRMemRefTransforms MLIRMemRef MLIRMemRefUtils
+     MLIRStandard MLIRMemRefTransforms MLIRMemRef MLIRMemRefUtils
      MLIRSideEffectInterfaces MLIRControlFlowInterfaces MLIRViewLikeInterface
-     MLIRInferTypeOpInterface)
+     MLIRInferTypeOpInterface MLIRArithmetic)
 target_link_libraries(bluebird ${LLVM_LIBS})
 
 #libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
