@@ -14,7 +14,7 @@ namespace bluebirdIR {
 BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
     : mlir::Dialect(getDialectNamespace(), context, mlir::TypeID::get<BluebirdIRDialect>())
 {
-    addOperations<IntConstantOp,
+    addOperations<BoolConstantOp, CharConstantOp, IntConstantOp,
                   DivideOp,
                   NegateOp, NotOp>();
     addTypes<RangeType, IntLiteralType>();
@@ -27,7 +27,7 @@ void BluebirdIRDialect::printType(mlir::Type, mlir::DialectAsmPrinter&) const
 void BluebirdIRDialect::printAttribute(mlir::Attribute attr, mlir::DialectAsmPrinter& printer) const
 {
     if(auto intLiteral = attr.dyn_cast<IntLiteralAttr>()) {
-        printer << "bluebirdIR.intLiteral = " << intLiteral.getValue().str();
+        printer << "intLiteral = " << intLiteral.getValue().str();
     } else {
         attr.print(printer.getStream());
     }
@@ -67,6 +67,18 @@ const multi_int& IntLiteralAttr::getValue() const
     return getImpl()->value;
 }
 
+
+void BoolConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, bool value, mlir::Type type)
+{
+    state.addAttribute("value", builder.getBoolAttr(value));
+    state.types.push_back(type);
+}
+
+void CharConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, char value, mlir::Type type)
+{
+    state.addAttribute("value", builder.getI8IntegerAttr(value));
+    state.types.push_back(builder.getI8Type());
+}
 
 void IntConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state,
                           const multi_int& value, mlir::Type type)

@@ -65,6 +65,24 @@ public:
                      mlir::OpTrait::ConstantLike>::BluebirdOp;
 };
 
+class BoolConstantOp : public ConstantOp<BoolConstantOp> {
+public:
+    using ConstantOp::ConstantOp;
+
+    static llvm::StringRef getOperationName() { return "bluebirdIR.boolConstant"; }
+
+    static void build(mlir::OpBuilder&, mlir::OperationState&, bool value, mlir::Type);
+};
+
+class CharConstantOp : public ConstantOp<CharConstantOp> {
+public:
+    using ConstantOp::ConstantOp;
+
+    static llvm::StringRef getOperationName() { return "bluebirdIR.charConstant"; }
+
+    static void build(mlir::OpBuilder&, mlir::OperationState&, char value, mlir::Type);
+};
+
 class IntConstantOp : public ConstantOp<IntConstantOp> {
 public:
     using ConstantOp::ConstantOp;

@@ -62,10 +62,10 @@ public:
     mlir::OpState on_visit(StringLiteral&) {}
     mlir::OpState on_visit(CharLiteral& literal)
     {
-        auto mlir_type = to_mlir_type(*m_builder.getContext(), literal.type());
-        return m_builder.create<mlir::ConstantOp>(
+        return m_builder.create<bluebirdIR::CharConstantOp>(
                     getLoc(m_builder, literal.line_num()),
-                    mlir::IntegerAttr::get(mlir_type, literal.value));
+                    literal.value,
+                    to_mlir_type(*m_builder.getContext(), literal.type()));
     }
     mlir::OpState on_visit(IntLiteral& literal)
     {
@@ -76,9 +76,10 @@ public:
     }
     mlir::OpState on_visit(BoolLiteral& literal)
     {
-        return m_builder.create<mlir::ConstantOp>(
+        return m_builder.create<bluebirdIR::BoolConstantOp>(
                     getLoc(m_builder, literal.line_num()),
-                    mlir::BoolAttr::get(m_builder.getContext(), literal.value));
+                    literal.value,
+                    to_mlir_type(*m_builder.getContext(), literal.type()));
     }
     mlir::OpState on_visit(FloatLiteral&) {}
     mlir::OpState on_visit(VariableExpression& expr)
@@ -272,7 +273,8 @@ Builder::Builder(std::vector<Magnum::Pointer<Function>>& functions,
       m_builder(m_module.getRegion()),
       m_functions(functions), m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)
 {
-    m_context.loadDialect<BluebirdIRDialect, mlir::StandardOpsDialect, mlir::memref::MemRefDialect>();
+    m_context.loadDialect<BluebirdIRDialect, mlir::StandardOpsDialect, mlir::arith::ArithmeticDialect,
+                          mlir::memref::MemRefDialect, mlir::scf::SCFDialect>();
 }
 
 void Builder::run()

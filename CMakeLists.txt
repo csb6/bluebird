@@ -45,7 +45,8 @@ llvm_map_components_to_libnames(LLVM_LIBS core native option passes)
 list(APPEND LLVM_LIBS MLIRIR MLIRSupport MLIRDialectUtils
      MLIRStandard MLIRMemRefTransforms MLIRMemRef MLIRMemRefUtils
      MLIRSideEffectInterfaces MLIRControlFlowInterfaces MLIRViewLikeInterface
-     MLIRInferTypeOpInterface MLIRArithmetic)
+     MLIRInferTypeOpInterface MLIRArithmetic MLIRSCF MLIRBufferization
+     MLIRTensor MLIRComplex)
 target_link_libraries(bluebird ${LLVM_LIBS})
 
 #libfuzzer build mode - fuzzes lexer (does not work with AppleClang)
