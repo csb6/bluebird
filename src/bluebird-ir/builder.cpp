@@ -10,6 +10,7 @@
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/Arithmetic/IR/Arithmetic.h>
+#include <mlir/Dialect/SCF/SCF.h>
 #include <mlir/IR/Verifier.h>
 #pragma GCC diagnostic pop
 #include <iostream>
@@ -247,8 +248,46 @@ public:
         auto value = m_expr_visitor.visitAndGetResult(asgmt.expression.get());
         m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca->second);
     }
-    void on_visit(IfBlock&) {}
-    void on_visit(Block&) {}
+    void on_visit(IfBlock& if_else_stmt)
+    {
+        auto condition = m_expr_visitor.visitAndGetResult(if_else_stmt.condition.get());
+        auto loc = getLoc(m_builder, if_else_stmt.line_num());
+        bool has_else_or_else_if = if_else_stmt.else_or_else_if != nullptr;
+
+        auto if_else_block = m_builder.create<mlir::scf::IfOp>(loc, condition, has_else_or_else_if);
+        auto old_insert_point = m_builder.saveInsertionPoint();
+        m_builder.setInsertionPointToStart(if_else_block.thenBlock());
+        for(auto& stmt : if_else_stmt.statements) {
+            visit(*stmt);
+        }
+
+        if(has_else_or_else_if) {
+            auto* else_block = if_else_block.elseBlock();
+            assert(else_block != nullptr);
+            m_builder.setInsertionPointToStart(else_block);
+            if(if_else_stmt.else_or_else_if->kind() == StmtKind::IfBlock) {
+                // Else-if block (create a new if-block inside the else block)
+                visit(*if_else_stmt.else_or_else_if);
+            } else {
+                // Else block (just put the statements directly into this else block)
+                for(auto& stmt : if_else_stmt.else_or_else_if->statements) {
+                    visit(*stmt);
+                }
+            }
+        }
+        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+    }
+    void on_visit(Block& block)
+    {
+        auto loc = getLoc(m_builder, block.line_num());
+        auto region = m_builder.create<mlir::scf::ExecuteRegionOp>(loc, m_builder.getNoneType());
+        auto old_insert_point = m_builder.saveInsertionPoint();
+        m_builder.setInsertionPoint(region);
+        for(auto& stmt : block.statements) {
+            visit(*stmt);
+        }
+        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+    }
     void on_visit(WhileLoop&) {}
     void on_visit(ReturnStatement& stmt)
     {
