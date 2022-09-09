@@ -15,7 +15,7 @@
 #pragma GCC diagnostic pop
 #include <iostream>
 
-static mlir::Location getLoc(mlir::OpBuilder& builder, unsigned int line_num)
+static mlir::Location to_loc(mlir::OpBuilder& builder, unsigned int line_num)
 {
     return mlir::FileLineColLoc::get(builder.getContext(), "", line_num, 1);
 }
@@ -50,6 +50,27 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     }
 }
 
+static constexpr struct {
+    mlir::arith::CmpIPredicate s_cmp;
+    mlir::arith::CmpIPredicate u_cmp;
+} cmp_instr_lookup[] = {
+    /*Op_Lt*/ {mlir::arith::CmpIPredicate::slt, mlir::arith::CmpIPredicate::ult},
+    /*Op_Gt*/ {mlir::arith::CmpIPredicate::sgt, mlir::arith::CmpIPredicate::ugt},
+    /*Op_Le*/ {mlir::arith::CmpIPredicate::sle, mlir::arith::CmpIPredicate::ule},
+    /*Op_Ge*/ {mlir::arith::CmpIPredicate::sge, mlir::arith::CmpIPredicate::uge}
+};
+static_assert((int)TokenType::Op_Lt + 3 == (int)TokenType::Op_Ge);
+
+static
+mlir::arith::CmpIPredicate get_cmp_pred(TokenType op_type, bool is_signed)
+{
+    if(is_signed) {
+        return cmp_instr_lookup[(int)op_type - (int)TokenType::Op_Lt].s_cmp;
+    } else {
+        return cmp_instr_lookup[(int)op_type - (int)TokenType::Op_Lt].u_cmp;
+    }
+}
+
 class IRExprVisitor : public ExprVisitor<IRExprVisitor> {
     mlir::OpBuilder& m_builder;
     std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
@@ -64,21 +85,21 @@ public:
     mlir::OpState on_visit(CharLiteral& literal)
     {
         return m_builder.create<bluebirdIR::CharConstantOp>(
-                    getLoc(m_builder, literal.line_num()),
+                    to_loc(m_builder, literal.line_num()),
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
     mlir::OpState on_visit(IntLiteral& literal)
     {
         return m_builder.create<bluebirdIR::IntConstantOp>(
-                    getLoc(m_builder, literal.line_num()),
+                    to_loc(m_builder, literal.line_num()),
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
     mlir::OpState on_visit(BoolLiteral& literal)
     {
         return m_builder.create<bluebirdIR::BoolConstantOp>(
-                    getLoc(m_builder, literal.line_num()),
+                    to_loc(m_builder, literal.line_num()),
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
@@ -87,13 +108,20 @@ public:
     {
         auto it = m_sse_vars.find(expr.variable);
         assert(it != m_sse_vars.end());
-        return m_builder.create<mlir::memref::LoadOp>(getLoc(m_builder, expr.line_num()), it->second);
+        return m_builder.create<mlir::memref::LoadOp>(to_loc(m_builder, expr.line_num()), it->second);
     }
     mlir::OpState on_visit(BinaryExpression& expr)
     {
         auto left = visitAndGetResult(expr.left.get());
         auto right = visitAndGetResult(expr.right.get());
-        auto loc = getLoc(m_builder, expr.line_num());
+        auto loc = to_loc(m_builder, expr.line_num());
+        bool is_signed = false;
+        if(expr.left->type()->kind() == TypeKind::Range) {
+            is_signed = static_cast<const RangeType*>(expr.left->type())->is_signed();
+        } else if(expr.right->type()->kind() == TypeKind::Range) {
+            is_signed = static_cast<const RangeType*>(expr.right->type())->is_signed();
+        }
+
         switch(expr.op) {
         case TokenType::Op_Plus:
             if(expr.type()->kind() == TypeKind::Range) {
@@ -128,13 +156,10 @@ public:
             // TODO: do float version
             return m_builder.create<mlir::arith::CmpIOp>(loc, mlir::arith::CmpIPredicate::ne, left, right);
         case TokenType::Op_Lt:
-            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
         case TokenType::Op_Gt:
-            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
         case TokenType::Op_Le:
-            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
         case TokenType::Op_Ge:
-            //return m_builder.create<mlir::CmpIOp>(loc, left, right);
+            return m_builder.create<mlir::arith::CmpIOp>(loc, get_cmp_pred(expr.op, is_signed), left, right);
         default:
             assert(false);
         }
@@ -142,7 +167,7 @@ public:
     mlir::OpState on_visit(UnaryExpression& expr)
     {
         auto right = visitAndGetResult(expr.right.get());
-        auto loc = getLoc(m_builder, expr.line_num());
+        auto loc = to_loc(m_builder, expr.line_num());
         switch(expr.op) {
         case TokenType::Op_Minus:
             return m_builder.create<bluebirdIR::NegateOp>(loc, right);
@@ -161,7 +186,7 @@ public:
         auto function_def = m_mlir_functions.find(function_call.definition);
         assert(function_def != m_mlir_functions.end());
 
-        return m_builder.create<mlir::CallOp>(getLoc(m_builder, function_call.line_num()),
+        return m_builder.create<mlir::CallOp>(to_loc(m_builder, function_call.line_num()),
                                               function_def->second,
                                               mlir::ValueRange(arguments));
     }
@@ -227,7 +252,7 @@ public:
     {
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
-        auto loc = getLoc(m_builder, var_decl.line_num());
+        auto loc = to_loc(m_builder, var_decl.line_num());
 
         // Put allocas at start of function's entry block
         auto oldInsertionPoint = m_builder.saveInsertionPoint();
@@ -251,7 +276,7 @@ public:
     void on_visit(IfBlock& if_else_stmt)
     {
         auto condition = m_expr_visitor.visitAndGetResult(if_else_stmt.condition.get());
-        auto loc = getLoc(m_builder, if_else_stmt.line_num());
+        auto loc = to_loc(m_builder, if_else_stmt.line_num());
         bool has_else_or_else_if = if_else_stmt.else_or_else_if != nullptr;
 
         auto if_else_block = m_builder.create<mlir::scf::IfOp>(loc, condition, has_else_or_else_if);
@@ -279,7 +304,7 @@ public:
     }
     void on_visit(Block& block)
     {
-        auto loc = getLoc(m_builder, block.line_num());
+        auto loc = to_loc(m_builder, block.line_num());
         auto region = m_builder.create<mlir::scf::ExecuteRegionOp>(loc, m_builder.getNoneType());
         auto old_insert_point = m_builder.saveInsertionPoint();
         m_builder.setInsertionPoint(region);
@@ -293,7 +318,7 @@ public:
     {
         if(stmt.expression == nullptr) {
             // In void function
-            m_builder.create<mlir::ReturnOp>(getLoc(m_builder, stmt.line_num()), llvm::None);
+            m_builder.create<mlir::ReturnOp>(to_loc(m_builder, stmt.line_num()), llvm::None);
         } else {
             // In non-void function
             auto return_value = m_expr_visitor.visitAndGetResult(stmt.expression.get());
@@ -332,7 +357,7 @@ void Builder::run()
                 result_type = {};
             }
             auto func_type = m_builder.getFunctionType(param_types, result_type);
-            auto mlir_funct = m_builder.create<mlir::FuncOp>(getLoc(m_builder, user_function->line_num()),
+            auto mlir_funct = m_builder.create<mlir::FuncOp>(to_loc(m_builder, user_function->line_num()),
                                                              user_function->name,
                                                              func_type);
             mlir_funct.addEntryBlock();

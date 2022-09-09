@@ -32,8 +32,10 @@ function if_else() is
   let a: Integer := 99;
   let b: Integer := 66;
   if a = b do
+    a := 0;
+  else if a < b do
     a := 1;
   else
-    a := 0;
+    a := 2;
   end if;
 end;
