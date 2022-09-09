@@ -124,25 +124,17 @@ public:
 
         switch(expr.op) {
         case TokenType::Op_Plus:
-            if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::arith::AddIOp>(loc, left, right);
-            } else {
-                return m_builder.create<mlir::arith::AddFOp>(loc, left, right);
-            }
+            return m_builder.create<mlir::arith::AddIOp>(loc, left, right);
         case TokenType::Op_Minus:
-            if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::arith::SubIOp>(loc, left, right);
-            } else {
-                return m_builder.create<mlir::arith::SubFOp>(loc, left, right);
-            }
+            return m_builder.create<mlir::arith::SubIOp>(loc, left, right);
         case TokenType::Op_Div:
-            return m_builder.create<bluebirdIR::DivideOp>(loc, left, right);
-        case TokenType::Op_Mult:
-            if(expr.type()->kind() == TypeKind::Range) {
-                return m_builder.create<mlir::arith::MulIOp>(loc, left, right);
+            if(is_signed) {
+                return m_builder.create<mlir::arith::DivSIOp>(loc, left, right);
             } else {
-                return m_builder.create<mlir::arith::MulFOp>(loc, left, right);
+                return m_builder.create<mlir::arith::DivUIOp>(loc, left, right);
             }
+        case TokenType::Op_Mult:
+            return m_builder.create<mlir::arith::MulIOp>(loc, left, right);
         case TokenType::Op_And:
             return m_builder.create<mlir::arith::AndIOp>(loc, left, right);
         case TokenType::Op_Or:

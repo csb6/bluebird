@@ -15,7 +15,6 @@ BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
     : mlir::Dialect(getDialectNamespace(), context, mlir::TypeID::get<BluebirdIRDialect>())
 {
     addOperations<BoolConstantOp, CharConstantOp, IntConstantOp,
-                  DivideOp,
                   NegateOp, NotOp>();
     addTypes<RangeType, IntLiteralType>();
     addAttributes<IntLiteralAttr>();

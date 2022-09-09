@@ -6,6 +6,7 @@ function main() is
     a + 3;
     a != 3;
     -a;
+    a / 17;
 
     let b: Boolean := false;
     b or false;

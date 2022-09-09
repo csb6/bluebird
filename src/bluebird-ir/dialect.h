@@ -109,15 +109,6 @@ public:
     }
 };
 
-class DivideOp : public BinaryOp<DivideOp,
-                                 mlir::OpTrait::SameOperandsAndResultType> {
-public:
-    using BinaryOp::BinaryOp;
-
-    static llvm::StringRef getOperationName() { return "bluebirdIR.div"; }
-};
-
-
 void build_unary_op(mlir::OperationState&, mlir::Value);
 
 template<typename ConcreteOp, template <typename T> class... Traits>
