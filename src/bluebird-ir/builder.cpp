@@ -3,6 +3,7 @@
 #include "types.h"
 #include "visitor.h"
 #include "ast.h"
+#include "error.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wall"
@@ -14,6 +15,7 @@
 #include <mlir/IR/Verifier.h>
 #pragma GCC diagnostic pop
 #include <iostream>
+#include <cstdint>
 
 static mlir::Location to_loc(mlir::OpBuilder& builder, unsigned int line_num)
 {
@@ -51,23 +53,24 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
 }
 
 static constexpr struct {
-    mlir::arith::CmpIPredicate s_cmp;
-    mlir::arith::CmpIPredicate u_cmp;
+    std::uint8_t s_cmp;
+    std::uint8_t u_cmp;
 } cmp_instr_lookup[] = {
-    /*Op_Lt*/ {mlir::arith::CmpIPredicate::slt, mlir::arith::CmpIPredicate::ult},
-    /*Op_Gt*/ {mlir::arith::CmpIPredicate::sgt, mlir::arith::CmpIPredicate::ugt},
-    /*Op_Le*/ {mlir::arith::CmpIPredicate::sle, mlir::arith::CmpIPredicate::ule},
-    /*Op_Ge*/ {mlir::arith::CmpIPredicate::sge, mlir::arith::CmpIPredicate::uge}
+    /*Op_Eq*/ { (std::uint8_t)mlir::arith::CmpIPredicate::eq, (std::uint8_t)mlir::arith::CmpIPredicate::eq },
+    /*Op_Ne*/ { (std::uint8_t)mlir::arith::CmpIPredicate::ne, (std::uint8_t)mlir::arith::CmpIPredicate::ne },
+    /*Op_Lt*/ { (std::uint8_t)mlir::arith::CmpIPredicate::slt, (std::uint8_t)mlir::arith::CmpIPredicate::ult },
+    /*Op_Gt*/ { (std::uint8_t)mlir::arith::CmpIPredicate::sgt, (std::uint8_t)mlir::arith::CmpIPredicate::ugt },
+    /*Op_Le*/ { (std::uint8_t)mlir::arith::CmpIPredicate::sle, (std::uint8_t)mlir::arith::CmpIPredicate::ule },
+    /*Op_Ge*/ { (std::uint8_t)mlir::arith::CmpIPredicate::sge, (std::uint8_t)mlir::arith::CmpIPredicate::uge }
 };
-static_assert((int)TokenType::Op_Lt + 3 == (int)TokenType::Op_Ge);
-
+static_assert((std::uint8_t)TokenType::Op_Eq + 5 == (std::uint8_t)TokenType::Op_Ge);
 static
 mlir::arith::CmpIPredicate get_cmp_pred(TokenType op_type, bool is_signed)
 {
     if(is_signed) {
-        return cmp_instr_lookup[(int)op_type - (int)TokenType::Op_Lt].s_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].s_cmp;
     } else {
-        return cmp_instr_lookup[(int)op_type - (int)TokenType::Op_Lt].u_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].u_cmp;
     }
 }
 
@@ -82,6 +85,7 @@ public:
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions) {}
 
     mlir::OpState on_visit(StringLiteral&) {}
+
     mlir::OpState on_visit(CharLiteral& literal)
     {
         return m_builder.create<bluebirdIR::CharConstantOp>(
@@ -89,6 +93,7 @@ public:
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
+
     mlir::OpState on_visit(IntLiteral& literal)
     {
         return m_builder.create<bluebirdIR::IntConstantOp>(
@@ -96,6 +101,7 @@ public:
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
+
     mlir::OpState on_visit(BoolLiteral& literal)
     {
         return m_builder.create<bluebirdIR::BoolConstantOp>(
@@ -103,13 +109,16 @@ public:
                     literal.value,
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
+
     mlir::OpState on_visit(FloatLiteral&) {}
+
     mlir::OpState on_visit(VariableExpression& expr)
     {
         auto it = m_sse_vars.find(expr.variable);
         assert(it != m_sse_vars.end());
         return m_builder.create<mlir::memref::LoadOp>(to_loc(m_builder, expr.line_num()), it->second);
     }
+
     mlir::OpState on_visit(BinaryExpression& expr)
     {
         auto left = visitAndGetResult(expr.left.get());
@@ -142,20 +151,18 @@ public:
         case TokenType::Op_Xor:
             return m_builder.create<mlir::arith::XOrIOp>(loc, left, right);
         case TokenType::Op_Eq:
-            // TODO: do float version
-            return m_builder.create<mlir::arith::CmpIOp>(loc, mlir::arith::CmpIPredicate::eq, left, right);
         case TokenType::Op_Ne:
-            // TODO: do float version
-            return m_builder.create<mlir::arith::CmpIOp>(loc, mlir::arith::CmpIPredicate::ne, left, right);
         case TokenType::Op_Lt:
         case TokenType::Op_Gt:
         case TokenType::Op_Le:
         case TokenType::Op_Ge:
+            // TODO: do float versions
             return m_builder.create<mlir::arith::CmpIOp>(loc, get_cmp_pred(expr.op, is_signed), left, right);
         default:
-            assert(false);
+            Error().put("MLIR: Unhandled operator").quote(expr.op).raise();
         }
     }
+
     mlir::OpState on_visit(UnaryExpression& expr)
     {
         auto right = visitAndGetResult(expr.right.get());
@@ -169,6 +176,7 @@ public:
             assert(false);
         }
     }
+
     mlir::OpState on_visit(FunctionCall& function_call)
     {
         llvm::SmallVector<mlir::Value, 4> arguments;
@@ -182,7 +190,9 @@ public:
                                               function_def->second,
                                               mlir::ValueRange(arguments));
     }
+
     mlir::OpState on_visit(IndexOp&) {}
+
     mlir::OpState on_visit(InitList&) {}
 
     mlir::Value visitAndGetResult(Expression* expr)
@@ -240,6 +250,7 @@ public:
     {
         m_expr_visitor.visit(*stmt.expression.get());
     }
+
     void on_visit(Initialization& var_decl)
     {
         auto memref_type = mlir::MemRefType::get(
@@ -258,6 +269,7 @@ public:
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
+
     void on_visit(Assignment& asgmt)
     {
         auto alloca = m_sse_vars.find(asgmt.assignable);
@@ -265,6 +277,7 @@ public:
         auto value = m_expr_visitor.visitAndGetResult(asgmt.expression.get());
         m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca->second);
     }
+
     void on_visit(IfBlock& if_else_stmt)
     {
         auto condition = m_expr_visitor.visitAndGetResult(if_else_stmt.condition.get());
@@ -286,7 +299,7 @@ public:
                 // Else-if block (create a new if-block inside the else block)
                 visit(*if_else_stmt.else_or_else_if);
             } else {
-                // Else block (just put the statements directly into this else block)
+                // Else block (just put the statements directly into the block)
                 for(auto& stmt : if_else_stmt.else_or_else_if->statements) {
                     visit(*stmt);
                 }
@@ -294,6 +307,7 @@ public:
         }
         m_builder.restoreInsertionPoint(std::move(old_insert_point));
     }
+
     void on_visit(Block& block)
     {
         auto loc = to_loc(m_builder, block.line_num());
@@ -308,13 +322,14 @@ public:
     void on_visit(WhileLoop&) {}
     void on_visit(ReturnStatement& stmt)
     {
+        auto loc = to_loc(m_builder, stmt.line_num());
         if(stmt.expression == nullptr) {
             // In void function
-            m_builder.create<mlir::ReturnOp>(to_loc(m_builder, stmt.line_num()), llvm::None);
+            m_builder.create<mlir::ReturnOp>(loc);
         } else {
             // In non-void function
             auto return_value = m_expr_visitor.visitAndGetResult(stmt.expression.get());
-            m_builder.create<mlir::ReturnOp>(return_value.getLoc(), return_value);
+            m_builder.create<mlir::ReturnOp>(loc, return_value);
         }
     }
 };
