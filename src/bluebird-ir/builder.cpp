@@ -319,7 +319,28 @@ public:
         }
         m_builder.restoreInsertionPoint(std::move(old_insert_point));
     }
-    void on_visit(WhileLoop&) {}
+
+    void on_visit(WhileLoop& while_stmt)
+    {
+        auto while_loc = to_loc(m_builder, while_stmt.line_num());
+        auto while_loop = m_builder.create<mlir::scf::WhileOp>(while_loc, mlir::TypeRange{}, mlir::ValueRange{});
+        auto old_insert_point = m_builder.saveInsertionPoint();
+
+        auto& condition_block = while_loop.getBefore().emplaceBlock();
+        m_builder.setInsertionPointToStart(&condition_block);
+        auto condition_expr = m_expr_visitor.visitAndGetResult(while_stmt.condition.get());
+        auto condition_expr_loc = to_loc(m_builder, while_stmt.condition->line_num());
+        m_builder.create<mlir::scf::ConditionOp>(condition_expr_loc, condition_expr, mlir::ValueRange{});
+
+        auto& loop_body = while_loop.getAfter().emplaceBlock();
+        m_builder.setInsertionPointToStart(&loop_body);
+        for(auto& stmt : while_stmt.statements) {
+            visit(*stmt);
+        }
+        m_builder.create<mlir::scf::YieldOp>(while_loc);
+        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+    }
+
     void on_visit(ReturnStatement& stmt)
     {
         auto loc = to_loc(m_builder, stmt.line_num());

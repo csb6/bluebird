@@ -40,3 +40,14 @@ function if_else() is
     a := 2;
   end if;
 end;
+
+function while_loop() is
+  let a: Integer := 78;
+  while(a < 72 and a >=0 and a != 9999) loop
+    if a = 16 do
+      a := 13;
+    else
+      a := 16;
+    end if;
+  end while;
+end while_loop;
