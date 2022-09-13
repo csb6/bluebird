@@ -1,7 +1,7 @@
 #ifndef BLUEBIRD_CODEGEN_H
 #define BLUEBIRD_CODEGEN_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -111,7 +111,7 @@ private:
                                       const std::string& name);
     llvm::Type* to_llvm_type(const Type*);
     llvm::ConstantInt* to_llvm_int(const class multi_int&, size_t bit_size);
-    void store_expr_result(struct Assignable*, struct Expression*, llvm::Value* alloc);
+    void store_expr_result(struct Expression*, llvm::Value* alloc);
     void in_statement(llvm::Function*, struct Statement*);
     void in_initialization(llvm::Function*, struct Initialization*);
     void in_assignment(struct Assignment*);

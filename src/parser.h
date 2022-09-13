@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -138,8 +138,7 @@ private:
     void in_range(multi_int& low_out, multi_int& high_out);
     void in_range_type_definition(const std::string& type_name);
     void in_array_type_definition(const std::string& type_name);
-    template<typename T>
-    void in_ptr_like_type_definition(const std::string& type_name);
+    void in_ptr_type_definition(const std::string& type_name);
     void in_type_definition();
 public:
     /* Setup the parser and the related data structures. AST will

@@ -56,34 +56,6 @@ llvm::Value* truncate_to_bool(llvm::IRBuilder<>& ir_builder, llvm::Value* intege
     return ir_builder.CreateTrunc(integer, llvm::Type::getInt1Ty(ir_builder.getContext()));
 }
 
-static
-llvm::Value* load_if_needed(llvm::IRBuilder<>& ir_builder, Expression* expr,
-                            llvm::Value* ptr_operand, const Type* other_type = nullptr)
-{
-    if(expr->type()->kind() == TypeKind::Ref
-       && (other_type == nullptr || other_type->kind() != TypeKind::Ref)) {
-        // When using refs within larger expressions, need to load the value of the
-        // pointer (since it will be used in operations with other values)
-        auto* ptr_type = llvm::cast<llvm::PointerType>(ptr_operand->getType());
-        return ir_builder.CreateLoad(ptr_type->getElementType(), ptr_operand, "refloadtemp");
-    } else {
-        return ptr_operand;
-    }
-}
-
-static
-llvm::Value* ref_if_needed(Assignable* assignable, Expression* expr, llvm::Value* instr)
-{
-    if(assignable->type->kind() == TypeKind::Ref && expr->type()->kind() != TypeKind::Ref) {
-        // When assigning a VariableExpression to a ref-type variable, need the pointer,
-        // not the loaded value, of the expression
-        auto* load_instr = llvm::cast<llvm::LoadInst>(instr);
-        instr = load_instr->getPointerOperand();
-        load_instr->eraseFromParent();
-    }
-    return instr;
-}
-
 CodeGenerator::CodeGenerator(const char* source_filename,
                              std::vector<Magnum::Pointer<Function>>& functions,
                              std::vector<Magnum::Pointer<Initialization>>& global_vars,
@@ -105,10 +77,9 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
-    case TypeKind::Ptr:
-    case TypeKind::Ref: {
-        auto* ptr_like_type = static_cast<const PtrLikeType*>(ast_type);
-        return llvm::PointerType::get(to_llvm_type(ptr_like_type->inner_type), 0);
+    case TypeKind::Ptr:{
+        auto* ptr_type = static_cast<const PtrType*>(ast_type);
+        return llvm::PointerType::get(to_llvm_type(ptr_type->inner_type), 0);
     }
     default:
         // TODO: add support for determining LLVM type for other AST types.
@@ -161,8 +132,7 @@ llvm::Value* CodegenExprVisitor::on_visit(VariableExpression& var_expr)
 
 llvm::Value* CodegenExprVisitor::on_visit(UnaryExpression& expr)
 {
-    llvm::Value* right_code = visit(*expr.right);
-    llvm::Value* operand = load_if_needed(m_gen.m_ir_builder, expr.right.get(), right_code);
+    llvm::Value* operand = visit(*expr.right);
 
     switch(expr.op) {
     case TokenType::Op_Not:
@@ -191,10 +161,8 @@ llvm::Value* CodegenExprVisitor::on_visit(BinaryExpression& expr)
     } else if(expr.right->type()->kind() == TypeKind::Range) {
         type_is_signed = static_cast<const RangeType*>(expr.right->type())->is_signed();
     }
-    llvm::Value* left_code = visit(*expr.left);
-    llvm::Value* right_code = visit(*expr.right);
-    llvm::Value* left_ir = load_if_needed(m_gen.m_ir_builder, expr.left.get(), left_code);
-    llvm::Value* right_ir = load_if_needed(m_gen.m_ir_builder, expr.right.get(), right_code);
+    llvm::Value* left_ir = visit(*expr.left);
+    llvm::Value* right_ir = visit(*expr.right);
 
     // TODO: use float/user-defined versions of all these operators depending
     //   on their type
@@ -271,7 +239,7 @@ llvm::Value* CodegenExprVisitor::on_visit(FunctionCall& call)
     auto param_it = call.definition->parameters.begin();
     for(auto& arg : call.arguments) {
         llvm::Value* arg_code = visit(*arg);
-        args.push_back(ref_if_needed(param_it->get(), arg.get(), arg_code));
+        args.push_back(arg_code);
         ++param_it;
     }
     llvm::CallInst* call_instr = m_gen.m_ir_builder.CreateCall(funct_to_call, args);
@@ -350,12 +318,11 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
     return alloc;
 }
 
-void CodeGenerator::store_expr_result(Assignable* assignable, Expression* expr, llvm::Value* alloc)
+void CodeGenerator::store_expr_result(Expression* expr, llvm::Value* alloc)
 {
     llvm::Value* input_instr = CodegenExprVisitor(*this).visit(*expr);
     assert(input_instr != nullptr);
-    input_instr = load_if_needed(m_ir_builder, expr, input_instr, assignable->type);
-    m_ir_builder.CreateStore(ref_if_needed(assignable, expr, input_instr), alloc);
+    m_ir_builder.CreateStore(input_instr, alloc);
 }
 
 void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statement)
@@ -398,7 +365,7 @@ void CodeGenerator::in_initialization(llvm::Function* function, Initialization* 
     if(init->expression != nullptr) {
         m_dbg_gen.setLocation(init->line_num(), m_ir_builder);
         m_dbg_gen.addAutoVar(m_ir_builder.GetInsertBlock(), alloc, var, init->line_num());
-        store_expr_result(var, init->expression.get(), alloc);
+        store_expr_result(init->expression.get(), alloc);
     }
 }
 
@@ -430,7 +397,7 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
         break;
     }
 
-    store_expr_result(assignable, assgn_stmt->expression.get(), dest_ptr);
+    store_expr_result(assgn_stmt->expression.get(), dest_ptr);
 }
 
 void CodeGenerator::in_return_statement(ReturnStatement* stmt)

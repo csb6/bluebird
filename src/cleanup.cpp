@@ -123,13 +123,6 @@ void set_literal_type(Expression* literal, const Other* other, const Type* other
     case TypeKind::Array:
         set_literal_array_type(literal, static_cast<const ArrayType*>(other_type));
         break;
-    case TypeKind::Ref:
-        // References can be implicitly dereferenced when used in expressions.
-        // Since literals are always values, not references, try to resolve their
-        // type to the dereferenced type of the reference
-        set_literal_type(literal, other,
-                         static_cast<const RefType*>(other_type)->inner_type);
-        break;
     case TypeKind::Ptr:
         Error(literal->line_num()).put("Literal ").put(literal).raise(" cannot be used with pointer types");
         break;

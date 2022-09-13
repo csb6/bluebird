@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-   Copyright (C) 2020-2021  Cole Blakley
+   Copyright (C) 2020-2022  Cole Blakley
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU Affero General Public License as published
@@ -80,29 +80,6 @@ void nonbool_condition_error(const Expression* condition,
 
 template<typename Other>
 static
-bool matched_ref(Expression* expr, const Other* other, const Type* other_type)
-{
-    const RefType* ref_type;
-    const Type* second_type;
-    if(expr->type()->kind() == TypeKind::Ref) {
-        ref_type = static_cast<const RefType*>(expr->type());
-        second_type = other_type;
-    } else if(other_type->kind() == TypeKind::Ref) {
-        ref_type = static_cast<const RefType*>(other_type);
-        second_type = expr->type();
-    } else {
-        return false;
-    }
-
-    if(ref_type->inner_type == second_type) {
-        return true;
-    } else {
-        print_type_mismatch(expr, other, other_type, "Used with", "Expression");
-    }
-}
-
-template<typename Other>
-static
 bool matched_ptr(Expression* expr, const Other* other, const Type* other_type)
 {
     if(expr->type()->kind() != TypeKind::Ptr || other_type->kind() != TypeKind::Ptr) {
@@ -157,9 +134,6 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
         // Assumes all but float literals are constant folded before this stage
         assert(false);
         break;
-    case TypeKind::Ref:
-        check_legal_unary_op(expr, op, static_cast<const RefType*>(type)->inner_type);
-        break;
     default:
         Error(expr.line_num()).put("The operator").quote(op)
             .put("cannot be used with expression:\n ")
@@ -179,9 +153,6 @@ void check_legal_bin_op(const Expression& expr, TokenType op, const Type* type)
             Error(expr.line_num())
                 .raise("Operators cannot be used with initializer lists");
         }
-        break;
-    case TypeKind::Ref:
-        check_legal_bin_op(expr, op, static_cast<const RefType*>(type)->inner_type);
         break;
     default:
         Error(expr.line_num()).put("The operator").quote(op)
@@ -206,9 +177,7 @@ void CheckerExprVisitor::on_visit(BinaryExpression& expr)
 
     check_legal_bin_op(*expr.left, expr.op, left_type);
     check_legal_bin_op(*expr.right, expr.op, right_type);
-    if(left_type == right_type
-       || matched_ref(expr.left.get(), expr.right.get(), right_type)
-       || matched_ref(expr.right.get(), expr.left.get(), left_type))
+    if(left_type == right_type)
         return;
 
     print_type_mismatch(expr.left.get(), expr.right.get(), right_type, "Right", "Left");
@@ -296,15 +265,7 @@ void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
     }
 
     CheckerExprVisitor().visit(*assign_expr);
-    if(assign_expr->type() == assignable->type) {
-        return;
-    } else if(matched_ref(assign_expr, assignable, assignable->type)) {
-        if(assign_expr->kind() != ExprKind::Variable) {
-            Error(assign_expr->line_num()).put("Cannot assign a non-lvalue:\n  ")
-                    .put(assign_expr).raise("\nto a reference variable.");
-        }
-        return;
-    } else if(matched_ptr(assign_expr, assignable, assignable->type)) {
+    if(assign_expr->type() == assignable->type || matched_ptr(assign_expr, assignable, assignable->type)) {
         return;
     }
 
@@ -329,9 +290,9 @@ bool CheckerStmtVisitor::on_visit(Initialization& init_stmt)
 {
     if(init_stmt.expression != nullptr) {
         typecheck_assign(init_stmt.expression.get(), init_stmt.variable.get());
-    } else if(is_ptr_like(init_stmt.variable->type)) {
+    } else if(init_stmt.variable->type->kind() == TypeKind::Ptr) {
         Error(init_stmt.line_num())
-            .raise("Pointer-like variables must be given an initial value");
+            .raise("Pointer variables must be given an initial value");
     }
     return false;
 }
@@ -441,11 +402,6 @@ void Checker::run()
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             auto* curr_funct = static_cast<BBFunction*>(function.get());
-            if(curr_funct->return_type->kind() == TypeKind::Ref) {
-                Error().put("Function").quote(curr_funct->name)
-                    .raise("returns a ref type, which is not allowed");
-            }
-
             bool always_returns = CheckerStmtVisitor(curr_funct).visit(curr_funct->body);
             if(!always_returns && curr_funct->return_type != &Type::Void) {
                 Error().put("Function").quote(curr_funct->name)

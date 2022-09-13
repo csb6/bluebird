@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -760,18 +760,14 @@ void Parser::in_array_type_definition(const std::string& type_name)
     if(!match || match.value().kind != NameType::Type) {
         // TODO: support unresolved array element types
         raise_error_expected("defined type", *token);
-    } else if(match.value().type->kind() == TypeKind::Ref) {
-        Error(token->line_num).raise("reference types cannot be elements in an array");
     }
     ++token;
     Type* new_type = create<ArrayType>(m_types, type_name, index_type, match.value().type);
     m_names_table.add_type(new_type);
 }
 
-template<typename T>
-void Parser::in_ptr_like_type_definition(const std::string& type_name)
+void Parser::in_ptr_type_definition(const std::string& type_name)
 {
-    static_assert(std::is_base_of_v<PtrLikeType, T>);
     check_token_is(TokenType::Name, "typename", *token);
     auto match = m_names_table.find(token->text);
     if(!match || match.value().kind != NameType::Type) {
@@ -779,7 +775,7 @@ void Parser::in_ptr_like_type_definition(const std::string& type_name)
     }
     ++token;
 
-    Type* new_type = create<T>(m_types, type_name, match.value().type);
+    Type* new_type = create<PtrType>(m_types, type_name, match.value().type);
     m_names_table.add_type(new_type);
 }
 
@@ -811,13 +807,9 @@ void Parser::in_type_definition()
         ++token;
         in_array_type_definition(type_name);
         break;
-    case TokenType::Keyword_Ref:
-        ++token;
-        in_ptr_like_type_definition<RefType>(type_name);
-        break;
     case TokenType::Keyword_Ptr:
         ++token;
-        in_ptr_like_type_definition<PtrType>(type_name);
+        in_ptr_type_definition(type_name);
         break;
     default:
         // TODO: handle record types, etc. here

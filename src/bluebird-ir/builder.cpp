@@ -33,7 +33,7 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     case TypeKind::Boolean:
         return mlir::IntegerType::get(&context, ast_type->bit_size());
     case TypeKind::Ptr: {
-        auto* ptr_type = static_cast<const PtrLikeType*>(ast_type);
+        auto* ptr_type = static_cast<const PtrType*>(ast_type);
         return mlir::MemRefType::get({}, to_mlir_type(context, ptr_type->inner_type));
     }
     case TypeKind::Literal: {

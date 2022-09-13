@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -41,21 +41,10 @@ void ArrayType::print(std::ostream& output) const
     element_type->print(output);
 }
 
-void RefType::print(std::ostream& output) const
-{
-    output << "Type: " << name << " Ref ";
-    inner_type->print(output);
-}
-
 void PtrType::print(std::ostream& output) const
 {
     output << "Type: " << name << " Ptr ";
     inner_type->print(output);
-}
-
-bool is_ptr_like(const Type* type)
-{
-    return type->kind() == TypeKind::Ref || type->kind() == TypeKind::Ptr;
 }
 
 IntRange::IntRange(const multi_int& lower, const multi_int& upper)

@@ -1,7 +1,7 @@
 #ifndef AST_CLASS_H
 #define AST_CLASS_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -40,7 +40,7 @@ enum class StmtKind : char {
 };
 
 enum class TypeKind : char {
-    Range, Normal, Literal, Boolean, Array, Ref, Ptr
+    Range, Normal, Literal, Boolean, Array, Ptr
 };
 
 enum class FunctionKind : char {
@@ -136,38 +136,19 @@ struct ArrayType final : public Type {
     void     print(std::ostream&) const override;
 };
 
-// Base class for pointer and reference types, since both have
-// extremely similar structure/usage. The values (in-lang) of ptr-likes are never null.
-struct PtrLikeType : public Type {
+// A pointer; is never null, but can be stored in records, arrays, etc.
+struct PtrType final : public Type {
     const Type* inner_type;
+    bool is_anonymous = true;
 
     using Type::Type;
-    PtrLikeType(const std::string& n, const Type* t) : Type(n), inner_type(t) {}
+    explicit PtrType(const Type* t) : Type("ptr " + t->name), inner_type(t) {}
+    PtrType(const std::string& n, const Type* t) : Type(n), inner_type(t) {}
 
-    size_t   bit_size() const override { return sizeof(int*); }
-};
-
-// A special kind of pointer that can only point to valid objects on stack;
-// is never null and can't be returned/stored in records
-struct RefType final : public PtrLikeType {
-    using PtrLikeType::PtrLikeType;
-
-    TypeKind kind() const override { return TypeKind::Ref; }
-    void     print(std::ostream&) const override;
-};
-
-// A pointer; is never null, but can be stored in records, arrays, etc.
-struct PtrType final : public PtrLikeType {
-    bool is_anonymous = false;
-
-    using PtrLikeType::PtrLikeType;
-    explicit PtrType(const Type* t) : PtrLikeType("ptr " + t->name, t), is_anonymous(true) {}
-
+    size_t bit_size() const override { return sizeof(int*); }
     TypeKind kind() const override { return TypeKind::Ptr; }
     void     print(std::ostream&) const override;
 };
-
-bool is_ptr_like(const Type*);
 
 // An abstract object or non-standalone group of expressions
 struct Expression {

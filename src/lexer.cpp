@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -71,7 +71,6 @@ constexpr static auto identifier_table = frozen::make_unordered_map<frozen::stri
         {"false", TokenType::Keyword_False},
         {"of", TokenType::Keyword_Of},
         {"loop", TokenType::Keyword_Loop},
-        {"ref", TokenType::Keyword_Ref},
         {"ptr", TokenType::Keyword_Ptr}
     });
 
