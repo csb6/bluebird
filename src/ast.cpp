@@ -47,24 +47,28 @@ void PtrType::print(std::ostream& output) const
     inner_type->print(output);
 }
 
-IntRange::IntRange(const multi_int& lower, const multi_int& upper)
-    : lower_bound(lower), upper_bound(upper),
-      is_signed(lower.is_negative())
+IntRange::IntRange(multi_int lower, multi_int upper, bool inclusive)
+    : lower_bound(std::move(lower)), upper_bound(std::move(upper))
 {
+    is_signed = lower_bound.is_negative();
+    if(!inclusive) {
+        upper_bound -= 1;
+    }
+
     if(is_signed) {
-        if(lower.bits_needed() > upper.bits_needed()) {
-            multi_int lower_double{lower};
+        if(lower_bound.bits_needed() > upper_bound.bits_needed()) {
+            multi_int lower_double{lower_bound};
             lower_double *= 2;
             lower_double += 1;
             bit_size = lower_double.bits_needed();
         } else {
-            multi_int upper_double{upper};
+            multi_int upper_double{upper_bound};
             upper_double *= 2;
             upper_double += 1;
             bit_size = upper_double.bits_needed();
         }
     } else {
-        bit_size = upper.bits_needed();
+        bit_size = upper_bound.bits_needed();
     }
 }
 
@@ -354,5 +358,5 @@ const LiteralType LiteralType::Bool{"BoolLiteral"};
 const LiteralType LiteralType::InitList{"InitList"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
-RangeType RangeType::Integer{"Integer", multi_int{"-2147483648"}, multi_int{"2147483647"}};
-RangeType RangeType::Character{"Character", multi_int{"0"}, multi_int{"255"}};
+RangeType RangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
+RangeType RangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};

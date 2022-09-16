@@ -1,7 +1,7 @@
 #ifndef MULTIPRECISION_CPP_INT_H
 #define MULTIPRECISION_CPP_INT_H
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <string_view>
 #include <string>
 #include <iosfwd>
 #include <mini-gmp/mini-gmp.h>
@@ -24,11 +25,14 @@
 class multi_int {
  public:
     multi_int();
-    explicit multi_int(const std::string&);
+    explicit
+    multi_int(std::string_view);
+
     multi_int(const multi_int&);
     multi_int& operator=(const multi_int&);
-    multi_int(multi_int&&) = default;
-    multi_int& operator=(multi_int&&) = default;
+
+    multi_int(multi_int&&);
+    multi_int& operator=(multi_int&&);
     ~multi_int();
 
     size_t bits_needed() const;

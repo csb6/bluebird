@@ -20,6 +20,7 @@
 #include "ast.h"
 #include <optional>
 #include <unordered_map>
+#include <string_view>
 
 /* This file contains a class that parses a stream of tokens into an AST.
    As it builds the AST, it maintains a symbol table and handles out-of-order
@@ -45,7 +46,8 @@ struct SymbolInfo {
     };
 
     SymbolInfo() {}
-    explicit SymbolInfo(NameType name) : kind(name) {}
+    explicit
+    SymbolInfo(NameType name) : kind(name) {}
     SymbolInfo(NameType name, Type* t) : kind(name), type(t) {}
     SymbolInfo(NameType name, Variable* var) : kind(name), variable(var) {}
     SymbolInfo(NameType name, Function* f) : kind(name), function(f) {}
@@ -135,7 +137,6 @@ private:
     // Parse function definitions
     void in_function_definition();
     // Parse type definitions
-    void in_range(multi_int& low_out, multi_int& high_out);
     void in_range_type_definition(const std::string& type_name);
     void in_array_type_definition(const std::string& type_name);
     void in_ptr_type_definition(const std::string& type_name);

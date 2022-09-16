@@ -6,18 +6,18 @@
 
 Error::Error(unsigned int) {}
 Error& Error::put(size_t) { return *this; }
-Error& Error::put(const char*, unsigned int) { return *this; }
+Error& Error::put(std::string_view, unsigned int) { return *this; }
 Error& Error::put(const Expression*) { return *this; }
 Error& Error::put(const Statement*) { return *this; }
 Error& Error::put(const Type*) { return *this; }
 Error& Error::put(const Function*) { return *this; }
 Error& Error::put(const Assignable*) { return *this; }
-Error& Error::quote(const std::string&) { return *this; }
+Error& Error::quote(std::string_view) { return *this; }
 Error& Error::quote(char) { return *this; }
 Error& Error::quote(const Token&) { return *this; }
 Error& Error::quote(TokenType) { return *this; }
 Error& Error::newline() { return *this; }
-void Error::raise(const char*, unsigned int) { exit(1); }
+void Error::raise(std::string_view, unsigned int) { exit(1); }
 
 #else
 
@@ -35,18 +35,9 @@ Error& Error::put(size_t n)
     return *this;
 }
 
-Error& Error::put(const char* message, unsigned int indent)
+Error& Error::put(std::string_view message, unsigned int indent)
 {
-    for(; indent > 0; --indent) {
-        std::cerr << " ";
-    }
-    std::cerr << message;
-    return *this;
-}
-
-Error& Error::put(const std::string& message, unsigned int indent)
-{
-    for(; indent > 0; --indent) {
+    for(unsigned int i = 0; i < indent; ++i) {
         std::cerr << " ";
     }
     std::cerr << message;
@@ -83,7 +74,7 @@ Error& Error::put(const Assignable* assignable)
     return *this;
 }
 
-Error& Error::quote(const std::string& text)
+Error& Error::quote(std::string_view text)
 {
     std::cerr << " `" << text << "` ";
     return *this;
@@ -113,7 +104,7 @@ Error& Error::newline()
     return *this;
 }
 
-void Error::raise(const char* message, unsigned int indent)
+void Error::raise(std::string_view message, unsigned int indent)
 {
     put(message, indent);
     newline();
@@ -121,13 +112,13 @@ void Error::raise(const char* message, unsigned int indent)
 }
 #endif /** ifdef FUZZER_MODE */
 
-void raise_error_expected(const char* expected, Token actual)
+void raise_error_expected(std::string_view expected, Token actual)
 {
     Error(actual.line_num).put("Expected ").put(expected)
         .put(", but instead found token:\n").quote(actual).raise();
 }
 
-void raise_error_expected(const char* expected, const Expression* actual)
+void raise_error_expected(std::string_view expected, const Expression* actual)
 {
     Error(actual->line_num()).put("Expected ").put(expected)
         .put(", but instead found expression:\n")

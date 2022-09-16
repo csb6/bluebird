@@ -244,8 +244,9 @@ llvm::Value* CodegenExprVisitor::on_visit(FunctionCall& call)
     }
     llvm::CallInst* call_instr = m_gen.m_ir_builder.CreateCall(funct_to_call, args);
     // Can't name result of void function calls (they don't return anything)
-    if(call.type() != &Type::Void)
+    if(call.type() != &Type::Void) {
         call_instr->setName("call" + call.name());
+    }
     return call_instr;
 }
 

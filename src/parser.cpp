@@ -88,7 +88,8 @@ static void check_token_is(TokenType type, const char* description, Token token)
 // Constructs a new object inside the given list of smart pointers, returning
 // a non-owning pointer to the new object
 template<typename T, typename ListT, typename ...Params>
-static ListT* create(std::vector<Magnum::Pointer<ListT>>& type_list, Params... params)
+static
+ListT* create(std::vector<Magnum::Pointer<ListT>>& type_list, Params... params)
 {
     return type_list.emplace_back(
         Magnum::pointer<T>(std::forward<Params>(params)...)).get();
@@ -695,7 +696,7 @@ void Parser::in_function_definition()
     }
 }
 
-void Parser::in_range(multi_int& low_out, multi_int& high_out)
+void Parser::in_range_type_definition(const std::string& type_name)
 {
     Magnum::Pointer<Expression> expr = parse_expression();
     if(expr->kind() != ExprKind::Binary) {
@@ -711,7 +712,8 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
     if(range_expr->left->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's lower bound",
                              range_expr->left.get());
-    } else if(range_expr->right->kind() != ExprKind::IntLiteral) {
+    }
+    if(range_expr->right->kind() != ExprKind::IntLiteral) {
         raise_error_expected("integer constant expression as the range's upper bound",
                              range_expr->right.get());
     }
@@ -724,19 +726,10 @@ void Parser::in_range(multi_int& low_out, multi_int& high_out)
         Error(token->line_num)
             .raise("Upper limit of range is lower than the lower limit");
     }
-    low_out = left_expr->value;
-    high_out = right_expr->value;
-    if(range_expr->op == TokenType::Op_Upto) {
-        high_out -= 1;
-    }
-}
 
-void Parser::in_range_type_definition(const std::string& type_name)
-{
-    multi_int lower_limit, upper_limit;
-    in_range(lower_limit, upper_limit);
-
-    Type* new_type = create<RangeType>(m_types, type_name, lower_limit, upper_limit);
+    bool is_inclusive = range_expr->op == TokenType::Op_Thru;
+    IntRange range(std::move(left_expr->value), std::move(right_expr->value), is_inclusive);
+    Type* new_type = create<RangeType>(m_types, type_name, std::move(range));
     m_names_table.add_type(new_type);
 }
 

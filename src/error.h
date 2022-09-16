@@ -16,19 +16,18 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <string>
+#include <string_view>
 #include "token.h"
 
 class Error {
 public:
     explicit Error(unsigned int line_num = 0);
-    Error& quote(const std::string& text);
+    Error& quote(std::string_view text);
     Error& quote(char);
     Error& quote(const Token&);
     Error& quote(TokenType);
     Error& put(size_t);
-    Error& put(const char* message, unsigned int indent = 0);
-    Error& put(const std::string& message, unsigned int indent = 0);
+    Error& put(std::string_view message, unsigned int indent = 0);
     Error& put(const struct Expression*);
     Error& put(const struct Statement*);
     Error& put(const struct Type*);
@@ -36,9 +35,9 @@ public:
     Error& put(const struct Assignable*);
     Error& newline();
     // Exits or throws exception; newline printed after message
-    [[noreturn]] void raise(const char* message = "", unsigned int indent = 0);
+    [[noreturn]] void raise(std::string_view message = "", unsigned int indent = 0);
 };
 
-[[noreturn]] void raise_error_expected(const char* expected, Token actual);
-[[noreturn]] void raise_error_expected(const char* expected, const Expression* actual);
+[[noreturn]] void raise_error_expected(std::string_view expected, Token actual);
+[[noreturn]] void raise_error_expected(std::string_view expected, const Expression* actual);
 #endif

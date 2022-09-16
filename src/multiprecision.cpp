@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -16,15 +16,16 @@
 */
 #include "multiprecision.h"
 #include <iostream>
+#include <cstdlib>
 
 multi_int::multi_int()
 {
     mpz_init(m_number);
 }
 
-multi_int::multi_int(const std::string& value)
+multi_int::multi_int(std::string_view value)
 {
-    mpz_init_set_str(m_number, value.c_str(), 10);
+    mpz_init_set_str(m_number, value.data(), 10);
 }
 
 multi_int::multi_int(const multi_int& other)
@@ -35,6 +36,21 @@ multi_int::multi_int(const multi_int& other)
 multi_int& multi_int::operator=(const multi_int& other)
 {
     mpz_init_set(m_number, other.m_number);
+    return *this;
+}
+
+multi_int::multi_int(multi_int&& other)
+{
+    m_number[0] = std::move(other.m_number[0]);
+    other.m_number[0] = {};
+}
+
+multi_int& multi_int::operator=(multi_int&& other)
+{
+    m_number[0] = std::move(other.m_number[0]);
+    if(&other != this) {
+        other.m_number[0] = {};
+    }
     return *this;
 }
 
@@ -135,13 +151,13 @@ multi_int& multi_int::operator&= (const multi_int& other)
     return *this;
 }
 
-multi_int& multi_int::operator|= (const multi_int& other)
+multi_int& multi_int::operator|=(const multi_int& other)
 {
     mpz_ior(m_number, m_number, other.m_number);
     return *this;
 }
 
-multi_int& multi_int::operator^= (const multi_int& other)
+multi_int& multi_int::operator^=(const multi_int& other)
 {
     mpz_xor(m_number, m_number, other.m_number);
     return *this;
@@ -193,12 +209,12 @@ bool operator!=(const multi_int& a, const multi_int& b)
     return mpz_cmp(a.m_number, b.m_number) != 0;
 }
 
-bool operator< (const multi_int& a, const multi_int& b)
+bool operator<(const multi_int& a, const multi_int& b)
 {
     return mpz_cmp(a.m_number, b.m_number) < 0;
 }
 
-bool operator> (const multi_int& a, const multi_int& b)
+bool operator>(const multi_int& a, const multi_int& b)
 {
     return mpz_cmp(a.m_number, b.m_number) > 0;
 }
