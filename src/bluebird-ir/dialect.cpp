@@ -67,13 +67,14 @@ const multi_int& IntLiteralAttr::getValue() const
 }
 
 
-void BoolConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, bool value, mlir::Type type)
+void BoolConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, bool value)
 {
-    state.addAttribute("value", builder.getBoolAttr(value));
-    state.types.push_back(type);
+    auto attr = builder.getBoolAttr(value);
+    state.addAttribute("value", attr);
+    state.types.push_back(attr.getType());
 }
 
-void CharConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, char value, mlir::Type type)
+void CharConstantOp::build(mlir::OpBuilder& builder, mlir::OperationState& state, char value)
 {
     state.addAttribute("value", builder.getI8IntegerAttr(value));
     state.types.push_back(builder.getI8Type());

@@ -22,7 +22,7 @@ void Type::print(std::ostream& output) const
     output << "Type: " << name;
 }
 
-void RangeType::print(std::ostream& output) const
+void IntRangeType::print(std::ostream& output) const
 {
     output << "Type: " << name << " Range: " << range;
 }
@@ -358,5 +358,5 @@ const LiteralType LiteralType::Bool{"BoolLiteral"};
 const LiteralType LiteralType::InitList{"InitList"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
-RangeType RangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
-RangeType RangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};
+IntRangeType IntRangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
+IntRangeType IntRangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};

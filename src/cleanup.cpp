@@ -49,7 +49,7 @@ Cleanup::Cleanup(std::vector<Magnum::Pointer<Function>>& functions,
 template<typename Other>
 static
 void set_literal_range_type(Expression* literal, const Other* other,
-                            const RangeType* other_type)
+                            const IntRangeType* other_type)
 {
     const IntRange& range = other_type->range;
     switch(literal->kind()) {
@@ -69,7 +69,7 @@ void set_literal_range_type(Expression* literal, const Other* other,
     }
     case ExprKind::CharLiteral: {
         auto* char_literal = static_cast<CharLiteral*>(literal);
-        if(other_type != &RangeType::Character) {
+        if(other_type != &IntRangeType::Character) {
             // TODO: allow user-defined character types to be used with character
             // literals
             Error(char_literal->line_num())
@@ -115,7 +115,7 @@ void set_literal_type(Expression* literal, const Other* other, const Type* other
 
     switch(other_type->kind()) {
     case TypeKind::Range:
-        set_literal_range_type(literal, other, static_cast<const RangeType*>(other_type));
+        set_literal_range_type(literal, other, static_cast<const IntRangeType*>(other_type));
         break;
     case TypeKind::Boolean:
         set_literal_bool_type(literal, other_type);

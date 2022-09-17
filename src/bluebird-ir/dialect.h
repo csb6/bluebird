@@ -71,7 +71,7 @@ public:
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.boolConstant"; }
 
-    static void build(mlir::OpBuilder&, mlir::OperationState&, bool value, mlir::Type);
+    static void build(mlir::OpBuilder&, mlir::OperationState&, bool value);
 };
 
 class CharConstantOp : public ConstantOp<CharConstantOp> {
@@ -80,7 +80,7 @@ public:
 
     static llvm::StringRef getOperationName() { return "bluebirdIR.charConstant"; }
 
-    static void build(mlir::OpBuilder&, mlir::OperationState&, char value, mlir::Type);
+    static void build(mlir::OpBuilder&, mlir::OperationState&, char value);
 };
 
 class IntConstantOp : public ConstantOp<IntConstantOp> {

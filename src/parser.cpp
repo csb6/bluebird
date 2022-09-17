@@ -103,16 +103,16 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end,
     : m_input_begin(input_begin), m_input_end(input_end), m_functions(functions),
       m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)
 {
-    m_names_table.add_type(&RangeType::Integer);
-    m_names_table.add_type(&RangeType::Character);
+    m_names_table.add_type(&IntRangeType::Integer);
+    m_names_table.add_type(&IntRangeType::Character);
     m_names_table.add_type(&EnumType::Boolean);
 
     {
         // function putchar(c : Character): Integer
         auto* put_char = new BuiltinFunction("putchar");
-        auto* c = new Variable("c", &RangeType::Character);
+        auto* c = new Variable("c", &IntRangeType::Character);
         put_char->parameters.emplace_back(c);
-        put_char->return_type = &RangeType::Integer;
+        put_char->return_type = &IntRangeType::Integer;
         m_names_table.add_function(put_char);
         m_functions.emplace_back(put_char);
     }
@@ -355,7 +355,7 @@ Magnum::Pointer<Variable> Parser::in_var_declaration()
     if(!match) {
         // If the type hasn't been declared yet, add it provisionally to name table
         // to be filled in (hopefully) later
-        new_var->type = create<RangeType>(m_types, token->text);
+        new_var->type = create<IntRangeType>(m_types, token->text);
         m_names_table.add_unresolved(new_var.get());
     } else {
         switch(match.value().kind) {
@@ -613,7 +613,7 @@ void Parser::in_return_type(Function* funct)
         }
     } else {
         // Type wasn't declared yet; add provisionally to name table
-        funct->return_type = create<RangeType>(m_types, token->text);
+        funct->return_type = create<IntRangeType>(m_types, token->text);
         m_names_table.add_unresolved_return_type(funct);
     }
     ++token;
@@ -729,7 +729,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
 
     bool is_inclusive = range_expr->op == TokenType::Op_Thru;
     IntRange range(std::move(left_expr->value), std::move(right_expr->value), is_inclusive);
-    Type* new_type = create<RangeType>(m_types, type_name, std::move(range));
+    Type* new_type = create<IntRangeType>(m_types, type_name, std::move(range));
     m_names_table.add_type(new_type);
 }
 
@@ -742,7 +742,7 @@ void Parser::in_array_type_definition(const std::string& type_name)
        || match.value().type->kind() != TypeKind::Range) {
         raise_error_expected("name of a range type", *token);
     }
-    auto* index_type = static_cast<const RangeType*>(match.value().type);
+    auto* index_type = static_cast<const IntRangeType*>(match.value().type);
     ++token;
 
     check_token_is(TokenType::Closed_Bracket, "closing bracket `]`", *token);

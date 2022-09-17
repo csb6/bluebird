@@ -157,9 +157,9 @@ llvm::Value* CodegenExprVisitor::on_visit(BinaryExpression& expr)
 {
     bool type_is_signed = false;
     if(expr.left->type()->kind() == TypeKind::Range) {
-        type_is_signed = static_cast<const RangeType*>(expr.left->type())->is_signed();
+        type_is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
     } else if(expr.right->type()->kind() == TypeKind::Range) {
-        type_is_signed = static_cast<const RangeType*>(expr.right->type())->is_signed();
+        type_is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
     }
     llvm::Value* left_ir = visit(*expr.left);
     llvm::Value* right_ir = visit(*expr.right);
@@ -261,7 +261,7 @@ llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
     llvm::Value* offset_index = visit(*expr.index_expr);
     assert(offset_index->getType()->isIntegerTy());
     assert(expr.index_expr->type()->kind() == TypeKind::Range);
-    auto* index_type = static_cast<const RangeType*>(expr.index_expr->type());
+    auto* index_type = static_cast<const IntRangeType*>(expr.index_expr->type());
     // Since arrays can be indexed starting at any number, need to subtract
     // the starting value of this array's index type from the given index, since
     // in LLVM all arrays start at 0
@@ -522,7 +522,7 @@ void CodeGenerator::declare_globals()
 void CodeGenerator::declare_builtin_functions()
 {
     // int printf(const char*, ...);
-    auto* StdInt = llvm::IntegerType::get(m_context, RangeType::Integer.bit_size());
+    auto* StdInt = llvm::IntegerType::get(m_context, IntRangeType::Integer.bit_size());
     auto* CharPtr = llvm::PointerType::get(llvm::IntegerType::get(m_context, 8), 0);
     llvm::Type* params[] = { CharPtr };
     auto* printf_type = llvm::FunctionType::get(StdInt, params, true);
@@ -659,7 +659,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
     auto bit_size = ast_type->bit_size();
     switch(ast_type->kind()) {
     case TypeKind::Range: {
-        auto* type = static_cast<const RangeType*>(ast_type);
+        auto* type = static_cast<const IntRangeType*>(ast_type);
         if(type->range.is_signed)
             encoding = llvm::dwarf::DW_ATE_signed;
         else

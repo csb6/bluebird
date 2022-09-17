@@ -90,8 +90,7 @@ public:
     {
         return m_builder.create<bluebirdIR::CharConstantOp>(
                     to_loc(m_builder, literal.line_num()),
-                    literal.value,
-                    to_mlir_type(*m_builder.getContext(), literal.type()));
+                    literal.value);
     }
 
     mlir::OpState on_visit(IntLiteral& literal)
@@ -106,8 +105,7 @@ public:
     {
         return m_builder.create<bluebirdIR::BoolConstantOp>(
                     to_loc(m_builder, literal.line_num()),
-                    literal.value,
-                    to_mlir_type(*m_builder.getContext(), literal.type()));
+                    literal.value);
     }
 
     mlir::OpState on_visit(FloatLiteral&) {}
@@ -126,9 +124,9 @@ public:
         auto loc = to_loc(m_builder, expr.line_num());
         bool is_signed = false;
         if(expr.left->type()->kind() == TypeKind::Range) {
-            is_signed = static_cast<const RangeType*>(expr.left->type())->is_signed();
+            is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
         } else if(expr.right->type()->kind() == TypeKind::Range) {
-            is_signed = static_cast<const RangeType*>(expr.right->type())->is_signed();
+            is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
         }
 
         switch(expr.op) {

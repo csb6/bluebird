@@ -107,13 +107,13 @@ struct EnumType final : public Type {
 };
 
 // Type with integer bounds
-struct RangeType final : public Type {
+struct IntRangeType final : public Type {
     // Some more default types that don't have to be declared
-    static RangeType Integer, Character;
+    static IntRangeType Integer, Character;
     IntRange range;
 
     using Type::Type;
-    RangeType(std::string_view n, IntRange range)
+    IntRangeType(std::string_view n, IntRange range)
         : Type(n), range(std::move(range)) {}
 
     size_t   bit_size() const override { return range.bit_size; }
@@ -122,12 +122,20 @@ struct RangeType final : public Type {
     bool     is_signed() const { return range.is_signed; }
 };
 
+struct FloatRangeType : public Type {
+    FloatRange range;
+
+    using Type::Type;
+    FloatRangeType(std::string_view n, FloatRange range)
+        : Type(n), range(std::move(range)) {}
+};
+
 struct ArrayType final : public Type {
-    const RangeType* index_type;
+    const IntRangeType* index_type;
     Type* element_type;
 
     using Type::Type;
-    ArrayType(std::string_view n, const RangeType* ind_type, Type* el_type)
+    ArrayType(std::string_view n, const IntRangeType* ind_type, Type* el_type)
         : Type(n), index_type(ind_type), element_type(el_type) {}
 
     size_t   bit_size() const override;

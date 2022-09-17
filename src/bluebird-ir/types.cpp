@@ -9,7 +9,7 @@ IntLiteralType IntLiteralType::get(mlir::MLIRContext* context)
 }
 
 
-RangeTypeStorage::RangeTypeStorage(const ::RangeType& ast_type) : ast_type(ast_type) {}
+RangeTypeStorage::RangeTypeStorage(const ::IntRangeType& ast_type) : ast_type(ast_type) {}
 
 bool RangeTypeStorage::operator==(const KeyTy& key) const
 {
@@ -27,7 +27,7 @@ RangeTypeStorage* RangeTypeStorage::construct(mlir::TypeStorageAllocator& alloca
 }
 
 
-RangeType RangeType::get(mlir::MLIRContext* context, const ::RangeType& ast_type)
+RangeType RangeType::get(mlir::MLIRContext* context, const ::IntRangeType& ast_type)
 {
     return Base::get(context, ast_type);
 }

@@ -8,7 +8,7 @@
 #pragma GCC diagnostic pop
 
 // From the AST
-struct RangeType;
+struct IntRangeType;
 
 namespace bluebirdIR {
 
@@ -20,22 +20,22 @@ public:
 };
 
 struct RangeTypeStorage : public mlir::TypeStorage {
-    using KeyTy = ::RangeType;
+    using KeyTy = ::IntRangeType;
 
-    explicit RangeTypeStorage(const ::RangeType& ast_type);
+    explicit RangeTypeStorage(const ::IntRangeType& ast_type);
 
     bool operator==(const KeyTy&) const;
     static llvm::hash_code hashKey(const KeyTy &);
     static RangeTypeStorage* construct(mlir::TypeStorageAllocator&, const KeyTy&);
 
-    const ::RangeType& ast_type;
+    const ::IntRangeType& ast_type;
 };
 
 class RangeType : public mlir::Type::TypeBase<RangeType, mlir::Type, RangeTypeStorage> {
 public:
     using Base::Base;
 
-    static RangeType get(mlir::MLIRContext*, const ::RangeType& ast_type);
+    static RangeType get(mlir::MLIRContext*, const ::IntRangeType& ast_type);
 };
 
 };
