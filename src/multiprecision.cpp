@@ -170,35 +170,6 @@ multi_int operator-(const multi_int& a)
     return result;
 }
 
-/*
-multi_int operator+(const multi_int& a, const multi_int& b)
-{
-    multi_int result{a};
-    result.impl->value += b.impl->value;
-    return result;
-}
-
-multi_int operator-(const multi_int& a, const multi_int& b)
-{
-    multi_int result{a};
-    result.impl->value -= b.impl->value;
-    return result;
-}
-
-multi_int operator*(const multi_int& a, const multi_int& b)
-{
-    multi_int result{a};
-    result.impl->value *= b.impl->value;
-    return result;
-}
-
-multi_int operator/(const multi_int& a, const multi_int& b)
-{
-    multi_int result{a};
-    result.impl->value /= b.impl->value;
-    return result;
-    }*/
-
 bool operator==(const multi_int& a, const multi_int& b)
 {
     return mpz_cmp(a.m_number, b.m_number) == 0;

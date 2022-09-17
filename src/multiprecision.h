@@ -55,14 +55,10 @@ class multi_int {
     multi_int& operator^= (const multi_int&);
 
     friend multi_int operator-(const multi_int&);
-    /*friend multi_int operator+(const multi_int&, const multi_int&);
-    friend multi_int operator-(const multi_int&, const multi_int&);
-    friend multi_int operator*(const multi_int&, const multi_int&);
-    friend multi_int operator/(const multi_int&, const multi_int&);*/
     friend bool operator==(const multi_int&, const multi_int&);
     friend bool operator!=(const multi_int&, const multi_int&);
-    friend bool operator< (const multi_int&, const multi_int&);
-    friend bool operator> (const multi_int&, const multi_int&);
+    friend bool operator<(const multi_int&, const multi_int&);
+    friend bool operator>(const multi_int&, const multi_int&);
     friend bool operator<=(const multi_int&, const multi_int&);
     friend bool operator>=(const multi_int&, const multi_int&);
     friend unsigned long int to_int(multi_int&&);
