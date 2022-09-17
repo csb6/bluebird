@@ -739,7 +739,7 @@ void Parser::in_array_type_definition(const std::string& type_name)
     check_token_is(TokenType::Name, "name of the array's index type", *token);
     auto match = m_names_table.find(token->text);
     if(!match || match.value().kind != NameType::Type
-       || match.value().type->kind() != TypeKind::Range) {
+       || match.value().type->kind() != TypeKind::IntRange) {
         raise_error_expected("name of a range type", *token);
     }
     auto* index_type = static_cast<const IntRangeType*>(match.value().type);

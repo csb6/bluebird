@@ -40,7 +40,7 @@ enum class StmtKind : char {
 };
 
 enum class TypeKind : char {
-    Range, Normal, Literal, Boolean, Array, Ptr
+    IntRange, Normal, Literal, Boolean, Array, Ptr
 };
 
 enum class FunctionKind : char {
@@ -117,7 +117,7 @@ struct IntRangeType final : public Type {
         : Type(n), range(std::move(range)) {}
 
     size_t   bit_size() const override { return range.bit_size; }
-    TypeKind kind() const override { return TypeKind::Range; }
+    TypeKind kind() const override { return TypeKind::IntRange; }
     void     print(std::ostream&) const override;
     bool     is_signed() const { return range.is_signed; }
 };

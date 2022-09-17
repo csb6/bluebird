@@ -114,7 +114,7 @@ void set_literal_type(Expression* literal, const Other* other, const Type* other
         return;
 
     switch(other_type->kind()) {
-    case TypeKind::Range:
+    case TypeKind::IntRange:
         set_literal_range_type(literal, other, static_cast<const IntRangeType*>(other_type));
         break;
     case TypeKind::Boolean:

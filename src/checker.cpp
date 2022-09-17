@@ -113,7 +113,7 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
     }
 
     switch(type->kind()) {
-    case TypeKind::Range:
+    case TypeKind::IntRange:
         if(is_bool_op(op)) {
             Error(expr.right->line_num()).put("The boolean operator").quote(op)
                 .put("cannot be used with expression:\n  ")
@@ -145,7 +145,7 @@ static
 void check_legal_bin_op(const Expression& expr, TokenType op, const Type* type)
 {
     switch(type->kind()) {
-    case TypeKind::Range:
+    case TypeKind::IntRange:
     case TypeKind::Boolean:
         break;
     case TypeKind::Literal:

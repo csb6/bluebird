@@ -29,7 +29,7 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     }
 
     switch(ast_type->kind()) {
-    case TypeKind::Range:
+    case TypeKind::IntRange:
     case TypeKind::Boolean:
         return mlir::IntegerType::get(&context, ast_type->bit_size());
     case TypeKind::Ptr: {
@@ -55,7 +55,7 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
 static constexpr struct {
     std::uint8_t s_cmp;
     std::uint8_t u_cmp;
-} cmp_instr_lookup[] = {
+} cmp_i_instr_lookup[] = {
     /*Op_Eq*/ { (std::uint8_t)mlir::arith::CmpIPredicate::eq, (std::uint8_t)mlir::arith::CmpIPredicate::eq },
     /*Op_Ne*/ { (std::uint8_t)mlir::arith::CmpIPredicate::ne, (std::uint8_t)mlir::arith::CmpIPredicate::ne },
     /*Op_Lt*/ { (std::uint8_t)mlir::arith::CmpIPredicate::slt, (std::uint8_t)mlir::arith::CmpIPredicate::ult },
@@ -64,13 +64,14 @@ static constexpr struct {
     /*Op_Ge*/ { (std::uint8_t)mlir::arith::CmpIPredicate::sge, (std::uint8_t)mlir::arith::CmpIPredicate::uge }
 };
 static_assert((std::uint8_t)TokenType::Op_Eq + 5 == (std::uint8_t)TokenType::Op_Ge);
+
 static
-mlir::arith::CmpIPredicate get_cmp_pred(TokenType op_type, bool is_signed)
+mlir::arith::CmpIPredicate get_cmp_i_pred(TokenType op_type, bool is_signed)
 {
     if(is_signed) {
-        return (mlir::arith::CmpIPredicate)cmp_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].s_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].s_cmp;
     } else {
-        return (mlir::arith::CmpIPredicate)cmp_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].u_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].u_cmp;
     }
 }
 
@@ -123,9 +124,9 @@ public:
         auto right = visitAndGetResult(expr.right.get());
         auto loc = to_loc(m_builder, expr.line_num());
         bool is_signed = false;
-        if(expr.left->type()->kind() == TypeKind::Range) {
+        if(expr.left->type()->kind() == TypeKind::IntRange) {
             is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
-        } else if(expr.right->type()->kind() == TypeKind::Range) {
+        } else if(expr.right->type()->kind() == TypeKind::IntRange) {
             is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
         }
 

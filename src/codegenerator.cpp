@@ -69,7 +69,7 @@ CodeGenerator::CodeGenerator(const char* source_filename,
 llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
 {
     switch(ast_type->kind()) {
-    case TypeKind::Range:
+    case TypeKind::IntRange:
     case TypeKind::Boolean:
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     case TypeKind::Array: {
@@ -156,9 +156,9 @@ llvm::Value* CodegenExprVisitor::on_visit(UnaryExpression& expr)
 llvm::Value* CodegenExprVisitor::on_visit(BinaryExpression& expr)
 {
     bool type_is_signed = false;
-    if(expr.left->type()->kind() == TypeKind::Range) {
+    if(expr.left->type()->kind() == TypeKind::IntRange) {
         type_is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
-    } else if(expr.right->type()->kind() == TypeKind::Range) {
+    } else if(expr.right->type()->kind() == TypeKind::IntRange) {
         type_is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
     }
     llvm::Value* left_ir = visit(*expr.left);
@@ -260,7 +260,7 @@ llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
 
     llvm::Value* offset_index = visit(*expr.index_expr);
     assert(offset_index->getType()->isIntegerTy());
-    assert(expr.index_expr->type()->kind() == TypeKind::Range);
+    assert(expr.index_expr->type()->kind() == TypeKind::IntRange);
     auto* index_type = static_cast<const IntRangeType*>(expr.index_expr->type());
     // Since arrays can be indexed starting at any number, need to subtract
     // the starting value of this array's index type from the given index, since
@@ -658,7 +658,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
     unsigned encoding;
     auto bit_size = ast_type->bit_size();
     switch(ast_type->kind()) {
-    case TypeKind::Range: {
+    case TypeKind::IntRange: {
         auto* type = static_cast<const IntRangeType*>(ast_type);
         if(type->range.is_signed)
             encoding = llvm::dwarf::DW_ATE_signed;
