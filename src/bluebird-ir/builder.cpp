@@ -66,9 +66,9 @@ static
 mlir::arith::CmpIPredicate get_cmp_i_pred(TokenType op_type, bool is_signed)
 {
     if(is_signed) {
-        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].s_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].s_cmp;
     } else {
-        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Lt].u_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].u_cmp;
     }
 }
 
