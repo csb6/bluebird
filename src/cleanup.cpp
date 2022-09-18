@@ -128,6 +128,9 @@ void infer_literal_type(Expression* literal, const Other* other, const Type* oth
     case TypeKind::IntRange:
         infer_literal_intrange_type(literal, other, as<IntRangeType>(other_type));
         break;
+    case TypeKind::FloatRange:
+        infer_literal_floatrange_type(literal, as<FloatRangeType>(other_type));
+        break;
     case TypeKind::Boolean:
         infer_literal_bool_type(literal, other_type);
         break;

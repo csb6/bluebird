@@ -104,6 +104,7 @@ Parser::Parser(TokenIterator input_begin, TokenIterator input_end,
       m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)
 {
     m_names_table.add_type(&IntRangeType::Integer);
+    m_names_table.add_type(&FloatRangeType::Float);
     m_names_table.add_type(&IntRangeType::Character);
     m_names_table.add_type(&EnumType::Boolean);
 
@@ -150,7 +151,7 @@ Magnum::Pointer<Expression> Parser::in_literal()
         case TokenType::Int_Literal:
             return Magnum::pointer<IntLiteral>(current->line_num, current->text);
         case TokenType::Float_Literal:
-            return Magnum::pointer<FloatLiteral>(current->line_num, std::stod(current->text));
+            return Magnum::pointer<FloatLiteral>(current->line_num, std::stof(current->text));
         case TokenType::Keyword_True:
             return Magnum::pointer<BoolLiteral>(current->line_num, true);
         case TokenType::Keyword_False:

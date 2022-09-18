@@ -32,6 +32,11 @@ end;
 function if_else() is
   let a: Integer := 99;
   let b: Integer := 66;
+  let c: Float := 1.0;
+  c := c - 1.0;
+  if c = 8.0 - 1.0 do
+     c := c * 9.0 / 5.644;
+  end;
   if a = b do
     a := 0;
   else if a < b do

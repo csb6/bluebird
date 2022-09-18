@@ -42,7 +42,7 @@ enum class StmtKind : char {
 };
 
 enum class TypeKind : char {
-    IntRange, Normal, Literal, Boolean, Array, Ptr
+    IntRange, FloatRange, Normal, Literal, Boolean, Array, Ptr
 };
 
 enum class FunctionKind : char {
@@ -70,6 +70,22 @@ struct IntRange {
     unsigned long int size() const;
 };
 std::ostream& operator<<(std::ostream& output, const IntRange&);
+
+// A continuous range of 32-bit floating point numbers
+struct FloatRange {
+    BLUEBIRD_MOVEABLE(FloatRange)
+    BLUEBIRD_COPYABLE(FloatRange)
+    float lower_bound, upper_bound;
+    bool is_inclusive;
+
+    FloatRange(float lower = 0.0f, float upper = 0.0f, bool inclusive = true)
+        : lower_bound(lower), upper_bound(upper), is_inclusive(inclusive) {}
+
+    bool contains(double) const;
+    double size() const { return upper_bound - lower_bound; }
+};
+std::ostream& operator<<(std::ostream& output, const FloatRange&);
+
 
 template<typename Subclass, typename Base>
 inline
@@ -106,7 +122,7 @@ const Subclass& as(const Base& base)
 // A kind of object
 struct Type {
     // Some default types that don't have to be declared
-    static Type Void, String, Float;
+    static Type Void, String;
     std::string name;
 
     Type() = default;
@@ -123,7 +139,7 @@ struct Type {
 };
 
 struct LiteralType final : public Type {
-    static const LiteralType Char, Int, Bool, InitList;
+    static const LiteralType Char, Int, Float, Bool, InitList;
 
     using Type::Type;
 
@@ -159,11 +175,14 @@ struct IntRangeType final : public Type {
 };
 
 struct FloatRangeType : public Type {
+    static FloatRangeType Float;
     FloatRange range;
 
     using Type::Type;
     FloatRangeType(std::string_view n, FloatRange range)
         : Type(n), range(std::move(range)) {}
+
+    TypeKind kind() const override { return TypeKind::FloatRange; }
 };
 
 struct ArrayType final : public Type {
@@ -266,13 +285,14 @@ struct BoolLiteral final : public Expression {
 struct FloatLiteral final : public Expression {
     BLUEBIRD_MOVEABLE(FloatLiteral)
     BLUEBIRD_COPYABLE(FloatLiteral)
-    double value;
+    float value;
     unsigned int line;
+    const Type* actual_type = &LiteralType::Float;
 
-    FloatLiteral(unsigned int line_n, double v) : value(v), line(line_n) {}
+    FloatLiteral(unsigned int line_n, float v) : value(v), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::FloatLiteral; }
-    const Type*  type() const override { return &Type::Float; }
+    const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
     void         print(std::ostream&) const override;
 };

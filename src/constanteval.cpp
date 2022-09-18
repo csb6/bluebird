@@ -59,6 +59,16 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
         replace_with_literal(r_bool);
         break;
     }
+    case ExprKind::FloatLiteral: {
+        auto* r_float = as<FloatLiteral>(unary_expr->right.get());
+        if(unary_expr->op == TokenType::Op_Minus) {
+            r_float->value = !r_float->value;
+        } else {
+            raise_error_expected("unary expression with operator that works on "
+                                 "float literals", unary_expr);
+        }
+        break;
+    }
     default:
         // No constant folding needed
         break;
@@ -122,6 +132,40 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
             return;
         }
         replace_with_literal(l_int);
+    } else if(left_kind == ExprKind::FloatLiteral && right_kind == ExprKind::FloatLiteral) {
+        // Fold into a single literal
+        auto* l_float = as<FloatLiteral>(bin_expr->left.get());
+        auto* r_float = as<FloatLiteral>(bin_expr->right.get());
+        switch(bin_expr->op) {
+        case TokenType::Op_Plus:
+            l_float->value += r_float->value;
+            break;
+        case TokenType::Op_Minus:
+            l_float->value -= r_float->value;
+            break;
+        case TokenType::Op_Mult:
+            l_float->value *= r_float->value;
+            break;
+        case TokenType::Op_Div:
+            l_float->value /= r_float->value;
+            break;
+        // TODO: Add support for shift operators
+        case TokenType::Op_Thru:
+        case TokenType::Op_Upto:
+        case TokenType::Op_Eq:
+        case TokenType::Op_Ne:
+        case TokenType::Op_Lt:
+        case TokenType::Op_Gt:
+        case TokenType::Op_Le:
+        case TokenType::Op_Ge:
+            // Can't do folds here, need to preserve left/right sides for a range or comparison
+            return;
+        default:
+            raise_error_expected("binary expression with an operator that evaluates "
+                                 "to float literals", bin_expr);
+            return;
+        }
+        replace_with_literal(l_float);
     } else if(left_kind == ExprKind::BoolLiteral && right_kind == ExprKind::BoolLiteral) {
         // Fold into a single literal
         auto* l_bool = as<BoolLiteral>(bin_expr->left.get());

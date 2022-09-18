@@ -16,6 +16,7 @@
 */
 #include "ast.h"
 #include <iomanip> // for setprecision()
+#include <limits>
 
 void Type::print(std::ostream& output) const
 {
@@ -92,6 +93,21 @@ std::ostream& operator<<(std::ostream& output, const IntRange& range)
     return output;
 }
 
+bool FloatRange::contains(double value) const
+{
+    if(is_inclusive) {
+        return value >= lower_bound && value <= upper_bound;
+    } else {
+        return value >= lower_bound && value < upper_bound;
+    }
+}
+
+std::ostream& operator<<(std::ostream& output, const FloatRange& range)
+{
+    output << "(" << range.lower_bound << ", " << range.upper_bound << ")";
+    return output;
+}
+
 const Type* VariableExpression::type() const
 {
     return variable->type;
@@ -128,8 +144,7 @@ void BoolLiteral::print(std::ostream& output) const
 
 void FloatLiteral::print(std::ostream& output) const
 {
-    output << std::setprecision(10);
-    output << value;
+    output << std::setprecision(10) << value;
 }
 
 const Type* UnaryExpression::type() const
@@ -349,15 +364,16 @@ void BuiltinFunction::print(std::ostream& output) const
 
 Type Type::Void{"VoidType"};
 Type Type::String{"StringLiteral"};
-Type Type::Float{"FloatLiteral"};
 
 EnumType EnumType::Boolean{"Boolean"};
 
 const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};
+const LiteralType LiteralType::Float{"FloatLiteral"};
 const LiteralType LiteralType::Bool{"BoolLiteral"};
 const LiteralType LiteralType::InitList{"InitList"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
 IntRangeType IntRangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
 IntRangeType IntRangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};
+FloatRangeType FloatRangeType::Float{"Float", FloatRange{std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), true}};

@@ -93,6 +93,15 @@ public:
                       const multi_int& value, mlir::Type);
 };
 
+class FloatConstantOp : public ConstantOp<FloatConstantOp> {
+public:
+    using ConstantOp::ConstantOp;
+
+    static llvm::StringRef getOperationName() { return "bluebirdIR.floatConstant"; }
+
+    static void build(mlir::OpBuilder&, mlir::OperationState&, float value);
+};
+
 void build_binary_op(mlir::OperationState&, mlir::Value, mlir::Value);
 
 template<typename ConcreteOp, template <typename T> class... Traits>

@@ -32,6 +32,8 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     case TypeKind::IntRange:
     case TypeKind::Boolean:
         return mlir::IntegerType::get(&context, ast_type->bit_size());
+    case TypeKind::FloatRange:
+        return mlir::Float32Type::get(&context);
     case TypeKind::Ptr:
         return mlir::MemRefType::get({}, to_mlir_type(context, as<PtrType>(ast_type)->inner_type));
     case TypeKind::Literal: {
@@ -40,6 +42,8 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
             return mlir::IntegerType::get(&context, 8);
         } else if(literal_type == &LiteralType::Int) {
             return mlir::IntegerType::get(&context, 64);
+        } else if(literal_type == &LiteralType::Float) {
+            return mlir::FloatType::getF32(&context);
         } else {
             assert(false);
         }
@@ -47,6 +51,21 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     default:
         assert(false);
     }
+}
+
+static constexpr std::uint8_t cmp_f_instr_lookup[] = {
+    /*Op_Eq*/ (std::uint8_t)mlir::arith::CmpFPredicate::OEQ,
+    /*Op_Ne*/ (std::uint8_t)mlir::arith::CmpFPredicate::ONE,
+    /*Op_Lt*/ (std::uint8_t)mlir::arith::CmpFPredicate::OLT,
+    /*Op_Gt*/ (std::uint8_t)mlir::arith::CmpFPredicate::OGT,
+    /*Op_Le*/ (std::uint8_t)mlir::arith::CmpFPredicate::OLE,
+    /*Op_Ge*/ (std::uint8_t)mlir::arith::CmpFPredicate::OGE
+};
+
+static
+mlir::arith::CmpFPredicate get_cmp_f_pred(TokenType op_type)
+{
+    return (mlir::arith::CmpFPredicate)cmp_f_instr_lookup[(char)op_type - (char)TokenType::Op_Eq];
 }
 
 static constexpr struct {
@@ -106,7 +125,12 @@ public:
                     literal.value);
     }
 
-    mlir::OpState on_visit(FloatLiteral&) {}
+    mlir::OpState on_visit(FloatLiteral& literal)
+    {
+        return m_builder.create<bluebirdIR::FloatConstantOp>(
+                    to_loc(m_builder, literal.line_num()),
+                    literal.value);
+    }
 
     mlir::OpState on_visit(VariableExpression& expr)
     {
@@ -120,6 +144,8 @@ public:
         auto left = visitAndGetResult(expr.left.get());
         auto right = visitAndGetResult(expr.right.get());
         auto loc = to_loc(m_builder, expr.line_num());
+        assert(left.getType() == right.getType());
+        bool is_float_operand = expr.left->type()->kind() == TypeKind::FloatRange;
         bool is_signed = false;
         if(expr.left->type()->kind() == TypeKind::IntRange) {
             is_signed = as<IntRangeType>(expr.left->type())->is_signed();
@@ -129,17 +155,31 @@ public:
 
         switch(expr.op) {
         case TokenType::Op_Plus:
-            return m_builder.create<mlir::arith::AddIOp>(loc, left, right);
+            if(is_float_operand) {
+                return m_builder.create<mlir::arith::AddFOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::arith::AddIOp>(loc, left, right);
+            }
         case TokenType::Op_Minus:
-            return m_builder.create<mlir::arith::SubIOp>(loc, left, right);
+            if(is_float_operand) {
+                return m_builder.create<mlir::arith::SubFOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::arith::SubIOp>(loc, left, right);
+            }
         case TokenType::Op_Div:
-            if(is_signed) {
+            if(is_float_operand) {
+                return m_builder.create<mlir::arith::DivFOp>(loc, left, right);
+            } else if(is_signed) {
                 return m_builder.create<mlir::arith::DivSIOp>(loc, left, right);
             } else {
                 return m_builder.create<mlir::arith::DivUIOp>(loc, left, right);
             }
         case TokenType::Op_Mult:
-            return m_builder.create<mlir::arith::MulIOp>(loc, left, right);
+            if(is_float_operand) {
+                return m_builder.create<mlir::arith::MulFOp>(loc, left, right);
+            } else {
+                return m_builder.create<mlir::arith::MulIOp>(loc, left, right);
+            }
         case TokenType::Op_And:
             return m_builder.create<mlir::arith::AndIOp>(loc, left, right);
         case TokenType::Op_Or:
@@ -152,8 +192,12 @@ public:
         case TokenType::Op_Gt:
         case TokenType::Op_Le:
         case TokenType::Op_Ge:
-            // TODO: do float versions
-            return m_builder.create<mlir::arith::CmpIOp>(loc, get_cmp_pred(expr.op, is_signed), left, right);
+            if(is_float_operand) {
+                return m_builder.create<mlir::arith::CmpFOp>(loc, get_cmp_f_pred(expr.op), left, right);
+            } else {
+                assert(expr.type()->kind() == TypeKind::IntRange || expr.type()->kind() == TypeKind::Boolean);
+                return m_builder.create<mlir::arith::CmpIOp>(loc, get_cmp_i_pred(expr.op, is_signed), left, right);
+            }
         default:
             Error().put("MLIR: Unhandled operator").quote(expr.op).raise();
         }
