@@ -17,9 +17,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "token.h"
+#include "multiprecision.h"
+#include "util.h"
 #include "magnum.h"
 #include <vector>
-#include "multiprecision.h"
+#include <type_traits>
 
 namespace llvm {
     class Value;
@@ -54,6 +56,8 @@ enum class AssignableKind : char {
 // A continuous sequence of integers.
 // Upper/lower bounds are inclusive.
 struct IntRange {
+    BLUEBIRD_MOVEABLE(IntRange)
+    BLUEBIRD_COPYABLE(IntRange)
     multi_int lower_bound, upper_bound;
     bool is_signed;
     unsigned short bit_size;
@@ -66,6 +70,38 @@ struct IntRange {
     unsigned long int size() const;
 };
 std::ostream& operator<<(std::ostream& output, const IntRange&);
+
+template<typename Subclass, typename Base>
+inline
+Subclass* as(Base* base)
+{
+    static_assert(std::is_base_of_v<Base, Subclass>);
+    return static_cast<Subclass*>(base);
+}
+
+template<typename Subclass, typename Base>
+inline
+const Subclass* as(const Base* base)
+{
+    static_assert(std::is_base_of_v<Base, Subclass>);
+    return static_cast<const Subclass*>(base);
+}
+
+template<typename Subclass, typename Base>
+inline
+Subclass& as(Base& base)
+{
+    static_assert(std::is_base_of_v<Base, Subclass>);
+    return static_cast<Subclass&>(base);
+}
+
+template<typename Subclass, typename Base>
+inline
+const Subclass& as(const Base& base)
+{
+    static_assert(std::is_base_of_v<Base, Subclass>);
+    return static_cast<const Subclass&>(base);
+}
 
 // A kind of object
 struct Type {
@@ -198,6 +234,8 @@ struct CharLiteral final : public Expression {
 };
 
 struct IntLiteral final : public Expression {
+    BLUEBIRD_COPYABLE(IntLiteral)
+    BLUEBIRD_MOVEABLE(IntLiteral)
     // Holds arbitrarily-sized integers
     multi_int value;
     unsigned int line;
@@ -226,6 +264,8 @@ struct BoolLiteral final : public Expression {
 };
 
 struct FloatLiteral final : public Expression {
+    BLUEBIRD_MOVEABLE(FloatLiteral)
+    BLUEBIRD_COPYABLE(FloatLiteral)
     double value;
     unsigned int line;
 

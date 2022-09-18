@@ -32,16 +32,13 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     case TypeKind::IntRange:
     case TypeKind::Boolean:
         return mlir::IntegerType::get(&context, ast_type->bit_size());
-    case TypeKind::Ptr: {
-        auto* ptr_type = static_cast<const PtrType*>(ast_type);
-        return mlir::MemRefType::get({}, to_mlir_type(context, ptr_type->inner_type));
-    }
+    case TypeKind::Ptr:
+        return mlir::MemRefType::get({}, to_mlir_type(context, as<PtrType>(ast_type)->inner_type));
     case TypeKind::Literal: {
-        auto* literal_type = static_cast<const LiteralType*>(ast_type);
+        auto* literal_type = as<LiteralType>(ast_type);
         if(literal_type == &LiteralType::Char) {
             return mlir::IntegerType::get(&context, 8);
         } else if(literal_type == &LiteralType::Int) {
-            // TODO: properly handle literal-only expressions (i.e. omit them from codegen)
             return mlir::IntegerType::get(&context, 64);
         } else {
             assert(false);
@@ -125,9 +122,9 @@ public:
         auto loc = to_loc(m_builder, expr.line_num());
         bool is_signed = false;
         if(expr.left->type()->kind() == TypeKind::IntRange) {
-            is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
+            is_signed = as<IntRangeType>(expr.left->type())->is_signed();
         } else if(expr.right->type()->kind() == TypeKind::IntRange) {
-            is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
+            is_signed = as<IntRangeType>(expr.right->type())->is_signed();
         }
 
         switch(expr.op) {
@@ -375,7 +372,7 @@ void Builder::run()
     // all function calls will resolve to an existing mlir::FuncOp
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            auto* user_function = static_cast<BBFunction*>(function.get());
+            auto* user_function = as<BBFunction>(function.get());
             for(auto& param : user_function->parameters) {
                 param_types.push_back(to_mlir_type(m_context, param->type));
             }
@@ -397,7 +394,7 @@ void Builder::run()
     IRStmtVisitor stmt_visitor(m_builder, m_sse_vars, m_mlir_functions);
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            auto* user_function = static_cast<BBFunction*>(function.get());
+            auto* user_function = as<BBFunction>(function.get());
             auto& mlir_function = m_mlir_functions[user_function];
             stmt_visitor.set_function_and_alloca_args(*user_function, mlir_function);
 

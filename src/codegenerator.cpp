@@ -73,12 +73,12 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
     case TypeKind::Boolean:
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     case TypeKind::Array: {
-        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        auto* arr_type = as<ArrayType>(ast_type);
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
     case TypeKind::Ptr:{
-        auto* ptr_type = static_cast<const PtrType*>(ast_type);
+        auto* ptr_type = as<PtrType>(ast_type);
         return llvm::PointerType::get(to_llvm_type(ptr_type->inner_type), 0);
     }
     default:
@@ -157,9 +157,9 @@ llvm::Value* CodegenExprVisitor::on_visit(BinaryExpression& expr)
 {
     bool type_is_signed = false;
     if(expr.left->type()->kind() == TypeKind::IntRange) {
-        type_is_signed = static_cast<const IntRangeType*>(expr.left->type())->is_signed();
+        type_is_signed = as<IntRangeType>(expr.left->type())->is_signed();
     } else if(expr.right->type()->kind() == TypeKind::IntRange) {
-        type_is_signed = static_cast<const IntRangeType*>(expr.right->type())->is_signed();
+        type_is_signed = as<IntRangeType>(expr.right->type())->is_signed();
     }
     llvm::Value* left_ir = visit(*expr.left);
     llvm::Value* right_ir = visit(*expr.right);
@@ -253,7 +253,7 @@ llvm::Value* CodegenExprVisitor::on_visit(FunctionCall& call)
 llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
 {
     assert(expr.base_expr->kind() == ExprKind::Variable);
-    const Variable* var = static_cast<VariableExpression*>(expr.base_expr.get())->variable;
+    const Variable* var = as<VariableExpression>(expr.base_expr.get())->variable;
     auto match = m_gen.m_vars.find(var);
     assert(match == m_gen.m_vars.find(var));
     llvm::Value* alloc = match->second;
@@ -261,7 +261,7 @@ llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
     llvm::Value* offset_index = visit(*expr.index_expr);
     assert(offset_index->getType()->isIntegerTy());
     assert(expr.index_expr->type()->kind() == TypeKind::IntRange);
-    auto* index_type = static_cast<const IntRangeType*>(expr.index_expr->type());
+    auto* index_type = as<IntRangeType>(expr.index_expr->type());
     // Since arrays can be indexed starting at any number, need to subtract
     // the starting value of this array's index type from the given index, since
     // in LLVM all arrays start at 0
@@ -330,25 +330,25 @@ void CodeGenerator::in_statement(llvm::Function* curr_funct, Statement* statemen
 {
     switch(statement->kind()) {
     case StmtKind::Basic: {
-        auto* curr_statement = static_cast<BasicStatement*>(statement);
+        auto* curr_statement = as<BasicStatement>(statement);
         m_dbg_gen.setLocation(curr_statement->line_num(), m_ir_builder);
         CodegenExprVisitor(*this).visit(*curr_statement->expression);
         break;
     }
     case StmtKind::Initialization:
-        in_initialization(curr_funct, static_cast<Initialization*>(statement));
+        in_initialization(curr_funct, as<Initialization>(statement));
         break;
     case StmtKind::Assignment:
-        in_assignment(static_cast<Assignment*>(statement));
+        in_assignment(as<Assignment>(statement));
         break;
     case StmtKind::IfBlock:
-        in_if_block(curr_funct, static_cast<IfBlock*>(statement));
+        in_if_block(curr_funct, as<IfBlock>(statement));
         break;
     case StmtKind::While:
-        in_while_loop(curr_funct, static_cast<WhileLoop*>(statement));
+        in_while_loop(curr_funct, as<WhileLoop>(statement));
         break;
     case StmtKind::Return:
-        in_return_statement(static_cast<ReturnStatement*>(statement));
+        in_return_statement(as<ReturnStatement>(statement));
         break;
     case StmtKind::Block:
         // TODO: add support for anonymous blocks
@@ -376,7 +376,7 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
     llvm::Value* dest_ptr;
     switch(assignable->kind()) {
     case AssignableKind::Variable: {
-        auto match = m_vars.find(static_cast<const Variable*>(assignable));
+        auto match = m_vars.find(as<Variable>(assignable));
         assert(match != m_vars.end());
 
         m_dbg_gen.setLocation(assgn_stmt->line_num(), m_ir_builder);
@@ -386,7 +386,7 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
     case AssignableKind::Indexed: {
         // Normally, accessing an array element means loading it, but in this
         // case, we don't want the loaded value; we want the pointer to the value
-        auto* indexed_var = static_cast<IndexedVariable*>(assignable);
+        auto* indexed_var = as<IndexedVariable>(assignable);
         auto* load_instr = llvm::cast<llvm::LoadInst>(
             CodegenExprVisitor(*this).visit(*indexed_var->array_access));
         dest_ptr = load_instr->getPointerOperand();
@@ -436,8 +436,7 @@ void CodeGenerator::in_if_block(llvm::Function* curr_funct, IfBlock* ifblock,
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
         m_ir_builder.SetInsertPoint(if_false);
         m_dbg_gen.setLocation(ifblock->else_or_else_if->line_num(), m_ir_builder);
-        in_if_block(curr_funct, static_cast<IfBlock*>(ifblock->else_or_else_if.get()),
-                    successor);
+        in_if_block(curr_funct, as<IfBlock>(ifblock->else_or_else_if.get()), successor);
     } else if(ifblock->else_or_else_if->kind() == StmtKind::Block) {
         // Else block
         if_false = llvm::BasicBlock::Create(m_context, "iffalse", curr_funct);
@@ -543,8 +542,7 @@ void CodeGenerator::declare_function_headers()
         auto linkage_type = llvm::Function::InternalLinkage;
         if(ast_function->kind() == FunctionKind::Builtin) {
             // TODO: maybe add debug info. for builtin functions?
-            auto* builtin = static_cast<const BuiltinFunction*>(ast_function.get());
-            if(!builtin->is_used)
+            if(!as<BuiltinFunction>(ast_function.get())->is_used)
                 continue;
             linkage_type = llvm::Function::ExternalLinkage;
         } else if(ast_function->name == "main") {
@@ -587,7 +585,7 @@ void CodeGenerator::define_functions()
         if(fcn->kind() != FunctionKind::Normal)
             // Builtin functions have no body
             continue;
-        auto* function = static_cast<BBFunction*>(fcn.get());
+        auto* function = as<BBFunction>(fcn.get());
         llvm::Function* curr_funct = m_module.getFunction(function->name);
         // Next, create a block containing the body of the function
         auto* funct_body = llvm::BasicBlock::Create(m_context, "entry", curr_funct);
@@ -658,14 +656,12 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
     unsigned encoding;
     auto bit_size = ast_type->bit_size();
     switch(ast_type->kind()) {
-    case TypeKind::IntRange: {
-        auto* type = static_cast<const IntRangeType*>(ast_type);
-        if(type->range.is_signed)
+    case TypeKind::IntRange:
+        if(as<IntRangeType>(ast_type)->range.is_signed)
             encoding = llvm::dwarf::DW_ATE_signed;
         else
             encoding = llvm::dwarf::DW_ATE_unsigned;
         break;
-    }
     case TypeKind::Boolean:
         encoding = llvm::dwarf::DW_ATE_boolean;
         // While the correct bit_size is 1, lldb crashes if bit_size < 8;
@@ -673,7 +669,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
         bit_size = 8;
         break;
     case TypeKind::Array: {
-        auto* arr_type = static_cast<const ArrayType*>(ast_type);
+        auto* arr_type = as<ArrayType>(ast_type);
         multi_int start{arr_type->index_type->range.lower_bound};
         multi_int end{arr_type->index_type->range.upper_bound};
         llvm::Metadata* subscript =

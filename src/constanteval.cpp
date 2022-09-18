@@ -35,7 +35,7 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
 
     switch(unary_expr->right->kind()) {
     case ExprKind::IntLiteral: {
-        auto* r_int = static_cast<IntLiteral*>(unary_expr->right.get());
+        auto* r_int = as<IntLiteral>(unary_expr->right.get());
         switch(unary_expr->op) {
         case TokenType::Op_Minus:
             // TODO: use r_int->value.ones_complement(); for certain unsigned integer types
@@ -49,7 +49,7 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
         break;
     }
     case ExprKind::BoolLiteral: {
-        auto* r_bool = static_cast<BoolLiteral*>(unary_expr->right.get());
+        auto* r_bool = as<BoolLiteral>(unary_expr->right.get());
         if(unary_expr->op == TokenType::Op_Not) {
             r_bool->value = !r_bool->value;
         } else {
@@ -84,8 +84,8 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
     const auto right_kind = bin_expr->right->kind();
     if(left_kind == ExprKind::IntLiteral && right_kind == ExprKind::IntLiteral) {
         // Fold into a single literal (uses arbitrary-precision arithmetic)
-        auto* l_int = static_cast<IntLiteral*>(bin_expr->left.get());
-        auto* r_int = static_cast<IntLiteral*>(bin_expr->right.get());
+        auto* l_int = as<IntLiteral>(bin_expr->left.get());
+        auto* r_int = as<IntLiteral>(bin_expr->right.get());
         switch(bin_expr->op) {
         case TokenType::Op_Plus:
             l_int->value += r_int->value;
@@ -126,8 +126,8 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
         replace_with_literal(l_int);
     } else if(left_kind == ExprKind::BoolLiteral && right_kind == ExprKind::BoolLiteral) {
         // Fold into a single literal
-        auto* l_bool = static_cast<BoolLiteral*>(bin_expr->left.get());
-        auto* r_bool = static_cast<BoolLiteral*>(bin_expr->right.get());
+        auto* l_bool = as<BoolLiteral>(bin_expr->left.get());
+        auto* r_bool = as<BoolLiteral>(bin_expr->right.get());
         switch(bin_expr->op) {
         case TokenType::Op_And:
             l_bool->value &= r_bool->value;
@@ -149,10 +149,10 @@ void fold_constants(Magnum::Pointer<Expression>& expr)
 {
     switch(expr->kind()) {
     case ExprKind::Binary:
-        fold_binary_constants(expr, static_cast<BinaryExpression*>(expr.get()));
+        fold_binary_constants(expr, as<BinaryExpression>(expr.get()));
         break;
     case ExprKind::Unary:
-        fold_unary_constants(expr, static_cast<UnaryExpression*>(expr.get()));
+        fold_unary_constants(expr, as<UnaryExpression>(expr.get()));
         break;
     default:
         // Ignore other kinds of expressions; they can't be folded

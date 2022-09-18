@@ -241,8 +241,7 @@ Magnum::Pointer<Expression> Parser::in_function_call()
             new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
                                                               match_value.function);
             if(match_value.function->kind() == FunctionKind::Builtin) {
-                auto* builtin = static_cast<BuiltinFunction*>(match_value.function);
-                builtin->is_used = true;
+                as<BuiltinFunction>(match_value.function)->is_used = true;
             }
             break;
         default:
@@ -424,7 +423,7 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
         if(index_op->kind() != ExprKind::IndexOp) {
             Error(index_op->line_num()).raise("Expected an assignment to an array element");
         }
-        auto* index_op_act = static_cast<IndexOp*>(index_op.release());
+        auto* index_op_act = as<IndexOp>(index_op.release());
         assgn_target = create<IndexedVariable>(m_index_vars,
                                                Magnum::Pointer<IndexOp>{index_op_act});
         assert(assgn_target != nullptr);
@@ -702,7 +701,7 @@ void Parser::in_range_type_definition(const std::string& type_name)
     if(expr->kind() != ExprKind::Binary) {
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
-    auto* range_expr = static_cast<BinaryExpression*>(expr.get());
+    auto* range_expr = as<BinaryExpression>(expr.get());
     if(range_expr->op != TokenType::Op_Thru && range_expr->op != TokenType::Op_Upto) {
         raise_error_expected("binary expression with operator `thru` or `upto`", *token);
     }
@@ -717,8 +716,8 @@ void Parser::in_range_type_definition(const std::string& type_name)
         raise_error_expected("integer constant expression as the range's upper bound",
                              range_expr->right.get());
     }
-    auto* left_expr = static_cast<const IntLiteral*>(range_expr->left.get());
-    auto* right_expr = static_cast<const IntLiteral*>(range_expr->right.get());
+    auto* left_expr = as<IntLiteral>(range_expr->left.get());
+    auto* right_expr = as<IntLiteral>(range_expr->right.get());
 
     // TODO: Support arbitrary expressions made of arithmetic
     //  operators/parentheses/negations/bitwise operators
@@ -742,7 +741,7 @@ void Parser::in_array_type_definition(const std::string& type_name)
        || match.value().type->kind() != TypeKind::IntRange) {
         raise_error_expected("name of a range type", *token);
     }
-    auto* index_type = static_cast<const IntRangeType*>(match.value().type);
+    const auto* index_type = as<IntRangeType>(match.value().type);
     ++token;
 
     check_token_is(TokenType::Closed_Bracket, "closing bracket `]`", *token);

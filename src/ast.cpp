@@ -193,8 +193,7 @@ const Type* IndexOp::type() const
 {
     const Type* base_type = base_expr->type();
     if(base_type->kind() == TypeKind::Array) {
-        auto* arr_type = static_cast<const ArrayType*>(base_type);
-        return arr_type->element_type;
+        return as<ArrayType>(base_type)->element_type;
     } else {
         return &Type::Void;
     }

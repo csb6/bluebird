@@ -85,8 +85,8 @@ bool matched_ptr(Expression* expr, const Other* other, const Type* other_type)
     if(expr->type()->kind() != TypeKind::Ptr || other_type->kind() != TypeKind::Ptr) {
         return false;
     }
-    auto* expr_ptr_type = static_cast<const PtrType*>(expr->type());
-    auto* other_ptr_type = static_cast<const PtrType*>(other_type);
+    auto* expr_ptr_type = as<PtrType>(expr->type());
+    auto* other_ptr_type = as<PtrType>(other_type);
 
     if(other_ptr_type->inner_type == expr_ptr_type->inner_type
        && (other_ptr_type->is_anonymous || expr_ptr_type->is_anonymous)) {
@@ -212,7 +212,7 @@ void CheckerExprVisitor::on_visit(IndexOp& expr)
             .put(expr.base_expr.get()).put("\t").put(base_type).newline()
             .raise(" is not an array type and so cannot be indexed using `[ ]`");
     }
-    auto* arr_type = static_cast<const ArrayType*>(base_type);
+    auto* arr_type = as<ArrayType>(base_type);
     visit(*expr.index_expr);
     if(expr.index_expr->type() != arr_type->index_type) {
         print_type_mismatch(expr.index_expr.get(), expr.base_expr.get(),
@@ -237,7 +237,7 @@ void typecheck_init_list(InitList* init_list, const Assignable* assignable)
 {
     // Assertion should be made true in cleanup pass
     assert(assignable->type->kind() == TypeKind::Array);
-    const auto* assignable_type = static_cast<const ArrayType*>(assignable->type);
+    const auto* assignable_type = as<ArrayType>(assignable->type);
 
     // TODO: zero-initialize all other indices
     if(init_list->values.size() > assignable_type->index_type->range.size()) {
@@ -260,7 +260,7 @@ static
 void typecheck_assign(Expression* assign_expr, const Assignable* assignable)
 {
     if(assign_expr->kind() == ExprKind::InitList) {
-        typecheck_init_list(static_cast<InitList*>(assign_expr), assignable);
+        typecheck_init_list(as<InitList>(assign_expr), assignable);
         return;
     }
 
@@ -276,7 +276,7 @@ bool CheckerStmtVisitor::on_visit(BasicStatement& stmt)
 {
     CheckerExprVisitor().visit(*stmt.expression);
     if(stmt.expression->kind() == ExprKind::Binary) {
-        auto* bin_expr = static_cast<const BinaryExpression*>(stmt.expression.get());
+        auto* bin_expr = as<BinaryExpression>(stmt.expression.get());
         if(bin_expr->op == TokenType::Op_Eq) {
             Error(bin_expr->line_num())
                 .raise("Equality operator is `=`, assignment operator"
@@ -302,7 +302,7 @@ bool CheckerStmtVisitor::on_visit(Assignment& assgn_stmt)
     typecheck_assign(assgn_stmt.expression.get(), assgn_stmt.assignable);
     if(assgn_stmt.assignable->kind() == AssignableKind::Indexed) {
         CheckerExprVisitor()
-            .visit(*static_cast<IndexedVariable*>(assgn_stmt.assignable)->array_access);
+            .visit(*as<IndexedVariable>(assgn_stmt.assignable)->array_access);
     }
     return false;
 }
@@ -401,7 +401,7 @@ void Checker::run()
 
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
-            auto* curr_funct = static_cast<BBFunction*>(function.get());
+            auto* curr_funct = as<BBFunction>(function.get());
             bool always_returns = CheckerStmtVisitor(curr_funct).visit(curr_funct->body);
             if(!always_returns && curr_funct->return_type != &Type::Void) {
                 Error().put("Function").quote(curr_funct->name)

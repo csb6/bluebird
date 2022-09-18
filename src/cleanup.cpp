@@ -48,14 +48,13 @@ Cleanup::Cleanup(std::vector<Magnum::Pointer<Function>>& functions,
 
 template<typename Other>
 static
-void set_literal_range_type(Expression* literal, const Other* other,
-                            const IntRangeType* other_type)
+void infer_literal_intrange_type(Expression* literal, const Other* other,
+                                 const IntRangeType* other_type)
 {
-    const IntRange& range = other_type->range;
     switch(literal->kind()) {
     case ExprKind::IntLiteral: {
-        auto* int_literal = static_cast<IntLiteral*>(literal);
-        if(!range.contains(int_literal->value)) {
+        auto* int_literal = as<IntLiteral>(literal);
+        if(!other_type->range.contains(int_literal->value)) {
             Error(int_literal->line_num())
                 .put("Integer Literal ").put(int_literal)
                 .put(" is not in the range of:\n  ")
@@ -68,7 +67,7 @@ void set_literal_range_type(Expression* literal, const Other* other,
         break;
     }
     case ExprKind::CharLiteral: {
-        auto* char_literal = static_cast<CharLiteral*>(literal);
+        auto* char_literal = as<CharLiteral>(literal);
         if(other_type != &IntRangeType::Character) {
             // TODO: allow user-defined character types to be used with character
             // literals
@@ -89,13 +88,25 @@ void set_literal_range_type(Expression* literal, const Other* other,
 }
 
 static
-void set_literal_bool_type(Expression* literal, const Type* other_type)
+void infer_literal_floatrange_type(Expression* literal, const FloatRangeType* other_type)
+{
+    if(literal->kind() == ExprKind::FloatLiteral) {
+        auto* float_literal = as<FloatLiteral>(literal);
+        float_literal->actual_type = other_type;
+    } else {
+        Error(literal->line_num())
+            .put("Expected a float literal, but instead found expression:\n  ")
+            .put(literal).put("\t").put(literal->type()).raise();
+    }
+}
+
+static
+void infer_literal_bool_type(Expression* literal, const Type* other_type)
 {
     // TODO: add support for user-created boolean types, which should be usable
     // with Boolean literals
     if(literal->kind() == ExprKind::BoolLiteral) {
-        auto* bool_literal = static_cast<BoolLiteral*>(literal);
-        bool_literal->actual_type = other_type;
+        as<BoolLiteral>(literal)->actual_type = other_type;
     } else {
         Error(literal->line_num())
             .put("Expected a boolean literal, but instead found expression:\n  ")
@@ -104,24 +115,24 @@ void set_literal_bool_type(Expression* literal, const Type* other_type)
 }
 
 static
-void set_literal_array_type(Expression*, const ArrayType*);
+void infer_literal_array_type(Expression*, const ArrayType*);
 
 template<typename Other>
 static
-void set_literal_type(Expression* literal, const Other* other, const Type* other_type)
+void infer_literal_type(Expression* literal, const Other* other, const Type* other_type)
 {
     if(literal->type()->kind() != TypeKind::Literal)
         return;
 
     switch(other_type->kind()) {
     case TypeKind::IntRange:
-        set_literal_range_type(literal, other, static_cast<const IntRangeType*>(other_type));
+        infer_literal_intrange_type(literal, other, as<IntRangeType>(other_type));
         break;
     case TypeKind::Boolean:
-        set_literal_bool_type(literal, other_type);
+        infer_literal_bool_type(literal, other_type);
         break;
     case TypeKind::Array:
-        set_literal_array_type(literal, static_cast<const ArrayType*>(other_type));
+        infer_literal_array_type(literal, as<ArrayType>(other_type));
         break;
     case TypeKind::Ptr:
         Error(literal->line_num()).put("Literal ").put(literal).raise(" cannot be used with pointer types");
@@ -136,13 +147,13 @@ void set_literal_type(Expression* literal, const Other* other, const Type* other
 }
 
 static
-void set_literal_array_type(Expression* literal, const ArrayType* other_type)
+void infer_literal_array_type(Expression* literal, const ArrayType* other_type)
 {
     if(literal->kind() == ExprKind::InitList) {
-        auto* init_list = static_cast<InitList*>(literal);
+        auto* init_list = as<InitList>(literal);
         init_list->actual_type = other_type;
         for(auto& expr : init_list->values) {
-            set_literal_type(expr.get(), init_list, other_type->element_type);
+            infer_literal_type(expr.get(), init_list, other_type->element_type);
         }
     } else {
         Error(literal->line_num())
@@ -181,7 +192,7 @@ void CleanupExprVisitor::on_visit(UnaryExpression& expr)
         if(right_type->kind() != TypeKind::Ptr) {
             Error(expr.line_num()).raise("Cannot use to_val operator on a non-pointer value");
         } else {
-            expr.actual_type = static_cast<const PtrType*>(right_type)->inner_type;
+            expr.actual_type = as<PtrType>(right_type)->inner_type;
         }
     }
 }
@@ -190,8 +201,8 @@ void CleanupExprVisitor::on_visit(BinaryExpression& expr)
 {
     visit_child(m_anon_ptr_types, expr.left);
     visit_child(m_anon_ptr_types, expr.right);
-    set_literal_type(expr.left.get(), expr.right.get(), expr.right->type());
-    set_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
+    infer_literal_type(expr.left.get(), expr.right.get(), expr.right->type());
+    infer_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
 }
 
 void CleanupExprVisitor::on_visit(FunctionCall& call)
@@ -204,7 +215,7 @@ void CleanupExprVisitor::on_visit(FunctionCall& call)
     auto param = call.definition->parameters.begin();
     for(auto& arg : call.arguments) {
         visit_child(m_anon_ptr_types, arg);
-        set_literal_type(arg.get(), param->get(), (*param)->type);
+        infer_literal_type(arg.get(), param->get(), (*param)->type);
         ++param;
     }
 }
@@ -224,8 +235,7 @@ void CleanupExprVisitor::on_visit(IndexOp& expr)
             .put(expr.base_expr.get()).put("\t").put(base_type).newline()
             .raise(" is not an array type and so cannot be indexed using `[ ]`");
     }
-    auto* array_type = static_cast<const ArrayType*>(base_type);
-    set_literal_type(expr.index_expr.get(), expr.base_expr.get(), array_type->index_type);
+    infer_literal_type(expr.index_expr.get(), expr.base_expr.get(), as<ArrayType>(base_type)->index_type);
 }
 
 void CleanupExprVisitor::on_visit(InitList& expr)
@@ -245,7 +255,7 @@ void CleanupStmtVisitor::on_visit(Initialization& stmt)
 {
     if(stmt.expression != nullptr) {
         visit_child(m_anon_ptr_types, stmt.expression);
-        set_literal_type(stmt.expression.get(), stmt.variable.get(),
+        infer_literal_type(stmt.expression.get(), stmt.variable.get(),
                          stmt.variable->type);
     }
 }
@@ -253,9 +263,9 @@ void CleanupStmtVisitor::on_visit(Initialization& stmt)
 void CleanupStmtVisitor::on_visit(Assignment& stmt)
 {
     visit_child(m_anon_ptr_types, stmt.expression);
-    set_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
+    infer_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
     if(stmt.assignable->kind() == AssignableKind::Indexed) {
-        auto* indexed_var = static_cast<IndexedVariable*>(stmt.assignable);
+        auto* indexed_var = as<IndexedVariable>(stmt.assignable);
         CleanupExprVisitor(m_anon_ptr_types).visit(*indexed_var->array_access);
     }
 }
@@ -287,7 +297,7 @@ void CleanupStmtVisitor::on_visit(ReturnStatement& stmt)
     assert(m_curr_funct != nullptr);
     if(stmt.expression != nullptr) {
         visit_child(m_anon_ptr_types, stmt.expression);
-        set_literal_type(stmt.expression.get(), m_curr_funct,
+        infer_literal_type(stmt.expression.get(), m_curr_funct,
                          m_curr_funct->return_type);
     }
 }
@@ -303,7 +313,7 @@ void Cleanup::run()
 
     for(auto& funct : m_functions) {
         if(funct->kind() == FunctionKind::Normal) {
-            auto* curr_funct = static_cast<BBFunction*>(funct.get());
+            auto* curr_funct = as<BBFunction>(funct.get());
             CleanupStmtVisitor(curr_funct, m_anon_ptr_types).visit(curr_funct->body);
         }
     }
