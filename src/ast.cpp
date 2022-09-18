@@ -150,15 +150,17 @@ void UnaryExpression::print(std::ostream& output) const
 
 const Type* BinaryExpression::type() const
 {
-    if(is_bool_op(op)) {
+    if(is_comparison_op(op) || is_logical_op(op)) {
         return &EnumType::Boolean;
     } else {
         // If a literal and a typed expression of some sort
         // are in this expression, want to return the type of
         // the typed part (literals implicitly convert to that type)
         switch(left->kind()) {
-        case ExprKind::StringLiteral: case ExprKind::CharLiteral:
-        case ExprKind::IntLiteral:    case ExprKind::FloatLiteral:
+        case ExprKind::StringLiteral:
+        case ExprKind::CharLiteral:
+        case ExprKind::IntLiteral:
+        case ExprKind::FloatLiteral:
             return right->type();
         default:
             return left->type();

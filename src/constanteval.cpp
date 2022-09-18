@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2021  Cole Blakley
+    Copyright (C) 2021-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -117,10 +117,8 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
             // Can't do folds here, need to preserve left/right sides for a range or comparison
             return;
         default:
-            if(is_bool_op(bin_expr->op)) {
-                raise_error_expected("binary expression with an operator that works "
-                                     "on integer literals", bin_expr);
-            }
+            raise_error_expected("binary expression with an operator that evaluates "
+                                 "to integer literals", bin_expr);
             return;
         }
         replace_with_literal(l_int);

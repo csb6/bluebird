@@ -114,20 +114,17 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
 
     switch(type->kind()) {
     case TypeKind::IntRange:
-        if(is_bool_op(op)) {
-            Error(expr.right->line_num()).put("The boolean operator").quote(op)
+        if(op != TokenType::Op_Not && op != TokenType::Op_Minus) {
+            Error(expr.right->line_num()).put("The unary operator").quote(op)
                 .put("cannot be used with expression:\n  ")
-                .put(expr.right.get()).newline()
-                .put("because the expression type is a range type, not a boolean type")
-                .raise();
+                .put(expr.right.get()).put("\t").put(expr.right->type()).raise();
         }
         break;
     case TypeKind::Boolean:
-        if(!is_bool_op(op)) {
-            Error(expr.right->line_num()).put("The non-boolean operator")
+        if(op != TokenType::Op_Not) {
+            Error(expr.right->line_num()).put("The unary operator")
                 .quote(op).put("cannot be used with expression:\n ")
-                .put(expr.right.get()).put("\t").put(expr.right->type()).newline()
-                .raise("because the expression is a boolean type");
+                .put(expr.right.get()).put("\t").put(expr.right->type()).raise();
         }
         break;
     case TypeKind::Literal:
@@ -144,9 +141,27 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
 static
 void check_legal_bin_op(const Expression& expr, TokenType op, const Type* type)
 {
+    auto raise_error = [&] {
+        Error(expr.line_num()).put("The operator").quote(op)
+                .put("cannot be used with expression:\n ")
+                .put(&expr).put("\t").put(expr.type()).raise();
+    };
     switch(type->kind()) {
     case TypeKind::IntRange:
+        if(!is_arith_op(op) && !is_logical_op(op) && !is_comparison_op(op)
+            && !is_bitwise_op(op) && !is_range_op(op)) {
+            raise_error();
+        }
+        break;
+    case TypeKind::FloatRange:
+        if(!is_arith_op(op) && !is_comparison_op(op) && !is_range_op(op)) {
+            raise_error();
+        }
+        break;
     case TypeKind::Boolean:
+        if(!is_comparison_op(op) && !is_logical_op(op)) {
+            raise_error();
+        }
         break;
     case TypeKind::Literal:
         if(expr.kind() == ExprKind::InitList) {
@@ -155,9 +170,7 @@ void check_legal_bin_op(const Expression& expr, TokenType op, const Type* type)
         }
         break;
     default:
-        Error(expr.line_num()).put("The operator").quote(op)
-            .put("cannot be used with expression:\n ")
-            .put(&expr).put("\t").put(expr.type()).raise();
+        raise_error();
     }
 }
 

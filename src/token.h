@@ -66,6 +66,10 @@ std::ostream& operator<<(std::ostream&, const TokenType);
 char escape_sequence(char);
 void print_unescape(char source, std::ostream&);
 void print_unescape(const std::string& source, std::ostream&);
-bool is_bool_op(const TokenType);
-bool is_ptr_op(const TokenType);
+bool is_arith_op(TokenType);
+bool is_logical_op(TokenType);
+bool is_comparison_op(TokenType);
+bool is_bitwise_op(TokenType);
+bool is_range_op(TokenType);
+bool is_ptr_op(TokenType);
 #endif

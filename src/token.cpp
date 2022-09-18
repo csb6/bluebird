@@ -1,5 +1,5 @@
 /* Bluebird compiler - ahead-of-time compiler for the Bluebird language using LLVM.
-    Copyright (C) 2020-2021  Cole Blakley
+    Copyright (C) 2020-2022  Cole Blakley
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -254,9 +254,29 @@ void print_unescape(const std::string& source, std::ostream& output)
     }
 }
 
-bool is_bool_op(const TokenType token)
+bool is_arith_op(TokenType op)
 {
-    return token >= TokenType::Op_And && token <= TokenType::Op_Ge;
+    return op >= TokenType::Op_Plus && op <= TokenType::Op_Rem;
+}
+
+bool is_logical_op(TokenType token)
+{
+    return token >= TokenType::Op_And && token <= TokenType::Op_Xor;
+}
+
+bool is_comparison_op(TokenType token)
+{
+    return token >= TokenType::Op_Eq && token <= TokenType::Op_Ge;
+}
+
+bool is_range_op(TokenType token)
+{
+    return token == TokenType::Op_Thru || token == TokenType::Op_Upto;
+}
+
+bool is_bitwise_op(TokenType token)
+{
+    return token == TokenType::Op_Left_Shift || token == TokenType::Op_Right_Shift;
 }
 
 bool is_ptr_op(const TokenType token)
