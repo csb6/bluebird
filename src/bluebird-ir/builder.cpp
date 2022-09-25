@@ -22,6 +22,14 @@ static mlir::Location to_loc(mlir::OpBuilder& builder, unsigned int line_num)
     return mlir::FileLineColLoc::get(builder.getContext(), "", line_num, 1);
 }
 
+static mlir::Block* getEntryBlock(mlir::FuncOp function)
+{
+    assert(!function.getBlocks().empty());
+    auto& entry_block = function.getBlocks().front();
+    assert(entry_block.isEntryBlock());
+    return &entry_block;
+}
+
 static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
 {
     if(ast_type == &Type::Void) {
@@ -242,14 +250,6 @@ public:
     }
 };
 
-static mlir::Block& getEntryBlock(mlir::FuncOp function)
-{
-    assert(!function.getBlocks().empty());
-    auto& entry_block = function.getBlocks().front();
-    assert(entry_block.isEntryBlock());
-    return entry_block;
-}
-
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
     mlir::OpBuilder& m_builder;
     std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
@@ -266,8 +266,7 @@ public:
     void set_function_and_alloca_args(const BBFunction& user_function, mlir::FuncOp mlir_function)
     {
         m_curr_function = mlir_function;
-        auto& entry_block = getEntryBlock(mlir_function);
-        m_builder.setInsertionPointToStart(&entry_block);
+        m_builder.setInsertionPointToStart(getEntryBlock(mlir_function));
 
         // Arguments are passed as SSA values, so create allocas for them so they can be modified in
         // the function body
@@ -288,7 +287,7 @@ public:
 
     void on_visit(BasicStatement& stmt)
     {
-        m_expr_visitor.visit(*stmt.expression.get());
+        m_expr_visitor.visit(*stmt.expression);
     }
 
     void on_visit(Initialization& var_decl)
@@ -296,11 +295,9 @@ public:
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
         auto loc = to_loc(m_builder, var_decl.line_num());
-
         // Put allocas at start of function's entry block
         auto oldInsertionPoint = m_builder.saveInsertionPoint();
-        auto& entry_block = getEntryBlock(m_curr_function);
-        m_builder.setInsertionPointToStart(&entry_block);
+        m_builder.setInsertionPointToStart(getEntryBlock(m_curr_function));
         auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, std::move(memref_type));
         m_builder.restoreInsertionPoint(oldInsertionPoint);
         if(var_decl.expression != nullptr) {
@@ -315,7 +312,7 @@ public:
         auto alloca = m_sse_vars.find(asgmt.assignable);
         assert(alloca != m_sse_vars.end());
         auto value = m_expr_visitor.visitAndGetResult(asgmt.expression.get());
-        m_builder.create<mlir::memref::StoreOp>(value.getLoc(), value, alloca->second);
+        m_builder.create<mlir::memref::StoreOp>(to_loc(m_builder, asgmt.line_num()), value, alloca->second);
     }
 
     void on_visit(IfBlock& if_else_stmt)
@@ -345,7 +342,7 @@ public:
                 }
             }
         }
-        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+        m_builder.restoreInsertionPoint(old_insert_point);
     }
 
     void on_visit(Block& block)
@@ -357,7 +354,7 @@ public:
         for(auto& stmt : block.statements) {
             visit(*stmt);
         }
-        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+        m_builder.restoreInsertionPoint(old_insert_point);
     }
 
     void on_visit(WhileLoop& while_stmt)
@@ -378,7 +375,7 @@ public:
             visit(*stmt);
         }
         m_builder.create<mlir::scf::YieldOp>(while_loc);
-        m_builder.restoreInsertionPoint(std::move(old_insert_point));
+        m_builder.restoreInsertionPoint(old_insert_point);
     }
 
     void on_visit(ReturnStatement& stmt)
@@ -445,9 +442,8 @@ void Builder::run()
             for(auto& statement : user_function->body.statements) {
                 stmt_visitor.visit(*statement.get());
             }
-            auto& entry_block = getEntryBlock(mlir_function);
             if(user_function->return_type == &Type::Void) {
-                m_builder.setInsertionPointToEnd(&entry_block);
+                m_builder.setInsertionPointToEnd(getEntryBlock(mlir_function));
                 m_builder.create<mlir::ReturnOp>(m_builder.getUnknownLoc(), mlir::None);
             }
         }

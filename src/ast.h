@@ -424,7 +424,7 @@ struct IndexedVariable final : public Assignable {
 
     explicit
     IndexedVariable(Magnum::Pointer<IndexOp>&& op)
-        : Assignable((Type*)op->type()), array_access(std::move(op)) {}
+        : Assignable(const_cast<Type*>(op->type())), array_access(std::move(op)) {}
 
     void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Indexed; }
