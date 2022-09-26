@@ -17,8 +17,6 @@
 target_sources(bluebird PRIVATE
   dialect.cpp
   dialect.h
-  types.cpp
-  types.h
   builder.cpp
   builder.h
 )
