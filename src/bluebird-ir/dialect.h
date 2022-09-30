@@ -16,14 +16,15 @@ namespace bluebirdIR {
 
 class BluebirdIRDialect : public mlir::Dialect {
 public:
-    explicit BluebirdIRDialect(mlir::MLIRContext*);
+    explicit
+    BluebirdIRDialect(mlir::MLIRContext*);
 
     static llvm::StringRef getDialectNamespace() { return "bluebirdIR"; }
     void printType(mlir::Type, mlir::DialectAsmPrinter&) const override;
     void printAttribute(mlir::Attribute, mlir::DialectAsmPrinter&) const override;
 };
 
-
+// Attributes
 struct IntLiteralAttrStorage;
 
 class IntLiteralAttr : public mlir::Attribute::AttrBase<IntLiteralAttr,

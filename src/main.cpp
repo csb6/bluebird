@@ -26,7 +26,7 @@
 #include <iostream>
 #include <string>
 
-const std::string load_source_file(const char *filename)
+std::string load_source_file(const char *filename)
 {
     std::ifstream input_file(filename);
     if(!input_file) {

@@ -78,7 +78,7 @@ constexpr bool is_binary_operator(const Precedence p)
     return p >= 0 && p != Operand;
 }
 
-static void check_token_is(TokenType type, const char* description, Token token)
+static void check_token_is(TokenType type, const char* description, const Token& token)
 {
     if(token.type != type) {
         raise_error_expected(description, token);
@@ -140,7 +140,7 @@ Magnum::Pointer<Expression> Parser::parse_expression(TokenType right_token)
 
 Magnum::Pointer<Expression> Parser::in_literal()
 {
-    const TokenIterator current = token++;
+    const auto current = token++;
 
     try {
         switch(current->type) {
@@ -168,7 +168,7 @@ Magnum::Pointer<Expression> Parser::in_literal()
 
 Magnum::Pointer<Expression> Parser::in_var_expression()
 {
-    const TokenIterator current = token++;
+    const auto current = token++;
     check_token_is(TokenType::Name, "variable/constant name", *current);
 
     // Need to find the right Variable that this VariableExpression is a usage of
@@ -181,7 +181,7 @@ Magnum::Pointer<Expression> Parser::in_var_expression()
             .put("Expected name of variable/constant, but").quote(current->text)
             .raise("is already being used as a name");
     } else {
-        return Magnum::pointer<VariableExpression>(current->line_num, match.value().variable);
+        return Magnum::pointer<VariableExpression>(current->line_num, match->variable);
     }
 }
 
@@ -228,21 +228,20 @@ Magnum::Pointer<Expression> Parser::in_function_call()
         new_function_call = Magnum::pointer<FunctionCall>(token->line_num, temp_definition);
         m_names_table.add_unresolved(new_function_call.get());
     } else {
-        const SymbolInfo& match_value = match.value();
-        switch(match_value.kind) {
+        switch(match->kind) {
         case NameType::DeclaredFunct:
             // A temp declaration (one without definition) has been declared, but haven't
             // resolved its definition yet
             new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
-                                                              match_value.function);
+                                                              match->function);
             m_names_table.add_unresolved(new_function_call.get());
             break;
         case NameType::Funct:
             // Found a function with a full definition
             new_function_call = Magnum::pointer<FunctionCall>(token->line_num,
-                                                              match_value.function);
-            if(match_value.function->kind() == FunctionKind::Builtin) {
-                as<BuiltinFunction>(match_value.function)->is_used = true;
+                                                              match->function);
+            if(match->function->kind() == FunctionKind::Builtin) {
+                as<BuiltinFunction>(match->function)->is_used = true;
             }
             break;
         default:
@@ -320,7 +319,8 @@ Magnum::Pointer<Expression> Parser::in_init_list()
         if(token->type == TokenType::Closed_Curly) {
             ++token;
             return new_init_list;
-        } else if(token->type == TokenType::Comma) {
+        }
+        if(token->type == TokenType::Comma) {
             ++token;
         } else {
             new_init_list->values.emplace_back(parse_expression(TokenType::Comma));
@@ -498,7 +498,8 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
                            *token);
             ++token;
             return new_if_block;
-        } else if(token->type == TokenType::Keyword_Else) {
+        }
+        if(token->type == TokenType::Keyword_Else) {
             // End of if-block, start of else-if or else block
             m_names_table.close_scope();
             if(std::next(token)->type == TokenType::Keyword_If) {
@@ -510,9 +511,8 @@ Magnum::Pointer<IfBlock> Parser::in_if_block()
                 new_if_block->else_or_else_if = in_else_block();
             }
             return new_if_block;
-        } else {
-            new_if_block->statements.push_back(in_statement());
         }
+        new_if_block->statements.push_back(in_statement());
     }
     Error(token->line_num).raise("Incomplete if-block");
 }
@@ -538,9 +538,8 @@ Magnum::Pointer<Block> Parser::in_else_block()
                            *token);
             ++token;
             return new_else_block;
-        } else {
-            new_else_block->statements.push_back(in_statement());
         }
+        new_else_block->statements.push_back(in_statement());
     }
     Error(token->line_num).raise("Incomplete else-block");
 }
@@ -571,9 +570,8 @@ Magnum::Pointer<WhileLoop> Parser::in_while_loop()
                            *token);
             ++token;
             return new_while_loop;
-        } else {
-            new_while_loop->statements.push_back(in_statement());
         }
+        new_while_loop->statements.push_back(in_statement());
     }
     Error(token->line_num).raise("Incomplete while-loop-block");
 }
@@ -855,14 +853,13 @@ SymbolTable::SymbolTable()
 {
     m_scopes.reserve(20);
     // Add root scope
-    m_scopes.push_back({-1});
-    m_curr_scope = 0;
+    m_scopes.emplace_back(-1);
 }
 
 void SymbolTable::open_scope()
 {
-    m_scopes.push_back({m_curr_scope});
-    m_curr_scope = m_scopes.size() - 1;
+    m_scopes.emplace_back(m_curr_scope);
+    m_curr_scope = static_cast<int>(m_scopes.size()) - 1;
 }
 
 void SymbolTable::close_scope()
@@ -878,9 +875,8 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name) const
         const auto match = scope.symbols.find(name);
         if(match != scope.symbols.end()) {
             return {match->second};
-        } else {
-            scope_index = scope.parent_index;
         }
+        scope_index = scope.parent_index;
     }
     return {};
 }
@@ -894,26 +890,25 @@ std::optional<SymbolInfo> SymbolTable::find(const std::string& name, NameType ki
         const auto match = scope.symbols.find(name);
         if(match != scope.symbols.end() && match->second.kind == kind) {
             return {match->second};
-        } else {
-            scope_index = scope.parent_index;
         }
+        scope_index = scope.parent_index;
     }
     return {};
 }
 
 void SymbolTable::add_var(Variable* var)
 {
-    m_scopes[m_curr_scope].symbols[var->name] = SymbolInfo{NameType::Variable, var};
+    m_scopes[m_curr_scope].symbols.insert_or_assign(var->name, SymbolInfo{NameType::Variable, var});
 }
 
 void SymbolTable::add_type(Type* type)
 {
-    m_scopes[m_curr_scope].symbols[type->name] = SymbolInfo{NameType::Type, type};
+    m_scopes[m_curr_scope].symbols.insert_or_assign(type->name, SymbolInfo{NameType::Type, type});
 }
 
 void SymbolTable::add_function(Function* function)
 {
-    m_scopes[m_curr_scope].symbols[function->name] = SymbolInfo{NameType::Funct, function};
+    m_scopes[m_curr_scope].symbols.insert_or_assign(function->name, SymbolInfo{NameType::Funct, function});
 }
 
 void SymbolTable::add_unresolved(Variable* var)
@@ -948,10 +943,9 @@ void SymbolTable::resolve_usages()
             if(!match) {
                 Error().put("Type").quote((*type_ptr)->name)
                     .raise("is used but has no definition");
-            } else {
-                // Update to the newly-defined type (replacing the temp type)
-                *type_ptr = match->type;
             }
+            // Update to the newly-defined type (replacing the temp type)
+            *type_ptr = match->type;
         }
         scope.unresolved_types.clear();
 
@@ -961,10 +955,9 @@ void SymbolTable::resolve_usages()
             if(!match) {
                 Error().put("Function").quote(funct_call->name())
                     .raise("is used but has no definition");
-            } else {
-                // Update call to point to the actual function
-                funct_call->definition = match->function;
             }
+            // Update call to point to the actual function
+            funct_call->definition = match->function;
         }
         scope.unresolved_funct_calls.clear();
     }

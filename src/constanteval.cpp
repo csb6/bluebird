@@ -62,7 +62,7 @@ void fold_unary_constants(Magnum::Pointer<Expression>& expr_location_out,
     case ExprKind::FloatLiteral: {
         auto* r_float = as<FloatLiteral>(unary_expr->right.get());
         if(unary_expr->op == TokenType::Op_Minus) {
-            r_float->value = !r_float->value;
+            r_float->value = -r_float->value;
         } else {
             raise_error_expected("unary expression with operator that works on "
                                  "float literals", unary_expr);
@@ -178,7 +178,7 @@ void fold_binary_constants(Magnum::Pointer<Expression>& expr_location_out,
             l_bool->value |= r_bool->value;
             break;
         case TokenType::Op_Xor:
-            l_bool->value ^= r_bool->value;
+            l_bool->value ^= static_cast<int>(r_bool->value);
             break;
         default:
             raise_error_expected("binary expression with logical operator", bin_expr);

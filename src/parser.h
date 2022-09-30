@@ -45,7 +45,6 @@ struct SymbolInfo {
         Function* function;
     };
 
-    SymbolInfo() {}
     explicit
     SymbolInfo(NameType name) : kind(name) {}
     SymbolInfo(NameType name, Type* t) : kind(name), type(t) {}
@@ -59,12 +58,16 @@ struct SymbolInfo {
    shadowing is not allowed) */
 struct Scope {
     using symbol_iterator = std::unordered_map<std::string, SymbolInfo>::iterator;
+
+    explicit
+    Scope(int parent_index) : parent_index(parent_index) {}
+
     int parent_index;
-    std::unordered_map<std::string, SymbolInfo> symbols{};
+    std::unordered_map<std::string, SymbolInfo> symbols;
     // These 'unresolved' lists are maintained for each scope until the end of
     // this module's parsing process, at which point their definitions are resolved
-    std::vector<FunctionCall*> unresolved_funct_calls{};
-    std::vector<Type**> unresolved_types{};
+    std::vector<FunctionCall*> unresolved_funct_calls;
+    std::vector<Type**> unresolved_types;
 };
 
 /* Holds a tree of scopes which can be queried and added to */
@@ -91,7 +94,7 @@ private:
     // Scope tree
     std::vector<Scope> m_scopes;
     // Index into m_scopes (starts at 0)
-    int m_curr_scope;
+    int m_curr_scope = 0;
 
     std::optional<SymbolInfo> find(const std::string& name, NameType) const;
     std::optional<SymbolInfo>

@@ -1,6 +1,5 @@
 #include "builder.h"
 #include "dialect.h"
-#include "types.h"
 #include "visitor.h"
 #include "ast.h"
 #include "error.h"
@@ -45,16 +44,17 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
     case TypeKind::Ptr:
         return mlir::MemRefType::get({}, to_mlir_type(context, as<PtrType>(ast_type)->inner_type));
     case TypeKind::Literal: {
-        auto* literal_type = as<LiteralType>(ast_type);
+        const auto* literal_type = as<LiteralType>(ast_type);
         if(literal_type == &LiteralType::Char) {
             return mlir::IntegerType::get(&context, 8);
-        } else if(literal_type == &LiteralType::Int) {
-            return mlir::IntegerType::get(&context, 64);
-        } else if(literal_type == &LiteralType::Float) {
-            return mlir::FloatType::getF32(&context);
-        } else {
-            assert(false);
         }
+        if(literal_type == &LiteralType::Int) {
+            return mlir::IntegerType::get(&context, 64);
+        }
+        if(literal_type == &LiteralType::Float) {
+            return mlir::FloatType::getF32(&context);
+        }
+        assert(false);
     }
     default:
         assert(false);
@@ -94,9 +94,8 @@ mlir::arith::CmpIPredicate get_cmp_i_pred(TokenType op_type, bool is_signed)
 {
     if(is_signed) {
         return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].s_cmp;
-    } else {
-        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].u_cmp;
     }
+    return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].u_cmp;
 }
 
 class IRExprVisitor : public ExprVisitor<IRExprVisitor> {
@@ -149,8 +148,8 @@ public:
 
     mlir::OpState on_visit(BinaryExpression& expr)
     {
-        auto left = visitAndGetResult(expr.left.get());
-        auto right = visitAndGetResult(expr.right.get());
+        auto left = visitAndGetResult(*expr.left);
+        auto right = visitAndGetResult(*expr.right);
         auto loc = to_loc(m_builder, expr.line_num());
         assert(left.getType() == right.getType());
         bool is_float_operand = expr.left->type()->kind() == TypeKind::FloatRange;
@@ -213,7 +212,7 @@ public:
 
     mlir::OpState on_visit(UnaryExpression& expr)
     {
-        auto right = visitAndGetResult(expr.right.get());
+        auto right = visitAndGetResult(*expr.right);
         auto loc = to_loc(m_builder, expr.line_num());
         switch(expr.op) {
         case TokenType::Op_Minus:
@@ -229,7 +228,7 @@ public:
     {
         llvm::SmallVector<mlir::Value, 4> arguments;
         for(auto& arg : function_call.arguments) {
-            arguments.push_back(visitAndGetResult(arg.get()));
+            arguments.push_back(visitAndGetResult(*arg));
         }
         auto function_def = m_mlir_functions.find(function_call.definition);
         assert(function_def != m_mlir_functions.end());
@@ -243,10 +242,10 @@ public:
 
     mlir::OpState on_visit(InitList&) {}
 
-    mlir::Value visitAndGetResult(Expression* expr)
+    mlir::Value visitAndGetResult(Expression& expr)
     {
         // All expressions return a single result, so this is safe to do.
-        return visit(*expr)->getResult(0);
+        return visit(expr)->getResult(0);
     }
 };
 
@@ -300,9 +299,9 @@ public:
         m_builder.setInsertionPointToStart(getEntryBlock(m_curr_function));
         auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, std::move(memref_type));
         m_builder.restoreInsertionPoint(oldInsertionPoint);
+        auto initial_value = m_expr_visitor.visitAndGetResult(*var_decl.expression);
         if(var_decl.expression != nullptr) {
-            auto value = m_expr_visitor.visitAndGetResult(var_decl.expression.get());
-            m_builder.create<mlir::memref::StoreOp>(loc, value, alloca);
+            m_builder.create<mlir::memref::StoreOp>(loc, initial_value, alloca);
         }
         m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
@@ -311,13 +310,13 @@ public:
     {
         auto alloca = m_sse_vars.find(asgmt.assignable);
         assert(alloca != m_sse_vars.end());
-        auto value = m_expr_visitor.visitAndGetResult(asgmt.expression.get());
+        auto value = m_expr_visitor.visitAndGetResult(*asgmt.expression);
         m_builder.create<mlir::memref::StoreOp>(to_loc(m_builder, asgmt.line_num()), value, alloca->second);
     }
 
     void on_visit(IfBlock& if_else_stmt)
     {
-        auto condition = m_expr_visitor.visitAndGetResult(if_else_stmt.condition.get());
+        auto condition = m_expr_visitor.visitAndGetResult(*if_else_stmt.condition);
         auto loc = to_loc(m_builder, if_else_stmt.line_num());
         bool has_else_or_else_if = if_else_stmt.else_or_else_if != nullptr;
 
@@ -365,7 +364,7 @@ public:
 
         auto& condition_block = while_loop.getBefore().emplaceBlock();
         m_builder.setInsertionPointToStart(&condition_block);
-        auto condition_expr = m_expr_visitor.visitAndGetResult(while_stmt.condition.get());
+        auto condition_expr = m_expr_visitor.visitAndGetResult(*while_stmt.condition);
         auto condition_expr_loc = to_loc(m_builder, while_stmt.condition->line_num());
         m_builder.create<mlir::scf::ConditionOp>(condition_expr_loc, condition_expr, mlir::ValueRange{});
 
@@ -386,7 +385,7 @@ public:
             m_builder.create<mlir::ReturnOp>(loc);
         } else {
             // In non-void function
-            auto return_value = m_expr_visitor.visitAndGetResult(stmt.expression.get());
+            auto return_value = m_expr_visitor.visitAndGetResult(*stmt.expression);
             m_builder.create<mlir::ReturnOp>(loc, return_value);
         }
     }
@@ -440,7 +439,7 @@ void Builder::run()
             stmt_visitor.set_function_and_alloca_args(*user_function, mlir_function);
 
             for(auto& statement : user_function->body.statements) {
-                stmt_visitor.visit(*statement.get());
+                stmt_visitor.visit(*statement);
             }
             if(user_function->return_type == &Type::Void) {
                 m_builder.setInsertionPointToEnd(getEntryBlock(mlir_function));

@@ -15,7 +15,6 @@ BluebirdIRDialect::BluebirdIRDialect(mlir::MLIRContext* context)
 {
     addOperations<BoolConstantOp, CharConstantOp, IntConstantOp, FloatConstantOp,
                   NegateOp, NotOp>();
-    addTypes<RangeType, IntLiteralType>();
     addAttributes<IntLiteralAttr>();
 }
 
@@ -35,7 +34,8 @@ void BluebirdIRDialect::printAttribute(mlir::Attribute attr, mlir::DialectAsmPri
 struct IntLiteralAttrStorage : public mlir::AttributeStorage {
     using KeyTy = multi_int;
 
-    explicit IntLiteralAttrStorage(const multi_int& value) : value(value) {}
+    explicit
+    IntLiteralAttrStorage(multi_int value) : value(std::move(value)) {}
 
     bool operator==(const KeyTy& key) const
     {
@@ -97,14 +97,14 @@ void build_binary_op(mlir::OperationState& state,
                      mlir::Value operand1, mlir::Value operand2)
 {
     state.types.push_back(operand1.getType());
-    state.operands.push_back(std::move(operand1));
-    state.operands.push_back(std::move(operand2));
+    state.operands.push_back(operand1);
+    state.operands.push_back(operand2);
 }
 
 void build_unary_op(mlir::OperationState& state, mlir::Value operand)
 {
     state.types.push_back(operand.getType());
-    state.operands.push_back(std::move(operand));
+    state.operands.push_back(operand);
 }
 
 };

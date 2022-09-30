@@ -56,8 +56,6 @@ enum class AssignableKind : char {
 // A continuous sequence of integers.
 // Upper/lower bounds are inclusive.
 struct IntRange {
-    BLUEBIRD_MOVEABLE(IntRange)
-    BLUEBIRD_COPYABLE(IntRange)
     multi_int lower_bound, upper_bound;
     bool is_signed;
     unsigned short bit_size;
@@ -73,8 +71,6 @@ std::ostream& operator<<(std::ostream& output, const IntRange&);
 
 // A continuous range of 32-bit floating point numbers
 struct FloatRange {
-    BLUEBIRD_MOVEABLE(FloatRange)
-    BLUEBIRD_COPYABLE(FloatRange)
     float lower_bound, upper_bound;
     bool is_inclusive;
 
@@ -121,6 +117,8 @@ const Subclass& as(const Base& base)
 
 // A kind of object
 struct Type {
+    BLUEBIRD_COPYABLE(Type);
+    BLUEBIRD_MOVEABLE(Type);
     // Some default types that don't have to be declared
     static Type Void, String;
     std::string name;
@@ -128,7 +126,6 @@ struct Type {
     Type() = default;
     explicit
     Type(std::string_view n) : name(n) {}
-    Type(const Type&) = default;
     virtual ~Type() noexcept = default;
 
     // TODO: fix bug where this is called for some boolean literals
@@ -180,7 +177,7 @@ struct FloatRangeType : public Type {
 
     using Type::Type;
     FloatRangeType(std::string_view n, FloatRange range)
-        : Type(n), range(std::move(range)) {}
+        : Type(n), range(range) {}
 
     TypeKind kind() const override { return TypeKind::FloatRange; }
 };
@@ -205,8 +202,10 @@ struct PtrType final : public Type {
 
     using Type::Type;
     explicit
-    PtrType(const Type* t) : Type("ptr " + t->name), inner_type(t) {}
-    PtrType(const std::string& n, const Type* t) : Type(n), inner_type(t) {}
+    PtrType(const Type* inner_type)
+        : Type("ptr " + inner_type->name), inner_type(inner_type) {}
+    PtrType(const std::string& name, const Type* inner_type)
+        : Type(name), inner_type(inner_type) {}
 
     size_t bit_size() const override { return sizeof(int*); }
     TypeKind kind() const override { return TypeKind::Ptr; }
@@ -215,6 +214,9 @@ struct PtrType final : public Type {
 
 // An abstract object or non-standalone group of expressions
 struct Expression {
+    BLUEBIRD_COPYABLE(Expression);
+    BLUEBIRD_MOVEABLE(Expression);
+    Expression() = default;
     virtual ~Expression() noexcept = default;
 
     // What kind of expression this is (e.g. a literal, variable expr, binary expr, etc.)
@@ -231,7 +233,8 @@ struct StringLiteral final : public Expression {
     std::string value;
     unsigned int line;
 
-    StringLiteral(unsigned int line_n, std::string_view v) : value(v), line(line_n) {}
+    StringLiteral(unsigned int line_n, std::string_view value)
+        : value(value), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::StringLiteral; }
     const Type*  type() const override { return &Type::String; }
@@ -244,7 +247,7 @@ struct CharLiteral final : public Expression {
     unsigned int line;
     const Type* actual_type = &LiteralType::Char;
 
-    CharLiteral(unsigned int line_n, char v) : value(v), line(line_n) {}
+    CharLiteral(unsigned int line_n, char value) : value(value), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::CharLiteral; }
     const Type*  type() const override { return actual_type; }
@@ -253,15 +256,15 @@ struct CharLiteral final : public Expression {
 };
 
 struct IntLiteral final : public Expression {
-    BLUEBIRD_COPYABLE(IntLiteral)
-    BLUEBIRD_MOVEABLE(IntLiteral)
     // Holds arbitrarily-sized integers
     multi_int value;
     unsigned int line;
     const Type* actual_type = &LiteralType::Int;
 
-    IntLiteral(unsigned int line_n, std::string_view v) : value(v), line(line_n) {}
-    IntLiteral(unsigned int line_n, multi_int v) : value(std::move(v)), line(line_n) {}
+    IntLiteral(unsigned int line_n, std::string_view value)
+        : value(value), line(line_n) {}
+    IntLiteral(unsigned int line_n, multi_int value)
+        : value(std::move(value)), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::IntLiteral; }
     const Type*  type() const override { return actual_type; }
@@ -283,8 +286,6 @@ struct BoolLiteral final : public Expression {
 };
 
 struct FloatLiteral final : public Expression {
-    BLUEBIRD_MOVEABLE(FloatLiteral)
-    BLUEBIRD_COPYABLE(FloatLiteral)
     float value;
     unsigned int line;
     const Type* actual_type = &LiteralType::Float;
@@ -318,7 +319,7 @@ struct UnaryExpression final : public Expression {
     Magnum::Pointer<Expression> right;
     TokenType op;
 
-    UnaryExpression(TokenType tok, Magnum::Pointer<Expression>&& expr)
+    UnaryExpression(TokenType tok, Magnum::Pointer<Expression> expr)
         : right(std::move(expr)), op(tok) {}
 
     ExprKind     kind() const override { return ExprKind::Unary; }
@@ -333,9 +334,9 @@ struct BinaryExpression final : public Expression {
     TokenType op;
     Magnum::Pointer<Expression> right;
 
-    BinaryExpression(Magnum::Pointer<Expression>&& l, TokenType oper,
-                     Magnum::Pointer<Expression>&& r)
-        : left(std::move(l)), op(oper), right(std::move(r)) {}
+    BinaryExpression(Magnum::Pointer<Expression> left, TokenType oper,
+                     Magnum::Pointer<Expression> right)
+        : left(std::move(left)), op(oper), right(std::move(right)) {}
 
     ExprKind     kind() const override { return ExprKind::Binary; }
     const Type*  type() const override;
@@ -367,9 +368,9 @@ struct IndexOp final : public Expression {
     Magnum::Pointer<Expression> index_expr;
     unsigned int line;
 
-    IndexOp(unsigned int line_n, Magnum::Pointer<Expression>&& b,
-            Magnum::Pointer<Expression>&& ind)
-        : base_expr(std::move(b)), index_expr(std::move(ind)), line(line_n) {}
+    IndexOp(unsigned int line_n, Magnum::Pointer<Expression> b,
+            Magnum::Pointer<Expression> index_expr)
+        : base_expr(std::move(b)), index_expr(std::move(index_expr)), line(line_n) {}
 
     ExprKind     kind() const override { return ExprKind::IndexOp; }
     const Type*  type() const override;
@@ -394,10 +395,11 @@ struct InitList final : public Expression {
 
 // A location that can be assigned to
 struct Assignable {
+    BLUEBIRD_COPYABLE(Assignable);
+    BLUEBIRD_MOVEABLE(Assignable);
     Type* type;
     bool is_mutable = true;
 
-    Assignable() = default;
     explicit
     Assignable(Type* t) : type(t) {}
     virtual ~Assignable() noexcept = default;
@@ -411,8 +413,8 @@ struct Variable final : public Assignable {
     std::string name;
 
     explicit
-    Variable(std::string n) : name(std::move(n)) {}
-    Variable(const std::string& n, Type* t) : Assignable(t), name(n) {}
+    Variable(std::string name) : Assignable(nullptr), name(std::move(name)) {}
+    Variable(std::string name, Type* t) : Assignable(t), name(std::move(name)) {}
 
     void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Variable; }
@@ -423,7 +425,7 @@ struct IndexedVariable final : public Assignable {
     Magnum::Pointer<IndexOp> array_access;
 
     explicit
-    IndexedVariable(Magnum::Pointer<IndexOp>&& op)
+    IndexedVariable(Magnum::Pointer<IndexOp> op)
         : Assignable(const_cast<Type*>(op->type())), array_access(std::move(op)) {}
 
     void           print(std::ostream&) const override;
@@ -435,7 +437,7 @@ struct DerefLValue final : public Assignable {
     Variable& ptr_var;
 
     explicit
-    DerefLValue(Variable& ptr_var) : ptr_var(ptr_var) {}
+    DerefLValue(Variable& ptr_var) : Assignable(nullptr), ptr_var(ptr_var) {}
 
     void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Deref; }
@@ -445,6 +447,9 @@ struct DerefLValue final : public Assignable {
 // A standalone piece of code terminated with a semicolon and consisting
 // of one or more expressions
 struct Statement {
+    BLUEBIRD_COPYABLE(Statement);
+    BLUEBIRD_MOVEABLE(Statement);
+    Statement() = default;
     virtual ~Statement() noexcept = default;
 
     virtual StmtKind     kind() const = 0;
@@ -457,7 +462,7 @@ struct BasicStatement final : public Statement {
     Magnum::Pointer<Expression> expression;
 
     explicit
-    BasicStatement(Magnum::Pointer<Expression>&& expr)
+    BasicStatement(Magnum::Pointer<Expression> expr)
         : expression(std::move(expr)) {}
 
     StmtKind     kind() const override { return StmtKind::Basic; }
@@ -473,8 +478,8 @@ struct Initialization final : public Statement {
     unsigned int line;
 
     explicit
-    Initialization(unsigned int l, Magnum::Pointer<Variable>&& var)
-        : variable(std::move(var)), line(l) {}
+    Initialization(unsigned int line, Magnum::Pointer<Variable> var)
+        : variable(std::move(var)), line(line) {}
 
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
@@ -486,8 +491,8 @@ struct Assignment final : public Statement {
     Magnum::Pointer<Expression> expression;
     Assignable* assignable;
 
-    Assignment(Magnum::Pointer<Expression>&& expr, Assignable* lv)
-        : expression(std::move(expr)), assignable(lv) {}
+    Assignment(Magnum::Pointer<Expression> expr, Assignable* assignable)
+        : expression(std::move(expr)), assignable(assignable) {}
 
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
@@ -500,7 +505,7 @@ struct Block : public Statement {
     unsigned int line;
 
     explicit
-    Block(unsigned int l) : line(l) {}
+    Block(unsigned int line) : line(line) {}
 
     StmtKind     kind() const override { return StmtKind::Block; }
     unsigned int line_num() const override { return line; }
@@ -551,6 +556,9 @@ struct ReturnStatement final : public Statement {
 
 // A callable procedure that optionally takes inputs
 struct Function {
+    BLUEBIRD_COPYABLE(Function);
+    BLUEBIRD_MOVEABLE(Function);
+
     std::string name;
     Type* return_type = &Type::Void;
     std::vector<Magnum::Pointer<Variable>> parameters;

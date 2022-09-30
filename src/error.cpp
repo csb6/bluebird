@@ -112,7 +112,7 @@ void Error::raise(std::string_view message, unsigned int indent)
 }
 #endif /** ifdef FUZZER_MODE */
 
-void raise_error_expected(std::string_view expected, Token actual)
+void raise_error_expected(std::string_view expected, const Token& actual)
 {
     Error(actual.line_num).put("Expected ").put(expected)
         .put(", but instead found token:\n").quote(actual).raise();

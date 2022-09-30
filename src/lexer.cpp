@@ -141,8 +141,9 @@ void Lexer::run()
                     case '/':
                         ++input_iter;
                         // Ignore single-line comments
-                        while(input_iter < m_input_end && *input_iter != '\n')
+                        while(input_iter < m_input_end && *input_iter != '\n') {
                             ++input_iter;
+                        }
                         break;
                     case '*':
                         // Multi-line comment

@@ -121,8 +121,9 @@ template<typename Other>
 static
 void infer_literal_type(Expression* literal, const Other* other, const Type* other_type)
 {
-    if(literal->type()->kind() != TypeKind::Literal)
+    if(literal->type()->kind() != TypeKind::Literal) {
         return;
+    }
 
     switch(other_type->kind()) {
     case TypeKind::IntRange:
@@ -180,7 +181,7 @@ void CleanupExprVisitor::on_visit(UnaryExpression& expr)
     if(expr.op == TokenType::Op_To_Ptr) {
         // The to_ptr operation takes the address of right's type (T). The unary expression's type
         // then becomes T*. This is necessary to do here so that typechecking can proceed properly.
-        auto* right_type = expr.type();
+        const auto* right_type = expr.type();
         if(auto match = m_anon_ptr_types.find(right_type); match != m_anon_ptr_types.end()) {
             expr.actual_type = match->second.get();
         } else {
@@ -191,7 +192,7 @@ void CleanupExprVisitor::on_visit(UnaryExpression& expr)
     } else if(expr.op == TokenType::Op_To_Val) {
         // The to_val operation dereferences a pointer of type T*. The unary expression's type
         // then becomes T.
-        auto* right_type = expr.type();
+        const auto* right_type = expr.type();
         if(right_type->kind() != TypeKind::Ptr) {
             Error(expr.line_num()).raise("Cannot use to_val operator on a non-pointer value");
         } else {
@@ -310,7 +311,7 @@ void Cleanup::run()
     {
         CleanupStmtVisitor global_var_visitor{nullptr, m_anon_ptr_types};
         for(Magnum::Pointer<Initialization>& var : m_global_vars) {
-            global_var_visitor.visit(*var.get());
+            global_var_visitor.visit(*var);
         }
     }
 

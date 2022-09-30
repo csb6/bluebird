@@ -73,12 +73,12 @@ llvm::Type* CodeGenerator::to_llvm_type(const Type* ast_type)
     case TypeKind::Boolean:
         return llvm::IntegerType::get(m_context, ast_type->bit_size());
     case TypeKind::Array: {
-        auto* arr_type = as<ArrayType>(ast_type);
+        const auto* arr_type = as<ArrayType>(ast_type);
         return llvm::ArrayType::get(to_llvm_type(arr_type->element_type),
                                     arr_type->index_type->range.size());
     }
     case TypeKind::Ptr:{
-        auto* ptr_type = as<PtrType>(ast_type);
+        const auto* ptr_type = as<PtrType>(ast_type);
         return llvm::PointerType::get(to_llvm_type(ptr_type->inner_type), 0);
     }
     default:
@@ -112,7 +112,7 @@ llvm::Value* CodegenExprVisitor::on_visit(IntLiteral& lit)
 
 llvm::Value* CodegenExprVisitor::on_visit(BoolLiteral& lit)
 {
-    return m_gen.m_ir_builder.getIntN(lit.type()->bit_size(), lit.value);
+    return m_gen.m_ir_builder.getInt1(lit.value);
 }
 
 llvm::Value* CodegenExprVisitor::on_visit(FloatLiteral& lit)
@@ -261,7 +261,7 @@ llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
     llvm::Value* offset_index = visit(*expr.index_expr);
     assert(offset_index->getType()->isIntegerTy());
     assert(expr.index_expr->type()->kind() == TypeKind::IntRange);
-    auto* index_type = as<IntRangeType>(expr.index_expr->type());
+    const auto* index_type = as<IntRangeType>(expr.index_expr->type());
     // Since arrays can be indexed starting at any number, need to subtract
     // the starting value of this array's index type from the given index, since
     // in LLVM all arrays start at 0
@@ -314,7 +314,7 @@ llvm::AllocaInst* CodeGenerator::prepend_alloca(llvm::Function* funct,
     llvm::BasicBlock* entry = &funct->getEntryBlock();
     m_ir_builder.SetInsertPoint(entry, entry->begin());
 
-    llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(type, 0, name.c_str());
+    llvm::AllocaInst* alloc = m_ir_builder.CreateAlloca(type, nullptr, name);
     m_ir_builder.restoreIP(prev_insert_point);
     return alloc;
 }
@@ -373,7 +373,7 @@ void CodeGenerator::in_initialization(llvm::Function* function, Initialization* 
 void CodeGenerator::in_assignment(Assignment* assgn_stmt)
 {
     Assignable* assignable = assgn_stmt->assignable;
-    llvm::Value* dest_ptr;
+    llvm::Value* dest_ptr = nullptr;
     switch(assignable->kind()) {
     case AssignableKind::Variable: {
         auto match = m_vars.find(as<Variable>(assignable));
@@ -398,6 +398,7 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
         break;
     }
 
+    assert(dest_ptr != nullptr);
     store_expr_result(assgn_stmt->expression.get(), dest_ptr);
 }
 
@@ -542,8 +543,9 @@ void CodeGenerator::declare_function_headers()
         auto linkage_type = llvm::Function::InternalLinkage;
         if(ast_function->kind() == FunctionKind::Builtin) {
             // TODO: maybe add debug info. for builtin functions?
-            if(!as<BuiltinFunction>(ast_function.get())->is_used)
+            if(!as<BuiltinFunction>(ast_function.get())->is_used) {
                 continue;
+            }
             linkage_type = llvm::Function::ExternalLinkage;
         } else if(ast_function->name == "main") {
             linkage_type = llvm::Function::ExternalLinkage;
@@ -582,9 +584,10 @@ void CodeGenerator::declare_function_headers()
 void CodeGenerator::define_functions()
 {
     for(auto& fcn : m_functions) {
-        if(fcn->kind() != FunctionKind::Normal)
+        if(fcn->kind() != FunctionKind::Normal) {
             // Builtin functions have no body
             continue;
+        }
         auto* function = as<BBFunction>(fcn.get());
         llvm::Function* curr_funct = m_module.getFunction(function->name);
         // Next, create a block containing the body of the function
@@ -657,10 +660,11 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
     auto bit_size = ast_type->bit_size();
     switch(ast_type->kind()) {
     case TypeKind::IntRange:
-        if(as<IntRangeType>(ast_type)->range.is_signed)
+        if(as<IntRangeType>(ast_type)->range.is_signed) {
             encoding = llvm::dwarf::DW_ATE_signed;
-        else
+        } else {
             encoding = llvm::dwarf::DW_ATE_unsigned;
+        }
         break;
     case TypeKind::Boolean:
         encoding = llvm::dwarf::DW_ATE_boolean;
@@ -669,7 +673,7 @@ llvm::DIType* DebugGenerator::to_dbg_type(const Type* ast_type)
         bit_size = 8;
         break;
     case TypeKind::Array: {
-        auto* arr_type = as<ArrayType>(ast_type);
+        const auto* arr_type = as<ArrayType>(ast_type);
         multi_int start{arr_type->index_type->range.lower_bound};
         multi_int end{arr_type->index_type->range.upper_bound};
         llvm::Metadata* subscript =
@@ -718,8 +722,9 @@ void DebugGenerator::addFunction(llvm::IRBuilder<>& ir_builder,
 
 void DebugGenerator::closeScope()
 {
-    if(m_is_active)
+    if(m_is_active) {
         m_scopes.pop_back();
+    }
 }
 
 void DebugGenerator::setLocation(unsigned int line_num, llvm::IRBuilder<>& ir_builder)
@@ -746,6 +751,7 @@ void DebugGenerator::addAutoVar(llvm::BasicBlock* block, llvm::Value* llvm_var,
 
 void DebugGenerator::finalize()
 {
-    if(m_is_active)
+    if(m_is_active) {
         m_dbg_builder.finalize();
+    }
 }

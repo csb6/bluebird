@@ -33,21 +33,28 @@ multi_int::multi_int(const multi_int& other)
     mpz_init_set(m_number, other.m_number);
 }
 
-multi_int& multi_int::operator=(const multi_int& other)
+void swap(multi_int& a, multi_int& b)
 {
-    mpz_init_set(m_number, other.m_number);
+    using std::swap;
+    swap(a.m_number, b.m_number);
+}
+
+multi_int& multi_int::operator=(multi_int other)
+{
+    using std::swap;
+    swap(*this, other);
     return *this;
 }
 
-multi_int::multi_int(multi_int&& other)
+multi_int::multi_int(multi_int&& other) noexcept
 {
-    m_number[0] = std::move(other.m_number[0]);
+    m_number[0] = other.m_number[0];
     other.m_number[0] = {};
 }
 
-multi_int& multi_int::operator=(multi_int&& other)
+multi_int& multi_int::operator=(multi_int&& other) noexcept
 {
-    m_number[0] = std::move(other.m_number[0]);
+    m_number[0] = other.m_number[0];
     if(&other != this) {
         other.m_number[0] = {};
     }

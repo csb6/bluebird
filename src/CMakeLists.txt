@@ -43,6 +43,7 @@ target_sources(bluebird PRIVATE
   visitor.h
   constanteval.h
   context.h
+  util.h
 )
 
 add_subdirectory(bluebird-ir)

@@ -29,10 +29,10 @@ class multi_int {
     multi_int(std::string_view);
 
     multi_int(const multi_int&);
-    multi_int& operator=(const multi_int&);
+    multi_int& operator=(multi_int);
 
-    multi_int(multi_int&&);
-    multi_int& operator=(multi_int&&);
+    multi_int(multi_int&&) noexcept;
+    multi_int& operator=(multi_int&&) noexcept;
     ~multi_int();
 
     size_t bits_needed() const;
@@ -63,6 +63,8 @@ class multi_int {
     friend bool operator>=(const multi_int&, const multi_int&);
     friend unsigned long int to_int(multi_int&&);
     friend std::ostream& operator<<(std::ostream&, const multi_int&);
+
+    friend void swap(multi_int&, multi_int&);
  private:
     mpz_t m_number;
 };

@@ -49,9 +49,8 @@ void PtrType::print(std::ostream& output) const
 }
 
 IntRange::IntRange(multi_int lower, multi_int upper, bool inclusive)
-    : lower_bound(std::move(lower)), upper_bound(std::move(upper))
+    : lower_bound(std::move(lower)), upper_bound(std::move(upper)), is_signed(lower_bound.is_negative())
 {
-    is_signed = lower_bound.is_negative();
     if(!inclusive) {
         upper_bound -= 1;
     }
@@ -97,9 +96,9 @@ bool FloatRange::contains(double value) const
 {
     if(is_inclusive) {
         return value >= lower_bound && value <= upper_bound;
-    } else {
-        return value >= lower_bound && value < upper_bound;
     }
+
+    return value >= lower_bound && value < upper_bound;
 }
 
 std::ostream& operator<<(std::ostream& output, const FloatRange& range)
@@ -151,9 +150,8 @@ const Type* UnaryExpression::type() const
 {
     if(actual_type == nullptr) {
         return right->type();
-    } else {
-        return actual_type;
     }
+    return actual_type;
 }
 
 void UnaryExpression::print(std::ostream& output) const
@@ -167,19 +165,18 @@ const Type* BinaryExpression::type() const
 {
     if(is_comparison_op(op) || is_logical_op(op)) {
         return &EnumType::Boolean;
-    } else {
-        // If a literal and a typed expression of some sort
-        // are in this expression, want to return the type of
-        // the typed part (literals implicitly convert to that type)
-        switch(left->kind()) {
-        case ExprKind::StringLiteral:
-        case ExprKind::CharLiteral:
-        case ExprKind::IntLiteral:
-        case ExprKind::FloatLiteral:
-            return right->type();
-        default:
-            return left->type();
-        }
+    }
+    // If a literal and a typed expression of some sort
+    // are in this expression, want to return the type of
+    // the typed part (literals implicitly convert to that type)
+    switch(left->kind()) {
+    case ExprKind::StringLiteral:
+    case ExprKind::CharLiteral:
+    case ExprKind::IntLiteral:
+    case ExprKind::FloatLiteral:
+        return right->type();
+    default:
+        return left->type();
     }
 }
 
@@ -211,9 +208,8 @@ const Type* IndexOp::type() const
     const Type* base_type = base_expr->type();
     if(base_type->kind() == TypeKind::Array) {
         return as<ArrayType>(base_type)->element_type;
-    } else {
-        return &Type::Void;
     }
+    return &Type::Void;
 }
 
 void IndexOp::print(std::ostream& output) const
@@ -300,9 +296,8 @@ unsigned int ReturnStatement::line_num() const
 {
     if(expression.get() != nullptr) {
         return expression->line_num();
-    } else {
-        return line;
     }
+    return line;
 }
 
 void ReturnStatement::print(std::ostream& output) const

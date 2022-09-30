@@ -7,7 +7,7 @@ struct ExprVisitor {
     auto visit(Expression& expr)
     {
         #define CALL_VISIT(Type) \
-            static_cast<DerivedT*>(this)->on_visit(static_cast<Type&>(expr))
+            (static_cast<DerivedT*>(this)->on_visit(static_cast<Type&>(expr)))
 
         switch(expr.kind()) {
         case ExprKind::StringLiteral:

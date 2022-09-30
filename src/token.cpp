@@ -17,7 +17,7 @@
 #include "token.h"
 #include <ostream>
 
-std::ostream& operator<<(std::ostream& output, const TokenType type)
+std::ostream& operator<<(std::ostream& output, TokenType type)
 {
     switch(type) {
     case TokenType::Keyword_Funct:

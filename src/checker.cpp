@@ -85,16 +85,15 @@ bool matched_ptr(Expression* expr, const Other* other, const Type* other_type)
     if(expr->type()->kind() != TypeKind::Ptr || other_type->kind() != TypeKind::Ptr) {
         return false;
     }
-    auto* expr_ptr_type = as<PtrType>(expr->type());
-    auto* other_ptr_type = as<PtrType>(other_type);
+    const auto* expr_ptr_type = as<PtrType>(expr->type());
+    const auto* other_ptr_type = as<PtrType>(other_type);
 
     if(other_ptr_type->inner_type == expr_ptr_type->inner_type
        && (other_ptr_type->is_anonymous || expr_ptr_type->is_anonymous)) {
         // Anonymous pointer types can implicitly convert to any compatible named pointer type
         return true;
-    } else {
-        print_type_mismatch(expr, other, other_type, "Used with", "Expression");
     }
+    print_type_mismatch(expr, other, other_type, "Used with", "Expression");
 }
 
 static
@@ -105,7 +104,8 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
             Error(expr.line_num()).raise("Can only use to_ptr operator on named variables");
         }
         return;
-    } else if(expr.op == TokenType::Op_To_Val) {
+    }
+    if(expr.op == TokenType::Op_To_Val) {
         if(type->kind() != TypeKind::Ptr) {
             Error(expr.line_num()).raise("Cannot use to_val operator on a non-pointer value");
         }
@@ -190,8 +190,9 @@ void CheckerExprVisitor::on_visit(BinaryExpression& expr)
 
     check_legal_bin_op(*expr.left, expr.op, left_type);
     check_legal_bin_op(*expr.right, expr.op, right_type);
-    if(left_type == right_type)
+    if(left_type == right_type) {
         return;
+    }
 
     print_type_mismatch(expr.left.get(), expr.right.get(), right_type, "Right", "Left");
 }
@@ -219,13 +220,13 @@ void CheckerExprVisitor::on_visit(IndexOp& expr)
             .put(expr.base_expr.get()).put("\t").put(expr.base_expr->type()).raise();
     }
     visit(*expr.base_expr);
-    auto* base_type = expr.base_expr->type();
+    const auto* base_type = expr.base_expr->type();
     if(base_type->kind() != TypeKind::Array) {
         Error(expr.line_num()).put(" Object\n ")
             .put(expr.base_expr.get()).put("\t").put(base_type).newline()
             .raise(" is not an array type and so cannot be indexed using `[ ]`");
     }
-    auto* arr_type = as<ArrayType>(base_type);
+    const auto* arr_type = as<ArrayType>(base_type);
     visit(*expr.index_expr);
     if(expr.index_expr->type() != arr_type->index_type) {
         print_type_mismatch(expr.index_expr.get(), expr.base_expr.get(),
@@ -383,7 +384,8 @@ bool CheckerStmtVisitor::on_visit(ReturnStatement& ret_stmt)
     const Type* return_type = ret_stmt.expression->type();
     if(m_curr_funct->return_type == return_type) {
         return true;
-    } else if(m_curr_funct->return_type == &Type::Void) {
+    }
+    if(m_curr_funct->return_type == &Type::Void) {
         Error(ret_stmt.expression->line_num())
             .put("Did not expect void function").quote(m_curr_funct->name)
             .raise("to return something");

@@ -17,11 +17,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#define BLUEBIRD_MOVEABLE(type) \
+#define BLUEBIRD_COPYABLE(type) \
     type(const type&) = default; \
     type& operator=(const type&) = default;
 
-#define BLUEBIRD_COPYABLE(type) \
-    type(type&&) = default; \
-    type& operator=(type&&) = default;
+#define BLUEBIRD_MOVEABLE(type) \
+    type(type&&) noexcept = default; \
+    type& operator=(type&&) noexcept = default;
 #endif // UTIL_H

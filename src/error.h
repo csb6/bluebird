@@ -38,6 +38,6 @@ public:
     [[noreturn]] void raise(std::string_view message = "", unsigned int indent = 0);
 };
 
-[[noreturn]] void raise_error_expected(std::string_view expected, Token actual);
+[[noreturn]] void raise_error_expected(std::string_view expected, const Token& actual);
 [[noreturn]] void raise_error_expected(std::string_view expected, const Expression* actual);
 #endif
