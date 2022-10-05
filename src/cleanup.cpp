@@ -22,15 +22,18 @@ public:
     void on_visit(FunctionCall&);
     void on_visit(IndexOp&);
     void on_visit(InitList&);
+
+    void visit_and_fold(Magnum::Pointer<Expression>&);
 };
 
 class CleanupStmtVisitor : public StmtVisitor<CleanupStmtVisitor> {
     BBFunction* m_curr_funct;
     std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& m_anon_ptr_types;
+    CleanupExprVisitor m_expr_visitor;
 public:
     CleanupStmtVisitor(BBFunction* curr_funct,
                        std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& anon_ptr_types)
-        : m_curr_funct(curr_funct), m_anon_ptr_types(anon_ptr_types) {}
+        : m_curr_funct(curr_funct), m_anon_ptr_types(anon_ptr_types), m_expr_visitor(m_anon_ptr_types) {}
 
     void on_visit(BasicStatement&);
     void on_visit(Initialization&);
@@ -166,17 +169,15 @@ void infer_literal_array_type(Expression* literal, const ArrayType* other_type)
     }
 }
 
-static
-void visit_child(std::unordered_map<const Type*, Magnum::Pointer<PtrType>>& anon_ptr_types,
-                 Magnum::Pointer<Expression>& child)
+void CleanupExprVisitor::visit_and_fold(Magnum::Pointer<Expression>& expr)
 {
-    CleanupExprVisitor(anon_ptr_types).visit(*child);
-    fold_constants(child);
+    visit(*expr);
+    fold_constants(expr);
 }
 
 void CleanupExprVisitor::on_visit(UnaryExpression& expr)
 {
-    visit_child(m_anon_ptr_types, expr.right);
+    visit_and_fold(expr.right);
 
     if(expr.op == TokenType::Op_To_Ptr) {
         // The to_ptr operation takes the address of right's type (T). The unary expression's type
@@ -185,7 +186,7 @@ void CleanupExprVisitor::on_visit(UnaryExpression& expr)
         if(auto match = m_anon_ptr_types.find(right_type); match != m_anon_ptr_types.end()) {
             expr.actual_type = match->second.get();
         } else {
-            auto[it, success] = m_anon_ptr_types.insert({right_type, Magnum::pointer<PtrType>(right_type)});
+            auto[it, success] = m_anon_ptr_types.emplace(right_type, Magnum::pointer<PtrType>(right_type));
             assert(success);
             expr.actual_type = it->second.get();
         }
@@ -203,8 +204,8 @@ void CleanupExprVisitor::on_visit(UnaryExpression& expr)
 
 void CleanupExprVisitor::on_visit(BinaryExpression& expr)
 {
-    visit_child(m_anon_ptr_types, expr.left);
-    visit_child(m_anon_ptr_types, expr.right);
+    visit_and_fold(expr.left);
+    visit_and_fold(expr.right);
     infer_literal_type(expr.left.get(), expr.right.get(), expr.right->type());
     infer_literal_type(expr.right.get(), expr.left.get(), expr.left->type());
 }
@@ -218,7 +219,7 @@ void CleanupExprVisitor::on_visit(FunctionCall& call)
     }
     auto param = call.definition->parameters.begin();
     for(auto& arg : call.arguments) {
-        visit_child(m_anon_ptr_types, arg);
+        visit_and_fold(arg);
         infer_literal_type(arg.get(), param->get(), (*param)->type);
         ++param;
     }
@@ -231,7 +232,7 @@ void CleanupExprVisitor::on_visit(IndexOp& expr)
     // to try and fold it; instead, just visit() it so any of its subexpressions
     // get folded if possible.
     visit(*expr.base_expr);
-    visit_child(m_anon_ptr_types, expr.index_expr);
+    visit_and_fold(expr.index_expr);
 
     const auto* base_type = expr.base_expr->type();
     if(base_type->kind() != TypeKind::Array) {
@@ -245,20 +246,20 @@ void CleanupExprVisitor::on_visit(IndexOp& expr)
 void CleanupExprVisitor::on_visit(InitList& expr)
 {
     for(auto& val : expr.values) {
-        visit_child(m_anon_ptr_types, val);
+        visit_and_fold(val);
     }
 }
 
 
 void CleanupStmtVisitor::on_visit(BasicStatement& stmt)
 {
-    visit_child(m_anon_ptr_types, stmt.expression);
+    m_expr_visitor.visit_and_fold(stmt.expression);
 }
 
 void CleanupStmtVisitor::on_visit(Initialization& stmt)
 {
     if(stmt.expression != nullptr) {
-        visit_child(m_anon_ptr_types, stmt.expression);
+        m_expr_visitor.visit_and_fold(stmt.expression);
         infer_literal_type(stmt.expression.get(), stmt.variable.get(),
                          stmt.variable->type);
     }
@@ -266,17 +267,17 @@ void CleanupStmtVisitor::on_visit(Initialization& stmt)
 
 void CleanupStmtVisitor::on_visit(Assignment& stmt)
 {
-    visit_child(m_anon_ptr_types, stmt.expression);
+    m_expr_visitor.visit_and_fold(stmt.expression);
     infer_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
     if(stmt.assignable->kind() == AssignableKind::Indexed) {
         auto* indexed_var = as<IndexedVariable>(stmt.assignable);
-        CleanupExprVisitor(m_anon_ptr_types).visit(*indexed_var->array_access);
+        m_expr_visitor.visit(*indexed_var->array_access);
     }
 }
 
 void CleanupStmtVisitor::on_visit(IfBlock& stmt)
 {
-    visit_child(m_anon_ptr_types, stmt.condition);
+    m_expr_visitor.visit_and_fold(stmt.condition);
     on_visit(static_cast<Block&>(stmt));
     if(stmt.else_or_else_if != nullptr) {
         visit(*stmt.else_or_else_if);
@@ -292,7 +293,7 @@ void CleanupStmtVisitor::on_visit(Block& block)
 
 void CleanupStmtVisitor::on_visit(WhileLoop& loop)
 {
-    visit_child(m_anon_ptr_types, loop.condition);
+    m_expr_visitor.visit_and_fold(loop.condition);
     on_visit(static_cast<Block&>(loop));
 }
 
@@ -300,7 +301,7 @@ void CleanupStmtVisitor::on_visit(ReturnStatement& stmt)
 {
     assert(m_curr_funct != nullptr);
     if(stmt.expression != nullptr) {
-        visit_child(m_anon_ptr_types, stmt.expression);
+        m_expr_visitor.visit_and_fold(stmt.expression);
         infer_literal_type(stmt.expression.get(), m_curr_funct,
                          m_curr_funct->return_type);
     }
