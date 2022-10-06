@@ -140,3 +140,8 @@ void raise_error_expected(std::string_view expected, const Expression* actual)
         .put(", but instead found expression:\n")
         .put(actual).raise();
 }
+
+void unreachable(std::string_view message, std::string_view filename, unsigned int line_num)
+{
+    Error().put(filename).put(":").put(std::to_string(line_num)).put(": ").raise(message);
+}

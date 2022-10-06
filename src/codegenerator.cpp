@@ -23,12 +23,10 @@
 #pragma GCC diagnostic ignored "-Wdeprecated"
 #include <llvm/IR/Verifier.h>
 #include "optimizer.h"
-#include "objectgenerator.h"
 #pragma GCC diagnostic pop
 
 #include "ast.h"
 #include "visitor.h"
-#include "error.h"
 #include <string>
 #include <cassert>
 

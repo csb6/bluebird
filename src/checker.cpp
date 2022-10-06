@@ -129,7 +129,7 @@ void check_legal_unary_op(const UnaryExpression& expr, TokenType op, const Type*
         break;
     case TypeKind::Literal:
         // Assumes all but float literals are constant folded before this stage
-        assert(false);
+        BLUEBIRD_UNREACHABLE("Unexpected literal in typechecker");
         break;
     default:
         Error(expr.line_num()).put("The operator").quote(op)

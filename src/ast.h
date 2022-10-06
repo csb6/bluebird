@@ -20,6 +20,7 @@
 #include "multiprecision.h"
 #include "util.h"
 #include "magnum.h"
+#include "error.h"
 #include <vector>
 #include <type_traits>
 
@@ -128,9 +129,7 @@ struct Type {
     Type(std::string_view n) : name(n) {}
     virtual ~Type() noexcept = default;
 
-    // TODO: fix bug where this is called for some boolean literals
-    //  (Type::bit_size should never be called)
-    virtual size_t   bit_size() const { return 1; }
+    virtual size_t   bit_size() const { BLUEBIRD_UNREACHABLE("Called Type::bit_size()"); }
     virtual TypeKind kind() const { return TypeKind::Normal; }
     virtual void     print(std::ostream&) const;
 };

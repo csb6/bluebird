@@ -164,7 +164,7 @@ void infer_literal_type(Expression* literal, const Other* other, const Type* oth
         // Ignore case of two Literal operands; will get constant folded
         break;
     case TypeKind::Normal:
-        assert(false);
+        BLUEBIRD_UNREACHABLE("Unexpected TypeKind::Normal");
         break;
     }
 }

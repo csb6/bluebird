@@ -40,4 +40,6 @@ public:
 
 [[noreturn]] void raise_error_expected(std::string_view expected, const Token& actual);
 [[noreturn]] void raise_error_expected(std::string_view expected, const Expression* actual);
+[[noreturn]] void unreachable(std::string_view message, std::string_view filename, unsigned int line_num);
+#define BLUEBIRD_UNREACHABLE(msg) (unreachable(msg, __FILE__, __LINE__))
 #endif

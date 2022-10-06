@@ -54,10 +54,10 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
         if(literal_type == &LiteralType::Float) {
             return mlir::FloatType::getF32(&context);
         }
-        assert(false);
+        BLUEBIRD_UNREACHABLE("Unhandled literal type");
     }
     default:
-        assert(false);
+        BLUEBIRD_UNREACHABLE("Unhandled type kind");
     }
 }
 
@@ -108,7 +108,10 @@ public:
                   const std::unordered_map<const struct Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions) {}
 
-    mlir::OpState on_visit(StringLiteral&) {}
+    mlir::OpState on_visit(StringLiteral&)
+    {
+        BLUEBIRD_UNREACHABLE("StringLiteral lowering not implemented yet");
+    }
 
     mlir::OpState on_visit(CharLiteral& literal)
     {
@@ -220,7 +223,7 @@ public:
         case TokenType::Op_Not:
             return m_builder.create<bluebirdIR::NotOp>(loc, right);
         default:
-            assert(false);
+            BLUEBIRD_UNREACHABLE("Unhandled unary expression");
         }
     }
 
@@ -238,9 +241,15 @@ public:
                                               mlir::ValueRange(arguments));
     }
 
-    mlir::OpState on_visit(IndexOp&) {}
+    mlir::OpState on_visit(IndexOp&)
+    {
+        BLUEBIRD_UNREACHABLE("IndexOp lowering not implemented yet");
+    }
 
-    mlir::OpState on_visit(InitList&) {}
+    mlir::OpState on_visit(InitList&)
+    {
+        BLUEBIRD_UNREACHABLE("InitList lowering not implemented yet");
+    }
 
     mlir::Value visitAndGetResult(Expression& expr)
     {
@@ -276,11 +285,11 @@ public:
                         {}, to_mlir_type(*m_builder.getContext(), ast_param->type));
             auto alloca = m_builder.create<mlir::memref::AllocaOp>(argLoc, std::move(memref_type));
             m_sse_vars.insert_or_assign(ast_param.get(), alloca);
-            param_allocas.push_back(std::move(alloca));
+            param_allocas.push_back(alloca);
         }
         assert(param_allocas.size() == mlir_function.getArguments().size());
         for(auto[alloca, mlir_arg] : llvm::zip(param_allocas, mlir_function.getArguments())) {
-            m_builder.create<mlir::memref::StoreOp>(argLoc, mlir_arg, std::move(alloca));
+            m_builder.create<mlir::memref::StoreOp>(argLoc, mlir_arg, alloca);
         }
     }
 
@@ -294,16 +303,18 @@ public:
         auto memref_type = mlir::MemRefType::get(
                     {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
         auto loc = to_loc(m_builder, var_decl.line_num());
+        // TODO: add support for creating globals/their initializers
         // Put allocas at start of function's entry block
+        assert(m_curr_function != nullptr);
         auto oldInsertionPoint = m_builder.saveInsertionPoint();
         m_builder.setInsertionPointToStart(getEntryBlock(m_curr_function));
-        auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, std::move(memref_type));
+        auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, memref_type);
+        m_sse_vars.insert_or_assign(var_decl.variable.get(), alloca);
         m_builder.restoreInsertionPoint(oldInsertionPoint);
-        auto initial_value = m_expr_visitor.visitAndGetResult(*var_decl.expression);
         if(var_decl.expression != nullptr) {
+            auto initial_value = m_expr_visitor.visitAndGetResult(*var_decl.expression);
             m_builder.create<mlir::memref::StoreOp>(loc, initial_value, alloca);
         }
-        m_sse_vars.insert_or_assign(var_decl.variable.get(), std::move(alloca));
     }
 
     void on_visit(Assignment& asgmt)
@@ -435,7 +446,7 @@ void Builder::run()
     for(auto& function : m_functions) {
         if(function->kind() == FunctionKind::Normal) {
             auto* user_function = as<BBFunction>(function.get());
-            auto& mlir_function = m_mlir_functions[user_function];
+            mlir::FuncOp mlir_function = m_mlir_functions[user_function];
             stmt_visitor.set_function_and_alloca_args(*user_function, mlir_function);
 
             for(auto& statement : user_function->body.statements) {
