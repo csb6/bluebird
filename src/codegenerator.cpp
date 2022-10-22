@@ -44,7 +44,7 @@ public:
     llvm::Value* on_visit(BinaryExpression&);
     llvm::Value* on_visit(UnaryExpression&);
     llvm::Value* on_visit(FunctionCall&);
-    llvm::Value* on_visit(IndexOp&);
+    llvm::Value* on_visit(IndexedExpr&);
     llvm::Value* on_visit(InitList&);
 };
 
@@ -248,7 +248,7 @@ llvm::Value* CodegenExprVisitor::on_visit(FunctionCall& call)
     return call_instr;
 }
 
-llvm::Value* CodegenExprVisitor::on_visit(IndexOp& expr)
+llvm::Value* CodegenExprVisitor::on_visit(IndexedExpr& expr)
 {
     assert(expr.base_expr->kind() == ExprKind::Variable);
     const Variable* var = as<VariableExpression>(expr.base_expr.get())->variable;
@@ -386,7 +386,7 @@ void CodeGenerator::in_assignment(Assignment* assgn_stmt)
         // case, we don't want the loaded value; we want the pointer to the value
         auto* indexed_var = as<IndexedVariable>(assignable);
         auto* load_instr = llvm::cast<llvm::LoadInst>(
-            CodegenExprVisitor(*this).visit(*indexed_var->array_access));
+            CodegenExprVisitor(*this).visit(*indexed_var->indexed_expr));
         dest_ptr = load_instr->getPointerOperand();
         load_instr->eraseFromParent();
         break;

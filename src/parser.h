@@ -40,14 +40,14 @@
 struct SymbolInfo {
     NameType kind; // See ast.h
     union {
-        Type* type;
+        const Type* type;
         Variable* variable = nullptr;
         Function* function;
     };
 
     explicit
     SymbolInfo(NameType name) : kind(name) {}
-    SymbolInfo(NameType name, Type* t) : kind(name), type(t) {}
+    SymbolInfo(NameType name, const Type* t) : kind(name), type(t) {}
     SymbolInfo(NameType name, Variable* var) : kind(name), variable(var) {}
     SymbolInfo(NameType name, Function* f) : kind(name), function(f) {}
 };
@@ -67,7 +67,7 @@ struct Scope {
     // These 'unresolved' lists are maintained for each scope until the end of
     // this module's parsing process, at which point their definitions are resolved
     std::vector<FunctionCall*> unresolved_funct_calls;
-    std::vector<Type**> unresolved_types;
+    std::vector<const Type**> unresolved_types;
 };
 
 /* Holds a tree of scopes which can be queried and added to */
@@ -82,7 +82,7 @@ public:
 
     // All add functions assume the name isn't already used for something else
     void add_var(Variable*);
-    void add_type(Type*);
+    void add_type(const Type*);
     void add_function(Function*);
 
     void add_unresolved(Variable*);

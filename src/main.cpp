@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     }
 
     {
-        bluebirdIR::Builder ir_builder{context.functions, context.types, context.global_vars, context.index_vars};
+        bluebirdIR::Builder ir_builder{context.functions, context.global_vars};
         ir_builder.run();
     }
 

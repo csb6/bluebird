@@ -36,7 +36,7 @@ public:
     void on_visit(BinaryExpression&);
     void on_visit(UnaryExpression&);
     void on_visit(FunctionCall&);
-    void on_visit(IndexOp&);
+    void on_visit(IndexedExpr&);
     void on_visit(InitList&);
 
     void visit_and_fold(Magnum::Pointer<Expression>&);
@@ -241,7 +241,7 @@ void CleanupExprVisitor::on_visit(FunctionCall& call)
     }
 }
 
-void CleanupExprVisitor::on_visit(IndexOp& expr)
+void CleanupExprVisitor::on_visit(IndexedExpr& expr)
 {
     // Base expression will not consist of anything that can be simplified down
     // to a single literal (because it is some sort of variable usage), so no need
@@ -287,7 +287,7 @@ void CleanupStmtVisitor::on_visit(Assignment& stmt)
     infer_literal_type(stmt.expression.get(), stmt.assignable, stmt.assignable->type);
     if(stmt.assignable->kind() == AssignableKind::Indexed) {
         auto* indexed_var = as<IndexedVariable>(stmt.assignable);
-        m_expr_visitor.visit(*indexed_var->array_access);
+        m_expr_visitor.visit(*indexed_var->indexed_expr);
     }
 }
 

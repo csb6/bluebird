@@ -55,7 +55,7 @@ struct ExprVisitor {
         case ExprKind::FunctionCall:
             return CALL_VISIT(FunctionCall);
         case ExprKind::IndexOp:
-            return CALL_VISIT(IndexOp);
+            return CALL_VISIT(IndexedExpr);
         case ExprKind::InitList:
             return CALL_VISIT(InitList);
         }

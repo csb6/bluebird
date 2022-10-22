@@ -107,7 +107,7 @@ const std::string& FunctionCall::name() const { return definition->name; }
 
 const Type* FunctionCall::type() const { return definition->return_type; }
 
-const Type* IndexOp::type() const
+const Type* IndexedExpr::type() const
 {
     const Type* base_type = base_expr->type();
     if(base_type->kind() == TypeKind::Array) {
@@ -124,10 +124,10 @@ unsigned int ReturnStatement::line_num() const
     return line;
 }
 
-Type Type::Void{"VoidType"};
-Type Type::String{"StringLiteral"};
+const Type Type::Void{"VoidType"};
+const Type Type::String{"StringLiteral"};
 
-EnumType EnumType::Boolean{"Boolean"};
+const EnumType EnumType::Boolean{"Boolean"};
 
 const LiteralType LiteralType::Char{"CharLiteral"};
 const LiteralType LiteralType::Int{"IntLiteral"};
@@ -136,6 +136,6 @@ const LiteralType LiteralType::Bool{"BoolLiteral"};
 const LiteralType LiteralType::InitList{"InitList"};
 
 // -2^31 thru 2^31-1 (same as the GNAT Ada compiler defines it)
-IntRangeType IntRangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
-IntRangeType IntRangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};
-FloatRangeType FloatRangeType::Float{"Float", FloatRange{std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), true}};
+const IntRangeType IntRangeType::Integer{"Integer", IntRange{multi_int{"-2147483648"}, multi_int{"2147483647"}, true}};
+const IntRangeType IntRangeType::Character{"Character", IntRange{multi_int{"0"}, multi_int{"255"}, false}};
+const FloatRangeType FloatRangeType::Float{"Float", FloatRange{std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), true}};

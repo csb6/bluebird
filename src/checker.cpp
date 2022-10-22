@@ -31,7 +31,7 @@ public:
     void on_visit(BinaryExpression&);
     void on_visit(UnaryExpression&);
     void on_visit(FunctionCall&);
-    void on_visit(IndexOp&);
+    void on_visit(IndexedExpr&);
     void on_visit(InitList&);
 };
 
@@ -213,7 +213,7 @@ void CheckerExprVisitor::on_visit(FunctionCall& call)
     }
 }
 
-void CheckerExprVisitor::on_visit(IndexOp& expr)
+void CheckerExprVisitor::on_visit(IndexedExpr& expr)
 {
     if(expr.base_expr->kind() != ExprKind::Variable) {
         Error(expr.line_num()).put(" Cannot index into the expression:\n  ")
@@ -316,7 +316,7 @@ bool CheckerStmtVisitor::on_visit(Assignment& assgn_stmt)
     typecheck_assign(assgn_stmt.expression.get(), assgn_stmt.assignable);
     if(assgn_stmt.assignable->kind() == AssignableKind::Indexed) {
         CheckerExprVisitor()
-            .visit(*as<IndexedVariable>(assgn_stmt.assignable)->array_access);
+            .visit(*as<IndexedVariable>(assgn_stmt.assignable)->indexed_expr);
     }
     return false;
 }

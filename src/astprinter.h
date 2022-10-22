@@ -18,7 +18,7 @@ public:
     void on_visit(const struct BinaryExpression&);
     void on_visit(const struct UnaryExpression&);
     void on_visit(const struct FunctionCall&);
-    void on_visit(const struct IndexOp&);
+    void on_visit(const struct IndexedExpr&);
     void on_visit(const struct InitList&);
 };
 

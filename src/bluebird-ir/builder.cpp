@@ -73,7 +73,7 @@ static constexpr std::uint8_t cmp_f_instr_lookup[] = {
 static
 mlir::arith::CmpFPredicate get_cmp_f_pred(TokenType op_type)
 {
-    return (mlir::arith::CmpFPredicate)cmp_f_instr_lookup[(char)op_type - (char)TokenType::Op_Eq];
+    return (mlir::arith::CmpFPredicate)cmp_f_instr_lookup[(int)op_type - (int)TokenType::Op_Eq];
 }
 
 static constexpr struct {
@@ -93,9 +93,9 @@ static
 mlir::arith::CmpIPredicate get_cmp_i_pred(TokenType op_type, bool is_signed)
 {
     if(is_signed) {
-        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].s_cmp;
+        return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(int)op_type - (int)TokenType::Op_Eq].s_cmp;
     }
-    return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(char)op_type - (char)TokenType::Op_Eq].u_cmp;
+    return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(int)op_type - (int)TokenType::Op_Eq].u_cmp;
 }
 
 class IRExprVisitor : public ExprVisitor<IRExprVisitor> {
@@ -241,14 +241,14 @@ public:
                                               mlir::ValueRange(arguments));
     }
 
-    mlir::OpState on_visit(IndexOp&)
+    static mlir::OpState on_visit(IndexedExpr&)
     {
-        BLUEBIRD_UNREACHABLE("IndexOp lowering not implemented yet");
+        BLUEBIRD_UNREACHABLE("IndexOp expression should not be lowered like other expressions");
     }
 
-    mlir::OpState on_visit(InitList&)
+    static mlir::OpState on_visit(InitList&)
     {
-        BLUEBIRD_UNREACHABLE("InitList lowering not implemented yet");
+        BLUEBIRD_UNREACHABLE("InitList expression should not be lowered like other expressions");
     }
 
     mlir::Value visitAndGetResult(Expression& expr)
@@ -311,7 +311,7 @@ public:
         }
     }
 
-    void assign_indexed(IndexOp& assign_expr, Expression& value_expr)
+    void assign_indexed(IndexedExpr& assign_expr, Expression& value_expr)
     {
         assert(assign_expr.base_expr->kind() == ExprKind::Variable);
         const auto* base_var = as<VariableExpression>(*assign_expr.base_expr).variable;
@@ -382,7 +382,7 @@ public:
     {
         if(asgmt.assignable->kind() == AssignableKind::Indexed) {
             auto& index_var = as<IndexedVariable>(*asgmt.assignable);
-            assign_indexed(*index_var.array_access, *asgmt.expression);
+            assign_indexed(*index_var.indexed_expr, *asgmt.expression);
         } else {
             assign_var(*asgmt.assignable, to_loc(m_builder, asgmt.line_num()), *asgmt.expression);
         }
@@ -468,12 +468,10 @@ public:
 namespace bluebirdIR {
 
 Builder::Builder(std::vector<Magnum::Pointer<Function>>& functions,
-        std::vector<Magnum::Pointer<Type>>& types,
-        std::vector<Magnum::Pointer<Initialization>>& global_vars,
-        std::vector<Magnum::Pointer<IndexedVariable>>& index_vars)
+        std::vector<Magnum::Pointer<Initialization>>& global_vars)
     : m_module(mlir::ModuleOp::create(mlir::OpBuilder(&m_context).getUnknownLoc())),
       m_builder(m_module.getRegion()),
-      m_functions(functions), m_types(types), m_global_vars(global_vars), m_index_vars(index_vars)
+      m_functions(functions), m_global_vars(global_vars)
 {
     m_context.loadDialect<BluebirdIRDialect, mlir::StandardOpsDialect, mlir::arith::ArithmeticDialect,
                           mlir::memref::MemRefDialect, mlir::scf::SCFDialect>();

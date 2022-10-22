@@ -119,7 +119,7 @@ struct Type {
     BLUEBIRD_COPYABLE(Type);
     BLUEBIRD_MOVEABLE(Type);
     // Some default types that don't have to be declared
-    static Type Void, String;
+    static const Type Void, String;
     std::string name;
 
     Type() = default;
@@ -141,7 +141,7 @@ struct LiteralType final : public Type {
 
 // Type with limited set of named, enumerated values
 struct EnumType final : public Type {
-    static EnumType Boolean;
+    static const EnumType Boolean;
     // TODO: change category when non-bool enum types added
     TypeKind category = TypeKind::Boolean;
 
@@ -154,7 +154,7 @@ struct EnumType final : public Type {
 // Type with integer bounds
 struct IntRangeType final : public Type {
     // Some more default types that don't have to be declared
-    static IntRangeType Integer, Character;
+    static const IntRangeType Integer, Character;
     IntRange range;
 
     using Type::Type;
@@ -167,7 +167,7 @@ struct IntRangeType final : public Type {
 };
 
 struct FloatRangeType : public Type {
-    static FloatRangeType Float;
+    static const FloatRangeType Float;
     FloatRange range;
 
     using Type::Type;
@@ -179,10 +179,10 @@ struct FloatRangeType : public Type {
 
 struct ArrayType final : public Type {
     const IntRangeType* index_type;
-    Type* element_type;
+    const Type* element_type;
 
     using Type::Type;
-    ArrayType(std::string_view n, const IntRangeType* ind_type, Type* el_type)
+    ArrayType(std::string_view n, const IntRangeType* ind_type, const Type* el_type)
         : Type(n), index_type(ind_type), element_type(el_type) {}
 
     size_t   bit_size() const override;
@@ -344,14 +344,14 @@ struct FunctionCall final : public Expression {
 };
 
 // An access into an array
-struct IndexOp final : public Expression {
+struct IndexedExpr final : public Expression {
     // Evaluates into the object being indexed into 
     Magnum::Pointer<Expression> base_expr;
     // Some discrete type indexing into the base
     Magnum::Pointer<Expression> index_expr;
     unsigned int line;
 
-    IndexOp(unsigned int line_n, Magnum::Pointer<Expression> b,
+    IndexedExpr(unsigned int line_n, Magnum::Pointer<Expression> b,
             Magnum::Pointer<Expression> index_expr)
         : base_expr(std::move(b)), index_expr(std::move(index_expr)), line(line_n) {}
 
@@ -378,11 +378,11 @@ struct InitList final : public Expression {
 struct Assignable {
     BLUEBIRD_COPYABLE(Assignable);
     BLUEBIRD_MOVEABLE(Assignable);
-    Type* type;
+    const Type* type;
     bool is_mutable = true;
 
     explicit
-    Assignable(Type* t) : type(t) {}
+    Assignable(const Type* t) : type(t) {}
     virtual ~Assignable() noexcept = default;
 
     virtual AssignableKind kind() const = 0;
@@ -394,18 +394,18 @@ struct Variable final : public Assignable {
 
     explicit
     Variable(std::string name) : Assignable(nullptr), name(std::move(name)) {}
-    Variable(std::string name, Type* t) : Assignable(t), name(std::move(name)) {}
+    Variable(std::string name, const Type* t) : Assignable(t), name(std::move(name)) {}
 
     AssignableKind kind() const override { return AssignableKind::Variable; }
 };
 
 // An element in an array that is going to be assigned to
 struct IndexedVariable final : public Assignable {
-    Magnum::Pointer<IndexOp> array_access;
+    Magnum::Pointer<IndexedExpr> indexed_expr;
 
     explicit
-    IndexedVariable(Magnum::Pointer<IndexOp> op)
-        : Assignable(const_cast<Type*>(op->type())), array_access(std::move(op)) {}
+    IndexedVariable(Magnum::Pointer<IndexedExpr> op)
+        : Assignable(op->type()), indexed_expr(std::move(op)) {}
 
     AssignableKind kind() const override { return AssignableKind::Indexed; }
 };
@@ -529,7 +529,7 @@ struct Function {
     BLUEBIRD_MOVEABLE(Function);
 
     std::string name;
-    Type* return_type = &Type::Void;
+    const Type* return_type = &Type::Void;
     std::vector<Magnum::Pointer<Variable>> parameters;
 
     explicit

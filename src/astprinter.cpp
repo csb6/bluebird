@@ -71,7 +71,7 @@ void ASTExprPrinter::on_visit(const FunctionCall& func_call)
     m_output << ")";
 }
 
-void ASTExprPrinter::on_visit(const IndexOp& index_op)
+void ASTExprPrinter::on_visit(const IndexedExpr& index_op)
 {
     m_output << "(";
     visit(*index_op.base_expr);
@@ -201,7 +201,7 @@ std::ostream& operator<<(std::ostream& output, const Assignable& assignable)
         output << "*(" << as<DerefLValue>(assignable).ptr_var << ")";
         break;
     case AssignableKind::Indexed: {
-        const auto& index_assign = *as<IndexedVariable>(assignable).array_access;
+        const auto& index_assign = *as<IndexedVariable>(assignable).indexed_expr;
         ASTExprPrinter expr_printer{output};
         output << "(";
         expr_printer.visit(*index_assign.base_expr);

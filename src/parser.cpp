@@ -289,7 +289,7 @@ Magnum::Pointer<Expression> Parser::in_index_op()
 
     check_token_is(TokenType::Open_Bracket, "array open bracket `[`", *token);
     ++token;
-    auto new_expr = Magnum::pointer<IndexOp>(
+    auto new_expr = Magnum::pointer<IndexedExpr>(
         line, std::move(base_expr), parse_expression(TokenType::Closed_Bracket));
     check_token_is(TokenType::Closed_Bracket, "array closing bracket `]`", *token);
     ++token;
@@ -425,9 +425,9 @@ Magnum::Pointer<Assignment> Parser::in_assignment()
         if(index_op->kind() != ExprKind::IndexOp) {
             Error(index_op->line_num()).raise("Expected an assignment to an array element");
         }
-        auto* index_op_act = as<IndexOp>(index_op.release());
+        auto* index_op_act = as<IndexedExpr>(index_op.release());
         assgn_target = create<IndexedVariable>(m_index_vars,
-                                               Magnum::Pointer<IndexOp>{index_op_act});
+                                               Magnum::Pointer<IndexedExpr>{index_op_act});
         assert(assgn_target != nullptr);
     } else {
         // Named variable assignment; skip the varname
@@ -902,7 +902,7 @@ void SymbolTable::add_var(Variable* var)
     m_scopes[m_curr_scope].symbols.insert_or_assign(var->name, SymbolInfo{NameType::Variable, var});
 }
 
-void SymbolTable::add_type(Type* type)
+void SymbolTable::add_type(const Type* type)
 {
     m_scopes[m_curr_scope].symbols.insert_or_assign(type->name, SymbolInfo{NameType::Type, type});
 }
@@ -939,7 +939,7 @@ void SymbolTable::resolve_usages()
         Scope& scope = m_scopes[scope_index];
         // Try and resolve the references to types that were missing a definition
         // when first used
-        for(Type** type_ptr : scope.unresolved_types) {
+        for(auto* type_ptr : scope.unresolved_types) {
             std::optional<SymbolInfo> match = find((*type_ptr)->name, NameType::Type);
             if(!match) {
                 Error().put("Type").quote((*type_ptr)->name)
