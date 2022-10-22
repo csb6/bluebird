@@ -258,6 +258,27 @@ public:
     }
 };
 
+static
+mlir::memref::AllocaOp create_local_var(mlir::OpBuilder& builder,
+                                        std::unordered_map<const Assignable*, mlir::Value>& sse_vars,
+                                        const Variable& ast_var, mlir::Location loc)
+{
+    mlir::MemRefType memref_type;
+    if(ast_var.type->kind() == TypeKind::Array) {
+        const auto* array_type = as<ArrayType>(ast_var.type);
+        auto value_type = to_mlir_type(*builder.getContext(), array_type->element_type);
+        int64_t indices[] = { static_cast<int64_t>(array_type->index_type->range.size()) };
+        memref_type = mlir::MemRefType::get(indices, value_type);
+    } else {
+        auto value_type = to_mlir_type(*builder.getContext(), ast_var.type);
+        memref_type = mlir::MemRefType::get({}, value_type);
+    }
+    auto alloca = builder.create<mlir::memref::AllocaOp>(loc, memref_type);
+    sse_vars.insert_or_assign(&ast_var, alloca);
+    return alloca;
+}
+
+
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
     mlir::OpBuilder& m_builder;
     std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
@@ -271,25 +292,67 @@ public:
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions),
           m_expr_visitor(m_builder, m_sse_vars, m_mlir_functions) {}
 
-    void set_function_and_alloca_args(const BBFunction& user_function, mlir::FuncOp mlir_function)
+    void setup_for_function(const BBFunction& user_function, mlir::FuncOp mlir_function)
     {
         m_curr_function = mlir_function;
         m_builder.setInsertionPointToStart(getEntryBlock(mlir_function));
 
         // Arguments are passed as SSA values, so create allocas for them so they can be modified in
         // the function body
+        // TODO: don't do this for constant params
         auto argLoc = mlir_function.getLoc();
         llvm::SmallVector<mlir::Value, 4> param_allocas;
-        for(auto& ast_param : user_function.parameters) {
-            auto memref_type = mlir::MemRefType::get(
-                        {}, to_mlir_type(*m_builder.getContext(), ast_param->type));
-            auto alloca = m_builder.create<mlir::memref::AllocaOp>(argLoc, std::move(memref_type));
-            m_sse_vars.insert_or_assign(ast_param.get(), alloca);
-            param_allocas.push_back(alloca);
+        for(const auto& ast_param : user_function.parameters) {
+            param_allocas.push_back(create_local_var(m_builder, m_sse_vars, *ast_param, argLoc));
         }
         assert(param_allocas.size() == mlir_function.getArguments().size());
         for(auto[alloca, mlir_arg] : llvm::zip(param_allocas, mlir_function.getArguments())) {
             m_builder.create<mlir::memref::StoreOp>(argLoc, mlir_arg, alloca);
+        }
+    }
+
+    void assign_indexed(IndexOp& assign_expr, Expression& value_expr)
+    {
+        assert(assign_expr.base_expr->kind() == ExprKind::Variable);
+        const auto* base_var = as<VariableExpression>(*assign_expr.base_expr).variable;
+        auto match = m_sse_vars.find(base_var);
+        assert(match != m_sse_vars.end());
+        auto[_, alloca] = *match;
+
+        auto index_value = m_expr_visitor.visitAndGetResult(*assign_expr.index_expr);
+        auto index_loc = to_loc(m_builder, assign_expr.index_expr->line_num());
+        auto index = m_builder.create<mlir::arith::IndexCastOp>(index_loc, index_value, m_builder.getIndexType());
+
+        auto value = m_expr_visitor.visitAndGetResult(value_expr);
+
+        auto loc = to_loc(m_builder, assign_expr.line_num());
+        m_builder.create<mlir::memref::StoreOp>(loc, value, alloca, mlir::ValueRange{index});
+    }
+
+    void assign_var(const Assignable& ast_var, mlir::Location loc, Expression& value_expr)
+    {
+        auto match = m_sse_vars.find(&ast_var);
+        assert(match != m_sse_vars.end());
+        auto[_, alloca] = *match;
+        if(ast_var.type->kind() == TypeKind::Array) {
+            if(value_expr.kind() == ExprKind::InitList) {
+                // Special handling for init lists (to avoid naively copying an entire array)
+                auto& init_list = as<InitList>(value_expr);
+                int64_t i = 0;
+                for(auto& element : init_list.values) {
+                    auto loc = to_loc(m_builder, element->line_num());
+                    auto index = m_builder.create<mlir::arith::ConstantIndexOp>(loc, i);
+                    m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(*element),
+                                                            alloca, mlir::ValueRange{index});
+                    ++i;
+                }
+            } else if(value_expr.kind() == ExprKind::Variable) {
+                BLUEBIRD_UNREACHABLE("Assignment of named array lvalue not yet supported");
+            } else {
+                BLUEBIRD_UNREACHABLE("Unhandled assignment kind");
+            }
+        } else {
+            m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(value_expr), alloca);
         }
     }
 
@@ -300,29 +363,29 @@ public:
 
     void on_visit(Initialization& var_decl)
     {
-        auto memref_type = mlir::MemRefType::get(
-                    {}, to_mlir_type(*m_builder.getContext(), var_decl.variable->type));
         auto loc = to_loc(m_builder, var_decl.line_num());
         // TODO: add support for creating globals/their initializers
-        // Put allocas at start of function's entry block
         assert(m_curr_function != nullptr);
-        auto oldInsertionPoint = m_builder.saveInsertionPoint();
+
+        // Put allocas at start of function's entry block
+        auto old_insert_point = m_builder.saveInsertionPoint();
         m_builder.setInsertionPointToStart(getEntryBlock(m_curr_function));
-        auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, memref_type);
-        m_sse_vars.insert_or_assign(var_decl.variable.get(), alloca);
-        m_builder.restoreInsertionPoint(oldInsertionPoint);
+        create_local_var(m_builder, m_sse_vars, *var_decl.variable, loc);
+        m_builder.restoreInsertionPoint(old_insert_point);
+
         if(var_decl.expression != nullptr) {
-            auto initial_value = m_expr_visitor.visitAndGetResult(*var_decl.expression);
-            m_builder.create<mlir::memref::StoreOp>(loc, initial_value, alloca);
+            assign_var(*var_decl.variable, loc, *var_decl.expression);
         }
     }
 
     void on_visit(Assignment& asgmt)
     {
-        auto alloca = m_sse_vars.find(asgmt.assignable);
-        assert(alloca != m_sse_vars.end());
-        auto value = m_expr_visitor.visitAndGetResult(*asgmt.expression);
-        m_builder.create<mlir::memref::StoreOp>(to_loc(m_builder, asgmt.line_num()), value, alloca->second);
+        if(asgmt.assignable->kind() == AssignableKind::Indexed) {
+            auto& index_var = as<IndexedVariable>(*asgmt.assignable);
+            assign_indexed(*index_var.array_access, *asgmt.expression);
+        } else {
+            assign_var(*asgmt.assignable, to_loc(m_builder, asgmt.line_num()), *asgmt.expression);
+        }
     }
 
     void on_visit(IfBlock& if_else_stmt)
@@ -422,39 +485,45 @@ void Builder::run()
     // First, create all of the functions (with empty bodies). This ensures that
     // all function calls will resolve to an existing mlir::FuncOp
     for(auto& function : m_functions) {
-        if(function->kind() == FunctionKind::Normal) {
-            auto* user_function = as<BBFunction>(function.get());
-            for(auto& param : user_function->parameters) {
-                param_types.push_back(to_mlir_type(m_context, param->type));
-            }
-            mlir::TypeRange result_type = to_mlir_type(m_context, user_function->return_type);
-            if(result_type.front().isa<mlir::NoneType>()) {
-                result_type = {};
-            }
-            auto func_type = m_builder.getFunctionType(param_types, result_type);
-            auto mlir_funct = m_builder.create<mlir::FuncOp>(to_loc(m_builder, user_function->line_num()),
-                                                             user_function->name,
-                                                             func_type);
-            mlir_funct.addEntryBlock();
-            m_mlir_functions.insert_or_assign(user_function, mlir_funct);
-            param_types.clear();
+        if(function->kind() != FunctionKind::Normal) {
+            continue;
         }
+        auto* user_function = as<BBFunction>(function.get());
+        for(auto& param : user_function->parameters) {
+            param_types.push_back(to_mlir_type(m_context, param->type));
+        }
+        mlir::TypeRange result_type = to_mlir_type(m_context, user_function->return_type);
+        if(result_type.front().isa<mlir::NoneType>()) {
+            result_type = {};
+        }
+        auto func_type = m_builder.getFunctionType(param_types, result_type);
+        auto mlir_funct = m_builder.create<mlir::FuncOp>(to_loc(m_builder, user_function->line_num()),
+                                                         user_function->name,
+                                                         func_type);
+        mlir_funct.addEntryBlock();
+        m_mlir_functions.insert_or_assign(user_function, mlir_funct);
+        param_types.clear();
     }
 
     // Next, generate the function bodies and parameters
     IRStmtVisitor stmt_visitor(m_builder, m_sse_vars, m_mlir_functions);
     for(auto& function : m_functions) {
-        if(function->kind() == FunctionKind::Normal) {
-            auto* user_function = as<BBFunction>(function.get());
-            mlir::FuncOp mlir_function = m_mlir_functions[user_function];
-            stmt_visitor.set_function_and_alloca_args(*user_function, mlir_function);
+        if(function->kind() != FunctionKind::Normal) {
+            continue;
+        }
+        auto* user_function = as<BBFunction>(function.get());
+        mlir::FuncOp mlir_function = m_mlir_functions[user_function];
+        stmt_visitor.setup_for_function(*user_function, mlir_function);
 
-            for(auto& statement : user_function->body.statements) {
-                stmt_visitor.visit(*statement);
-            }
-            if(user_function->return_type == &Type::Void) {
-                m_builder.setInsertionPointToEnd(getEntryBlock(mlir_function));
-                m_builder.create<mlir::ReturnOp>(m_builder.getUnknownLoc(), mlir::None);
+        for(auto& statement : user_function->body.statements) {
+            stmt_visitor.visit(*statement);
+        }
+        if(user_function->return_type == &Type::Void) {
+            for(auto& block : mlir_function.getBlocks()) {
+                if(block.empty() || !block.back().mightHaveTrait<mlir::OpTrait::IsTerminator>()) {
+                    m_builder.setInsertionPointToEnd(&block);
+                    m_builder.create<mlir::ReturnOp>(m_builder.getUnknownLoc(), mlir::None);
+                }
             }
         }
     }

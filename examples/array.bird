@@ -8,4 +8,5 @@ function main() is
   let a: IntArray := { i };
   let b: IntArray := {};
   let c: IntArray := {1, i, 3, 5, 8 + 9};
+  c[1] := 90;
 end;
