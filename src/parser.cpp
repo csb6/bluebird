@@ -17,6 +17,7 @@
 #include "error.h"
 #include "parser.h"
 #include "constanteval.h"
+#include "astprinter.h"
 #include <ostream>
 #include <algorithm>
 #include <array>
@@ -837,13 +838,13 @@ void Parser::run()
 std::ostream& operator<<(std::ostream& output, const Parser& parser)
 {
     output << "Global Variables:\n";
-    for(const auto& decl : parser.m_global_vars) {
-        decl->print(output);
+    ASTStmtPrinter stmt_printer{output};
+    for(auto& decl : parser.m_global_vars) {
+        stmt_printer.visit(*decl);
     }
     output << "\nFunctions:\n";
-    for(const auto& function_definition : parser.m_functions) {
-        function_definition->print(output);
-        output << "\n";
+    for(auto& function_definition : parser.m_functions) {
+        output << *function_definition << "\n";
     }
     return output;
 }

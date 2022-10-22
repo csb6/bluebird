@@ -17,13 +17,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "ast.h"
+#include <type_traits>
 
-template<typename DerivedT>
+enum class VisitorKind {
+    Const, Mutable
+};
+
+template<VisitorKind K, typename T>
+using VisitorQual = std::conditional_t<K == VisitorKind::Mutable, T, const T>;
+
+template<typename DerivedT, VisitorKind Kind = VisitorKind::Mutable>
 struct ExprVisitor {
-    auto visit(Expression& expr)
+    using ExprType = VisitorQual<Kind, Expression>;
+
+    auto visit(ExprType& expr)
     {
         #define CALL_VISIT(Type) \
-            (static_cast<DerivedT*>(this)->on_visit(static_cast<Type&>(expr)))
+            (static_cast<DerivedT*>(this)->on_visit(static_cast<VisitorQual<Kind, Type>&>(expr)))
 
         switch(expr.kind()) {
         case ExprKind::StringLiteral:
@@ -53,12 +63,14 @@ struct ExprVisitor {
     }
 };
 
-template<typename DerivedT>
+template<typename DerivedT, VisitorKind Kind = VisitorKind::Mutable>
 struct StmtVisitor {
-    auto visit(Statement& stmt)
+    using StmtType = VisitorQual<Kind, Statement>;
+
+    auto visit(StmtType& stmt)
     {
         #define CALL_VISIT(Type) \
-            static_cast<DerivedT*>(this)->on_visit(static_cast<Type&>(stmt))
+            static_cast<DerivedT*>(this)->on_visit(static_cast<VisitorQual<Kind, Type>&>(stmt))
 
         switch(stmt.kind()) {
         case StmtKind::Basic:

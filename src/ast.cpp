@@ -15,18 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "ast.h"
-#include <iomanip> // for setprecision()
 #include <limits>
-
-void Type::print(std::ostream& output) const
-{
-    output << "Type: " << name;
-}
-
-void IntRangeType::print(std::ostream& output) const
-{
-    output << "Type: " << name << " Range: " << range;
-}
 
 size_t ArrayType::bit_size() const
 {
@@ -34,19 +23,6 @@ size_t ArrayType::bit_size() const
     return index_type->range.size() * element_type->bit_size();
 }
 
-void ArrayType::print(std::ostream& output) const
-{
-    output << "Type: " << name << " Array(";
-    index_type->print(output);
-    output << ") of ";
-    element_type->print(output);
-}
-
-void PtrType::print(std::ostream& output) const
-{
-    output << "Type: " << name << " Ptr ";
-    inner_type->print(output);
-}
 
 IntRange::IntRange(multi_int lower, multi_int upper, bool inclusive)
     : lower_bound(std::move(lower)), upper_bound(std::move(upper)), is_signed(lower_bound.is_negative())
@@ -86,12 +62,6 @@ unsigned long int IntRange::size() const
     return to_int(std::move(low_copy));
 }
 
-std::ostream& operator<<(std::ostream& output, const IntRange& range)
-{
-    output << "(" << range.lower_bound << ", " << range.upper_bound << ")";
-    return output;
-}
-
 bool FloatRange::contains(double value) const
 {
     if(is_inclusive) {
@@ -101,49 +71,9 @@ bool FloatRange::contains(double value) const
     return value >= lower_bound && value < upper_bound;
 }
 
-std::ostream& operator<<(std::ostream& output, const FloatRange& range)
-{
-    output << "(" << range.lower_bound << ", " << range.upper_bound << ")";
-    return output;
-}
-
 const Type* VariableExpression::type() const
 {
     return variable->type;
-}
-
-void VariableExpression::print(std::ostream& output) const
-{
-    output << variable->name;
-}
-
-void StringLiteral::print(std::ostream& output) const
-{
-    output << "\"";
-    print_unescape(value, output);
-    output << "\"";
-}
-
-void CharLiteral::print(std::ostream& output) const
-{
-    output << "'";
-    print_unescape(value, output);
-    output << "'";
-}
-
-void IntLiteral::print(std::ostream& output) const
-{
-    output << value;
-}
-
-void BoolLiteral::print(std::ostream& output) const
-{
-    output << value;
-}
-
-void FloatLiteral::print(std::ostream& output) const
-{
-    output << std::setprecision(10) << value;
 }
 
 const Type* UnaryExpression::type() const
@@ -152,13 +82,6 @@ const Type* UnaryExpression::type() const
         return right->type();
     }
     return actual_type;
-}
-
-void UnaryExpression::print(std::ostream& output) const
-{
-    output << "(" << op << " ";
-    right->print(output);
-    output << ")";
 }
 
 const Type* BinaryExpression::type() const
@@ -180,28 +103,9 @@ const Type* BinaryExpression::type() const
     }
 }
 
-void BinaryExpression::print(std::ostream& output) const
-{
-    output << "(";
-    left->print(output);
-    output << " " << op << " ";
-    right->print(output);
-    output << ")";
-}
-
 const std::string& FunctionCall::name() const { return definition->name; }
 
 const Type* FunctionCall::type() const { return definition->return_type; }
-
-void FunctionCall::print(std::ostream& output) const
-{
-    output << name() << "(";
-    for(const auto& argument : arguments) {
-        argument->print(output);
-        output << ", ";
-    }
-    output << ")";
-}
 
 const Type* IndexOp::type() const
 {
@@ -212,149 +116,12 @@ const Type* IndexOp::type() const
     return &Type::Void;
 }
 
-void IndexOp::print(std::ostream& output) const
-{
-    output << "(";
-    base_expr->print(output);
-    output << ")[";
-    index_expr->print(output);
-    output << "]";
-}
-
-void InitList::print(std::ostream& output) const
-{
-    output << "{ ";
-    for(const auto& each : values) {
-        each->print(output);
-        output << ", ";
-    }
-    output << "}";
-}
-
-void BasicStatement::print(std::ostream& output) const
-{
-    if(expression) {
-        output << "Statement: ";
-        expression->print(output);
-    } else {
-        output << "Empty Statement";
-    }
-}
-
-void Initialization::print(std::ostream& output) const
-{
-    output << "Initialize ";
-    variable->print(output);
-    output << " := ";
-    if(expression) {
-        expression->print(output);
-    } else {
-        output << "Empty Statement";
-    }
-}
-
-void Assignment::print(std::ostream& output) const
-{
-    output << "Assign ";
-    assignable->print(output);
-    output << " := ";
-    expression->print(output);
-}
-
-void Block::print(std::ostream& output) const
-{
-    output << "Block:";
-    for(const auto& each : statements) {
-        output << "\n";
-        each->print(output);
-    }
-}
-
-void IfBlock::print(std::ostream& output) const
-{
-    output << "If Block:\n";
-    output << "Condition: ";
-    condition->print(output);
-    output << "\n";
-    Block::print(output);
-    if(else_or_else_if != nullptr) {
-        output << "\nElse ";
-        else_or_else_if->print(output);
-    }
-}
-
-void WhileLoop::print(std::ostream& output) const
-{
-    output << "While Loop:\n";
-    output << "Condition: ";
-    condition->print(output);
-    output << "\n";
-    Block::print(output);
-}
-
 unsigned int ReturnStatement::line_num() const
 {
     if(expression.get() != nullptr) {
         return expression->line_num();
     }
     return line;
-}
-
-void ReturnStatement::print(std::ostream& output) const
-{
-    output << "Return: ";
-    if(expression.get() != nullptr) {
-        expression->print(output);
-    } else {
-        output << "Empty statement";
-    }
-}
-
-void Variable::print(std::ostream& output) const
-{
-    if(is_mutable) {
-        output << "Variable: ";
-    } else {
-        output << "Constant: ";
-    }
-    output << name;
-}
-
-void IndexedVariable::print(std::ostream& output) const
-{
-    if(is_mutable) {
-        output << "Variable: ";
-    } else {
-        output << "Constant: ";
-    }
-    array_access->print(output);
-}
-
-void DerefLValue::print(std::ostream& output) const
-{
-    output << "Ptr Deref: ";
-    ptr_var.print(output);
-}
-
-void BBFunction::print(std::ostream& output) const
-{
-    output << "Function: " << name;
-    if(return_type != nullptr) {
-        output << "\tReturn ";
-        return_type->print(output);
-    }
-    output << "\nParameters:\n";
-    for(const auto& param : parameters) {
-        param->print(output);
-        output << "\n";
-    }
-    output << "Body:\n";
-    body.print(output);
-}
-
-void BuiltinFunction::print(std::ostream& output) const
-{
-    output << "Built-In Function: " << name;
 }
 
 Type Type::Void{"VoidType"};

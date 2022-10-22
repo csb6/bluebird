@@ -16,6 +16,7 @@
 */
 #include "error.h"
 #include "ast.h"
+#include "astprinter.h"
 #include <iostream>
 
 #ifdef FUZZER_MODE
@@ -62,31 +63,31 @@ Error& Error::put(std::string_view message, unsigned int indent)
 
 Error& Error::put(const Expression* expr)
 {
-    expr->print(std::cerr);
+    std::cerr << *expr;
     return *this;
 }
 
 Error& Error::put(const Statement* stmt)
 {
-    stmt->print(std::cerr);
+    std::cerr << *stmt;
     return *this;
 }
 
 Error& Error::put(const Type* type)
 {
-    type->print(std::cerr);
+    std::cerr << "Type: " << type->name;
     return *this;
 }
 
 Error& Error::put(const Function* funct)
 {
-    funct->print(std::cerr);
+    std::cerr << *funct;
     return *this;
 }
 
 Error& Error::put(const Assignable* assignable)
 {
-    assignable->print(std::cerr);
+    std::cerr << *assignable;
     return *this;
 }
 

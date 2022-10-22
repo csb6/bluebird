@@ -21,6 +21,7 @@
 #include "checker.h"
 #include "codegenerator.h"
 #include "objectgenerator.h"
+#include "astprinter.h"
 #include "bluebird-ir/builder.h"
 #include <fstream>
 #include <iostream>

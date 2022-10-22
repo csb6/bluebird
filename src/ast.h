@@ -68,7 +68,6 @@ struct IntRange {
     // The number of integers the range contains
     unsigned long int size() const;
 };
-std::ostream& operator<<(std::ostream& output, const IntRange&);
 
 // A continuous range of 32-bit floating point numbers
 struct FloatRange {
@@ -81,7 +80,6 @@ struct FloatRange {
     bool contains(double) const;
     double size() const { return upper_bound - lower_bound; }
 };
-std::ostream& operator<<(std::ostream& output, const FloatRange&);
 
 
 template<typename Subclass, typename Base>
@@ -131,7 +129,6 @@ struct Type {
 
     virtual size_t   bit_size() const { BLUEBIRD_UNREACHABLE("Called Type::bit_size()"); }
     virtual TypeKind kind() const { return TypeKind::Normal; }
-    virtual void     print(std::ostream&) const;
 };
 
 struct LiteralType final : public Type {
@@ -166,7 +163,6 @@ struct IntRangeType final : public Type {
 
     size_t   bit_size() const override { return range.bit_size; }
     TypeKind kind() const override { return TypeKind::IntRange; }
-    void     print(std::ostream&) const override;
     bool     is_signed() const { return range.is_signed; }
 };
 
@@ -191,7 +187,6 @@ struct ArrayType final : public Type {
 
     size_t   bit_size() const override;
     TypeKind kind() const override { return TypeKind::Array; }
-    void     print(std::ostream&) const override;
 };
 
 // A pointer; is never null, but can be stored in records, arrays, etc.
@@ -208,7 +203,6 @@ struct PtrType final : public Type {
 
     size_t bit_size() const override { return sizeof(int*); }
     TypeKind kind() const override { return TypeKind::Ptr; }
-    void     print(std::ostream&) const override;
 };
 
 // An abstract object or non-standalone group of expressions
@@ -224,7 +218,6 @@ struct Expression {
     // called by visiting child nodes
     virtual const Type*  type() const = 0;
     virtual unsigned int line_num() const = 0;
-    virtual void         print(std::ostream&) const = 0;
 };
 
 // Each type of literal is a nameless instance of data
@@ -238,7 +231,6 @@ struct StringLiteral final : public Expression {
     ExprKind     kind() const override { return ExprKind::StringLiteral; }
     const Type*  type() const override { return &Type::String; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 struct CharLiteral final : public Expression {
@@ -251,7 +243,6 @@ struct CharLiteral final : public Expression {
     ExprKind     kind() const override { return ExprKind::CharLiteral; }
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 struct IntLiteral final : public Expression {
@@ -268,7 +259,6 @@ struct IntLiteral final : public Expression {
     ExprKind     kind() const override { return ExprKind::IntLiteral; }
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 struct BoolLiteral final : public Expression {
@@ -281,7 +271,6 @@ struct BoolLiteral final : public Expression {
     ExprKind     kind() const override { return ExprKind::BoolLiteral; }
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 struct FloatLiteral final : public Expression {
@@ -294,7 +283,6 @@ struct FloatLiteral final : public Expression {
     ExprKind     kind() const override { return ExprKind::FloatLiteral; }
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 // An expression consisting solely of a variable's name
@@ -308,7 +296,6 @@ struct VariableExpression final : public Expression {
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
     // Other data should be looked up in the corresponding Variable object
-    void         print(std::ostream&) const override;
 };
 
 // An expression that consists of an operator and an expression
@@ -324,7 +311,6 @@ struct UnaryExpression final : public Expression {
     ExprKind     kind() const override { return ExprKind::Unary; }
     const Type*  type() const override;
     unsigned int line_num() const override { return right->line_num(); }
-    void         print(std::ostream&) const override;
 };
 
 // An expression that consists of an operator and two expressions
@@ -340,7 +326,6 @@ struct BinaryExpression final : public Expression {
     ExprKind     kind() const override { return ExprKind::Binary; }
     const Type*  type() const override;
     unsigned int line_num() const override { return left->line_num(); }
-    void         print(std::ostream&) const override;
 };
 
 // A usage of a function
@@ -356,7 +341,6 @@ struct FunctionCall final : public Expression {
     ExprKind     kind() const override { return ExprKind::FunctionCall; }
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 // An access into an array
@@ -374,7 +358,6 @@ struct IndexOp final : public Expression {
     ExprKind     kind() const override { return ExprKind::IndexOp; }
     const Type*  type() const override;
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 // A bracketed list of values assigned all at once to an array/record
@@ -389,7 +372,6 @@ struct InitList final : public Expression {
     ExprKind     kind() const override { return ExprKind::InitList; }
     const Type*  type() const override { return actual_type; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 // A location that can be assigned to
@@ -403,7 +385,6 @@ struct Assignable {
     Assignable(Type* t) : type(t) {}
     virtual ~Assignable() noexcept = default;
 
-    virtual void           print(std::ostream&) const = 0;
     virtual AssignableKind kind() const = 0;
 };
 
@@ -415,7 +396,6 @@ struct Variable final : public Assignable {
     Variable(std::string name) : Assignable(nullptr), name(std::move(name)) {}
     Variable(std::string name, Type* t) : Assignable(t), name(std::move(name)) {}
 
-    void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Variable; }
 };
 
@@ -427,7 +407,6 @@ struct IndexedVariable final : public Assignable {
     IndexedVariable(Magnum::Pointer<IndexOp> op)
         : Assignable(const_cast<Type*>(op->type())), array_access(std::move(op)) {}
 
-    void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Indexed; }
 };
 
@@ -438,7 +417,6 @@ struct DerefLValue final : public Assignable {
     explicit
     DerefLValue(Variable& ptr_var) : Assignable(nullptr), ptr_var(ptr_var) {}
 
-    void           print(std::ostream&) const override;
     AssignableKind kind() const override { return AssignableKind::Deref; }
 };
 
@@ -453,7 +431,6 @@ struct Statement {
 
     virtual StmtKind     kind() const = 0;
     virtual unsigned int line_num() const = 0;
-    virtual void         print(std::ostream&) const = 0;
 };
 
 // A brief, usually one-line statement that holds a single expression
@@ -466,7 +443,6 @@ struct BasicStatement final : public Statement {
 
     StmtKind     kind() const override { return StmtKind::Basic; }
     unsigned int line_num() const override { return expression->line_num(); }
-    void         print(std::ostream&) const override;
 };
 
 // Statement where a new variable is declared and optionally assigned the
@@ -482,7 +458,6 @@ struct Initialization final : public Statement {
 
     StmtKind     kind() const override { return StmtKind::Initialization; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream& output) const override;
 };
 
 // Statement where an existing variable is given a value
@@ -495,7 +470,6 @@ struct Assignment final : public Statement {
 
     StmtKind     kind() const override { return StmtKind::Assignment; }
     unsigned int line_num() const override { return expression->line_num(); }
-    void         print(std::ostream& output) const override;
 };
 
 // A group of statements contained in a scope
@@ -508,7 +482,6 @@ struct Block : public Statement {
 
     StmtKind     kind() const override { return StmtKind::Block; }
     unsigned int line_num() const override { return line; }
-    void         print(std::ostream&) const override;
 };
 
 // A block that is executed only when its boolean condition is true
@@ -521,7 +494,6 @@ struct IfBlock final : public Block {
         : Block(cond->line_num()), condition(std::move(cond)) {}
 
     StmtKind kind() const override { return StmtKind::IfBlock; }
-    void     print(std::ostream&) const override;
 };
 
 // A block that runs repeatedly until its condition is false
@@ -534,7 +506,6 @@ struct WhileLoop final : public Block {
           condition(std::move(cond)) {}
 
     StmtKind kind() const override { return StmtKind::While; }
-    void     print(std::ostream&) const override;
 };
 
 struct ReturnStatement final : public Statement {
@@ -550,7 +521,6 @@ struct ReturnStatement final : public Statement {
 
     StmtKind     kind() const override { return StmtKind::Return; }
     unsigned int line_num() const override;
-    void         print(std::ostream&) const override;
 };
 
 // A callable procedure that optionally takes inputs
@@ -566,7 +536,6 @@ struct Function {
     Function(std::string n) : name(std::move(n)) {}
     virtual ~Function() noexcept = default;
 
-    virtual void         print(std::ostream&) const = 0;
     virtual FunctionKind kind() const = 0;
     virtual unsigned int line_num() const = 0;
 };
@@ -580,7 +549,6 @@ struct BBFunction final : public Function {
     BBFunction(std::string n, unsigned int line = 0)
         : Function(std::move(n)), body(line) {}
 
-    void         print(std::ostream&) const override;
     FunctionKind kind() const override { return FunctionKind::Normal; }
     unsigned int line_num() const override { return body.line_num(); }
 };
@@ -593,7 +561,6 @@ struct BuiltinFunction final : public Function {
     explicit
     BuiltinFunction(std::string n) : Function(std::move(n)) {}
 
-    void         print(std::ostream&) const override;
     FunctionKind kind() const override { return FunctionKind::Builtin; }
     unsigned int line_num() const override { return 0; }
 };
