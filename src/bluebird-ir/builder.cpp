@@ -98,7 +98,7 @@ mlir::arith::CmpIPredicate get_cmp_i_pred(TokenType op_type, bool is_signed)
     return (mlir::arith::CmpIPredicate)cmp_i_instr_lookup[(int)op_type - (int)TokenType::Op_Eq].u_cmp;
 }
 
-class IRExprVisitor : public ExprVisitor<IRExprVisitor> {
+class IRExprVisitor : public ExprVisitor<IRExprVisitor, VisitorKind::Const> {
     mlir::OpBuilder& m_builder;
     std::unordered_map<const Assignable*, mlir::Value>& m_sse_vars;
     const std::unordered_map<const Function*, mlir::FuncOp>& m_mlir_functions;
@@ -108,19 +108,19 @@ public:
                   const std::unordered_map<const struct Function*, mlir::FuncOp>& mlir_functions)
         : m_builder(builder), m_sse_vars(sse_vars), m_mlir_functions(mlir_functions) {}
 
-    mlir::OpState on_visit(StringLiteral&)
+    mlir::OpState on_visit(const StringLiteral&)
     {
         BLUEBIRD_UNREACHABLE("StringLiteral lowering not implemented yet");
     }
 
-    mlir::OpState on_visit(CharLiteral& literal)
+    mlir::OpState on_visit(const CharLiteral& literal)
     {
         return m_builder.create<bluebirdIR::CharConstantOp>(
                     to_loc(m_builder, literal.line_num()),
                     literal.value);
     }
 
-    mlir::OpState on_visit(IntLiteral& literal)
+    mlir::OpState on_visit(const IntLiteral& literal)
     {
         return m_builder.create<bluebirdIR::IntConstantOp>(
                     to_loc(m_builder, literal.line_num()),
@@ -128,28 +128,28 @@ public:
                     to_mlir_type(*m_builder.getContext(), literal.type()));
     }
 
-    mlir::OpState on_visit(BoolLiteral& literal)
+    mlir::OpState on_visit(const BoolLiteral& literal)
     {
         return m_builder.create<bluebirdIR::BoolConstantOp>(
                     to_loc(m_builder, literal.line_num()),
                     literal.value);
     }
 
-    mlir::OpState on_visit(FloatLiteral& literal)
+    mlir::OpState on_visit(const FloatLiteral& literal)
     {
         return m_builder.create<bluebirdIR::FloatConstantOp>(
                     to_loc(m_builder, literal.line_num()),
                     literal.value);
     }
 
-    mlir::OpState on_visit(VariableExpression& expr)
+    mlir::OpState on_visit(const VariableExpression& expr)
     {
         auto it = m_sse_vars.find(expr.variable);
         assert(it != m_sse_vars.end());
         return m_builder.create<mlir::memref::LoadOp>(to_loc(m_builder, expr.line_num()), it->second);
     }
 
-    mlir::OpState on_visit(BinaryExpression& expr)
+    mlir::OpState on_visit(const BinaryExpression& expr)
     {
         auto left = visitAndGetResult(*expr.left);
         auto right = visitAndGetResult(*expr.right);
@@ -213,7 +213,7 @@ public:
         }
     }
 
-    mlir::OpState on_visit(UnaryExpression& expr)
+    mlir::OpState on_visit(const UnaryExpression& expr)
     {
         auto right = visitAndGetResult(*expr.right);
         auto loc = to_loc(m_builder, expr.line_num());
@@ -227,10 +227,10 @@ public:
         }
     }
 
-    mlir::OpState on_visit(FunctionCall& function_call)
+    mlir::OpState on_visit(const FunctionCall& function_call)
     {
         llvm::SmallVector<mlir::Value, 4> arguments;
-        for(auto& arg : function_call.arguments) {
+        for(const auto& arg : function_call.arguments) {
             arguments.push_back(visitAndGetResult(*arg));
         }
         auto function_def = m_mlir_functions.find(function_call.definition);
@@ -241,17 +241,17 @@ public:
                                               mlir::ValueRange(arguments));
     }
 
-    static mlir::OpState on_visit(IndexedExpr&)
+    static mlir::OpState on_visit(const IndexedExpr&)
     {
         BLUEBIRD_UNREACHABLE("IndexOp expression should not be lowered like other expressions");
     }
 
-    static mlir::OpState on_visit(InitList&)
+    static mlir::OpState on_visit(const InitList&)
     {
         BLUEBIRD_UNREACHABLE("InitList expression should not be lowered like other expressions");
     }
 
-    mlir::Value visitAndGetResult(Expression& expr)
+    mlir::Value visitAndGetResult(const Expression& expr)
     {
         // All expressions return a single result, so this is safe to do.
         return visit(expr)->getResult(0);
