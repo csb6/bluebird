@@ -333,7 +333,7 @@ public:
     {
         auto match = m_sse_vars.find(&ast_var);
         assert(match != m_sse_vars.end());
-        auto[_, alloca] = *match;
+        auto alloca = match->second;
         if(ast_var.type->kind() == TypeKind::Array) {
             if(value_expr.kind() == ExprKind::InitList) {
                 // Special handling for init lists (to avoid naively copying an entire array)
@@ -347,7 +347,11 @@ public:
                     ++i;
                 }
             } else if(value_expr.kind() == ExprKind::Variable) {
-                BLUEBIRD_UNREACHABLE("Assignment of named array lvalue not yet supported");
+                const auto* src_array_var = as<VariableExpression>(value_expr).variable;
+                auto match = m_sse_vars.find(src_array_var);
+                assert(match != m_sse_vars.end());
+                auto src_alloca = match->second;
+                m_builder.create<mlir::memref::CopyOp>(loc, src_alloca, alloca);
             } else {
                 BLUEBIRD_UNREACHABLE("Unhandled assignment kind");
             }

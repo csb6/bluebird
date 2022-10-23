@@ -6,6 +6,7 @@ function main() is
   let arr: IntArray;
   let i: IndexT := 9;
   arr[i] := 56;
+  arr := arr;
 
   let arr2: IntArrayArray;
   arr2[2] := { 1, 4 };
