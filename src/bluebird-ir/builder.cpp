@@ -56,6 +56,18 @@ static mlir::Type to_mlir_type(mlir::MLIRContext& context, const Type* ast_type)
         }
         BLUEBIRD_UNREACHABLE("Unhandled literal type");
     }
+    case TypeKind::Array: {
+        const auto* array_type = as<ArrayType>(ast_type);
+        llvm::SmallVector<int64_t, 3> indices{(int64_t)array_type->index_type->range.size()};
+
+        const Type* element_type = array_type->element_type;
+        while(element_type->kind() == TypeKind::Array) {
+            const auto* curr_array_type = as<ArrayType>(element_type);
+            indices.push_back((int64_t)curr_array_type->index_type->range.size());
+            element_type = curr_array_type->element_type;
+        }
+        return mlir::MemRefType::get(indices, to_mlir_type(context, element_type));
+    }
     default:
         BLUEBIRD_UNREACHABLE("Unhandled type kind");
     }
@@ -258,26 +270,6 @@ public:
     }
 };
 
-static
-mlir::memref::AllocaOp create_local_var(mlir::OpBuilder& builder,
-                                        std::unordered_map<const Assignable*, mlir::Value>& sse_vars,
-                                        const Variable& ast_var, mlir::Location loc)
-{
-    mlir::MemRefType memref_type;
-    if(ast_var.type->kind() == TypeKind::Array) {
-        const auto* array_type = as<ArrayType>(ast_var.type);
-        auto value_type = to_mlir_type(*builder.getContext(), array_type->element_type);
-        int64_t indices[] = { static_cast<int64_t>(array_type->index_type->range.size()) };
-        memref_type = mlir::MemRefType::get(indices, value_type);
-    } else {
-        auto value_type = to_mlir_type(*builder.getContext(), ast_var.type);
-        memref_type = mlir::MemRefType::get({}, value_type);
-    }
-    auto alloca = builder.create<mlir::memref::AllocaOp>(loc, memref_type);
-    sse_vars.insert_or_assign(&ast_var, alloca);
-    return alloca;
-}
-
 
 class IRStmtVisitor : public StmtVisitor<IRStmtVisitor> {
     mlir::OpBuilder& m_builder;
@@ -303,7 +295,7 @@ public:
         auto argLoc = mlir_function.getLoc();
         llvm::SmallVector<mlir::Value, 4> param_allocas;
         for(const auto& ast_param : user_function.parameters) {
-            param_allocas.push_back(create_local_var(m_builder, m_sse_vars, *ast_param, argLoc));
+            param_allocas.push_back(create_local_var(*ast_param, argLoc));
         }
         assert(param_allocas.size() == mlir_function.getArguments().size());
         for(auto[alloca, mlir_arg] : llvm::zip(param_allocas, mlir_function.getArguments())) {
@@ -311,7 +303,21 @@ public:
         }
     }
 
-    void assign_indexed(IndexedExpr& assign_expr, Expression& value_expr)
+    mlir::memref::AllocaOp create_local_var(const Variable& ast_var, mlir::Location loc)
+    {
+        mlir::MemRefType memref_type;
+        if(ast_var.type->kind() == TypeKind::Array) {
+            memref_type = to_mlir_type(*m_builder.getContext(), ast_var.type).cast<mlir::MemRefType>();
+        } else {
+            auto value_type = to_mlir_type(*m_builder.getContext(), ast_var.type);
+            memref_type = mlir::MemRefType::get({}, value_type);
+        }
+        auto alloca = m_builder.create<mlir::memref::AllocaOp>(loc, memref_type);
+        m_sse_vars.insert_or_assign(&ast_var, alloca);
+        return alloca;
+    }
+
+    void assign_indexed(const IndexedExpr& assign_expr, Expression& value_expr)
     {
         assert(assign_expr.base_expr->kind() == ExprKind::Variable);
         const auto* base_var = as<VariableExpression>(*assign_expr.base_expr).variable;
@@ -329,34 +335,39 @@ public:
         m_builder.create<mlir::memref::StoreOp>(loc, value, alloca, mlir::ValueRange{index});
     }
 
-    void assign_var(const Assignable& ast_var, mlir::Location loc, Expression& value_expr)
+    void assign_var(const Assignable& assignable, mlir::Location loc, Expression& value_expr)
     {
-        auto match = m_sse_vars.find(&ast_var);
-        assert(match != m_sse_vars.end());
-        auto alloca = match->second;
-        if(ast_var.type->kind() == TypeKind::Array) {
-            if(value_expr.kind() == ExprKind::InitList) {
-                // Special handling for init lists (to avoid naively copying an entire array)
-                auto& init_list = as<InitList>(value_expr);
-                int64_t i = 0;
-                for(auto& element : init_list.values) {
-                    auto loc = to_loc(m_builder, element->line_num());
-                    auto index = m_builder.create<mlir::arith::ConstantIndexOp>(loc, i);
-                    m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(*element),
-                                                            alloca, mlir::ValueRange{index});
-                    ++i;
-                }
-            } else if(value_expr.kind() == ExprKind::Variable) {
-                const auto* src_array_var = as<VariableExpression>(value_expr).variable;
-                auto match = m_sse_vars.find(src_array_var);
-                assert(match != m_sse_vars.end());
-                auto src_alloca = match->second;
-                m_builder.create<mlir::memref::CopyOp>(loc, src_alloca, alloca);
-            } else {
-                BLUEBIRD_UNREACHABLE("Unhandled assignment kind");
-            }
+        if(assignable.kind() == AssignableKind::Indexed) {
+            const auto& index_var = as<IndexedVariable>(assignable);
+            assign_indexed(*index_var.indexed_expr, value_expr);
         } else {
-            m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(value_expr), alloca);
+            auto match = m_sse_vars.find(&assignable);
+            assert(match != m_sse_vars.end());
+            auto alloca = match->second;
+            if(assignable.type->kind() == TypeKind::Array) {
+                if(value_expr.kind() == ExprKind::InitList) {
+                    // Special handling for init lists (to avoid naively copying an entire array)
+                    auto& init_list = as<InitList>(value_expr);
+                    int64_t i = 0;
+                    for(auto& element : init_list.values) {
+                        auto loc = to_loc(m_builder, element->line_num());
+                        auto index = m_builder.create<mlir::arith::ConstantIndexOp>(loc, i);
+                        m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(*element),
+                                                                alloca, mlir::ValueRange{index});
+                        ++i;
+                    }
+                } else if(value_expr.kind() == ExprKind::Variable) {
+                    const auto* src_array_var = as<VariableExpression>(value_expr).variable;
+                    auto match = m_sse_vars.find(src_array_var);
+                    assert(match != m_sse_vars.end());
+                    auto src_alloca = match->second;
+                    m_builder.create<mlir::memref::CopyOp>(loc, src_alloca, alloca);
+                } else {
+                    BLUEBIRD_UNREACHABLE("Unhandled assignment kind");
+                }
+            } else {
+                m_builder.create<mlir::memref::StoreOp>(loc, m_expr_visitor.visitAndGetResult(value_expr), alloca);
+            }
         }
     }
 
@@ -374,7 +385,7 @@ public:
         // Put allocas at start of function's entry block
         auto old_insert_point = m_builder.saveInsertionPoint();
         m_builder.setInsertionPointToStart(getEntryBlock(m_curr_function));
-        create_local_var(m_builder, m_sse_vars, *var_decl.variable, loc);
+        create_local_var(*var_decl.variable, loc);
         m_builder.restoreInsertionPoint(old_insert_point);
 
         if(var_decl.expression != nullptr) {
@@ -384,12 +395,7 @@ public:
 
     void on_visit(Assignment& asgmt)
     {
-        if(asgmt.assignable->kind() == AssignableKind::Indexed) {
-            auto& index_var = as<IndexedVariable>(*asgmt.assignable);
-            assign_indexed(*index_var.indexed_expr, *asgmt.expression);
-        } else {
-            assign_var(*asgmt.assignable, to_loc(m_builder, asgmt.line_num()), *asgmt.expression);
-        }
+        assign_var(*asgmt.assignable, to_loc(m_builder, asgmt.line_num()), *asgmt.expression);
     }
 
     void on_visit(IfBlock& if_else_stmt)

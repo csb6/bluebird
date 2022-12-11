@@ -9,5 +9,6 @@ function main() is
   arr := arr;
 
   let arr2: IntArrayArray;
-  arr2[2] := { 1, 4 };
+  arr2[1];
+  //arr2[2] := { 1, 4 };
 end main;
