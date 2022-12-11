@@ -19,7 +19,7 @@ public:
     explicit
     BluebirdIRDialect(mlir::MLIRContext*);
 
-    static llvm::StringRef getDialectNamespace() { return "bluebirdIR"; }
+    static llvm::StringRef getDialectNamespace() { return "bbir"; }
     void printType(mlir::Type, mlir::DialectAsmPrinter&) const override;
     void printAttribute(mlir::Attribute, mlir::DialectAsmPrinter&) const override;
 };
@@ -70,7 +70,7 @@ class BoolConstantOp : public ConstantOp<BoolConstantOp> {
 public:
     using ConstantOp::ConstantOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.boolConstant"; }
+    static llvm::StringRef getOperationName() { return "bbir.boolConstant"; }
 
     static void build(mlir::OpBuilder&, mlir::OperationState&, bool value);
 };
@@ -79,7 +79,7 @@ class CharConstantOp : public ConstantOp<CharConstantOp> {
 public:
     using ConstantOp::ConstantOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.charConstant"; }
+    static llvm::StringRef getOperationName() { return "bbir.charConstant"; }
 
     static void build(mlir::OpBuilder&, mlir::OperationState&, char value);
 };
@@ -88,7 +88,7 @@ class IntConstantOp : public ConstantOp<IntConstantOp> {
 public:
     using ConstantOp::ConstantOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.intConstant"; }
+    static llvm::StringRef getOperationName() { return "bbir.intConstant"; }
 
     static void build(mlir::OpBuilder&, mlir::OperationState&,
                       const multi_int& value, mlir::Type);
@@ -98,7 +98,7 @@ class FloatConstantOp : public ConstantOp<FloatConstantOp> {
 public:
     using ConstantOp::ConstantOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.floatConstant"; }
+    static llvm::StringRef getOperationName() { return "bbir.floatConstant"; }
 
     static void build(mlir::OpBuilder&, mlir::OperationState&, float value);
 };
@@ -142,7 +142,7 @@ class NegateOp : public UnaryOp<NegateOp,
 public:
     using UnaryOp::UnaryOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.neg"; }
+    static llvm::StringRef getOperationName() { return "bbir.neg"; }
 };
 
 class NotOp : public UnaryOp<NotOp,
@@ -152,7 +152,7 @@ class NotOp : public UnaryOp<NotOp,
 public:
     using UnaryOp::UnaryOp;
 
-    static llvm::StringRef getOperationName() { return "bluebirdIR.not"; }
+    static llvm::StringRef getOperationName() { return "bbir.not"; }
 };
 
 }
